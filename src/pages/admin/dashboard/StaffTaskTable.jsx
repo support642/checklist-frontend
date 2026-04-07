@@ -296,7 +296,7 @@ export default function StaffTasksTable({
     csvData.push([]);
 
     // Task Table Header
-    const tableHeader = ["Seq No", "Daily Task Description", "Delegation task", "Weekly task", "Monthly task"];
+    const tableHeader = ["Seq No", "Daily Task Description", "Weekly task", "Monthly task", "Delegation task"];
     if (hasMaintenanceAccess) tableHeader.push("Maintenance task");
     csvData.push(tableHeader);
 
@@ -305,9 +305,9 @@ export default function StaffTasksTable({
       const row = [
         i + 1,
         dailyTasks[i]?.task_description || "",
-        delegationTasks[i]?.task_description || "",
         weeklyTasks[i]?.task_description || "",
         monthlyTasks[i]?.task_description || "",
+        delegationTasks[i]?.task_description || "",
       ];
       if (hasMaintenanceAccess) {
         row.push(maintenanceTasks[i]?.task_description || (i === 0 && maintenanceTasks.length === 0 ? "Nill" : ""));
@@ -319,9 +319,9 @@ export default function StaffTasksTable({
     const totalsRow = [
       "TOTAL",
       dailyTasks.length,
-      delegationTasks.length,
       weeklyTasks.length,
-      monthlyTasks.length
+      monthlyTasks.length,
+      delegationTasks.length
     ];
     if (hasMaintenanceAccess) totalsRow.push(maintenanceTasks.length);
     csvData.push(totalsRow);
@@ -379,8 +379,6 @@ export default function StaffTasksTable({
     );
     const dailyTasks = getUniqueTasksPDF(rawDaily);
 
-    const delegationTasks = staffTaskDetails.filter(t => t.type === 'delegation');
-
     const rawWeekly = staffTaskDetails.filter(t => 
       t.type === 'checklist' && 
       t.frequency?.toLowerCase() === 'weekly'
@@ -392,6 +390,8 @@ export default function StaffTasksTable({
       t.frequency?.toLowerCase() === 'monthly'
     );
     const monthlyTasks = getUniqueTasksPDF(rawMonthly);
+
+    const delegationTasks = staffTaskDetails.filter(t => t.type === 'delegation');
 
     const rawMaintenance = hasMaintenanceAccess 
       ? staffTaskDetails.filter(t => t.type === 'maintenance')
@@ -570,15 +570,15 @@ export default function StaffTasksTable({
 
     // 4. Categorized Table (sized for portrait A4) - columns depend on maintenance access
     const tableHeader = hasMaintenanceAccess
-      ? ["Seq No", "Daily Task Description", "Delegation task", "Weekly task", "Monthly task", "maintenance"]
-      : ["Seq No", "Daily Task Description", "Delegation task", "Weekly task", "Monthly task"];
+      ? ["Seq No", "Daily Task Description", "Weekly task", "Monthly task", "Delegation task", "maintenance"]
+      : ["Seq No", "Daily Task Description", "Weekly task", "Monthly task", "Delegation task"];
     const tableBody = Array.from({ length: maxRows }).map((_, idx) => {
       const row = [
         idx + 1,
         dailyTasks[idx]?.task_description || "",
-        delegationTasks[idx]?.task_description || "",
         weeklyTasks[idx]?.task_description || "",
         monthlyTasks[idx]?.task_description || "",
+        delegationTasks[idx]?.task_description || "",
       ];
       if (hasMaintenanceAccess) {
         row.push(maintenanceTasks[idx]?.task_description || (idx === 0 && maintenanceTasks.length === 0 ? "Nill" : ""));
@@ -587,6 +587,10 @@ export default function StaffTasksTable({
     });
 
     // Column widths: distribute evenly across available data columns
+    const tableFoot = hasMaintenanceAccess
+      ? ["Total", dailyTasks.length, weeklyTasks.length, monthlyTasks.length, delegationTasks.length, maintenanceTasks.length]
+      : ["Total", dailyTasks.length, weeklyTasks.length, monthlyTasks.length, delegationTasks.length];
+
     const dataCols = hasMaintenanceAccess ? 5 : 4; // excluding seq col
     const tblColW = Math.floor((usableW - 10) / dataCols); // 10mm for seq col
     const columnStyles = { 0: { halign: 'center', cellWidth: 10 } };
@@ -598,32 +602,15 @@ export default function StaffTasksTable({
     autoTable(doc, {
       head: [tableHeader],
       body: tableBody,
+      foot: [tableFoot],
       startY: startY + 3 * cellH + 3,
+      showFoot: 'lastPage',
       margin: { left: marginX, right: marginX },
       styles: { fontSize: 7, cellPadding: 1.5, lineWidth: 0.1, lineColor: [200, 200, 200] },
       headStyles: { fillColor: [233, 242, 233], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center', fontSize: 6.5 },
+      footStyles: { fillColor: [254, 249, 231], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center', fontSize: 7 },
       bodyStyles: { textColor: [50, 50, 50], minCellHeight: 7 },
       columnStyles,
-      didDrawPage: (data) => {
-        // Draw total row at the bottom of the table on the last page
-        if (data.pageCount === doc.internal.getNumberOfPages()) {
-          const finalY = data.cursor.y;
-          doc.setFillColor(254, 249, 231); // #FEF9E7
-          doc.rect(marginX, finalY, usableW, 8, 'F');
-          doc.rect(marginX, finalY, usableW, 8);
-          doc.setFontSize(7);
-          doc.setFont("helvetica", "bold");
-          doc.text("Total", marginX + 5, finalY + 5.5, { align: "center" });
-          doc.text(String(dailyTasks.length), marginX + 10 + tblColW / 2, finalY + 5.5, { align: "center" });
-          doc.text(String(delegationTasks.length), marginX + 10 + tblColW + tblColW / 2, finalY + 5.5, { align: "center" });
-          doc.text(String(weeklyTasks.length), marginX + 10 + tblColW * 2 + tblColW / 2, finalY + 5.5, { align: "center" });
-          doc.text(String(monthlyTasks.length), marginX + 10 + tblColW * 3 + tblColW / 2, finalY + 5.5, { align: "center" });
-          if (hasMaintenanceAccess) {
-            const remainW = usableW - 10 - tblColW * 4;
-            doc.text(String(maintenanceTasks.length), marginX + 10 + tblColW * 4 + remainW / 2, finalY + 5.5, { align: "center" });
-          }
-        }
-      }
     });
 
     // Footer: "Powered By Botivate" at the bottom of the last page

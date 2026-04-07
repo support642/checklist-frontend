@@ -237,9 +237,9 @@ const EmployeePerformanceReportModal = ({
                 <tr>
                   <th className="border border-gray-300 p-2 font-bold w-[60px] text-center">Seq No</th>
                   <th className="border border-gray-300 p-2 font-bold text-center">Daily Task Description</th>
-                  <th className="border border-gray-300 p-2 font-bold text-center">Delegation task</th>
                   <th className="border border-gray-300 p-2 font-bold text-center">Weekly task</th>
                   <th className="border border-gray-300 p-2 font-bold text-center">Monthly task</th>
+                  <th className="border border-gray-300 p-2 font-bold text-center">Delegation task</th>
                   {hasMaintenanceAccess && (
                     <th className="border border-gray-300 p-2 font-bold text-center">maintenance</th>
                   )}
@@ -253,13 +253,13 @@ const EmployeePerformanceReportModal = ({
                       {dailyTasks[idx]?.task_description || ""}
                     </td>
                     <td className="border border-gray-300 px-2 py-1 text-gray-700 leading-tight">
-                      {delegationTasks[idx]?.task_description || ""}
-                    </td>
-                    <td className="border border-gray-300 px-2 py-1 text-gray-700 leading-tight">
                       {weeklyTasks[idx]?.task_description || ""}
                     </td>
                     <td className="border border-gray-300 px-2 py-1 text-gray-700 leading-tight">
                       {monthlyTasks[idx]?.task_description || ""}
+                    </td>
+                    <td className="border border-gray-300 px-2 py-1 text-gray-700 leading-tight">
+                      {delegationTasks[idx]?.task_description || ""}
                     </td>
                     {hasMaintenanceAccess && (
                       <td className="border border-gray-300 px-2 py-1 text-gray-700 leading-tight">
@@ -276,9 +276,9 @@ const EmployeePerformanceReportModal = ({
           <div className={`bg-[#FEF9E7] border-t border-gray-300 divide-x divide-gray-300 grid ${totalGridCols} h-10`}>
             <div className="flex items-center justify-center font-bold text-xs">Total</div>
             <div className="flex items-center justify-center font-bold">{dailyTasks.length}</div>
-            <div className="flex items-center justify-center font-bold">{delegationTasks.length}</div>
             <div className="flex items-center justify-center font-bold">{weeklyTasks.length}</div>
             <div className="flex items-center justify-center font-bold">{monthlyTasks.length}</div>
+            <div className="flex items-center justify-center font-bold">{delegationTasks.length}</div>
             {hasMaintenanceAccess && (
               <div className="flex items-center justify-center font-bold">{maintenanceTasks.length}</div>
             )}
