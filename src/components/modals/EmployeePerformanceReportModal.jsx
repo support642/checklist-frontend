@@ -33,8 +33,8 @@ const EmployeePerformanceReportModal = ({
       const parts = dateStr.includes('T') ? dateStr.split('T')[0].split('-') : dateStr.split('-');
       if (parts.length !== 3) return dateStr;
       const [year, month, day] = parts;
-      // Output: mm/dd/yyyy
-      return `${month}/${day}/${year}`;
+      // Output: dd/mm/yyyy
+      return `${day}/${month}/${year}`;
     } catch (e) {
       return dateStr;
     }
@@ -65,21 +65,18 @@ const EmployeePerformanceReportModal = ({
   };
 
   // Process tasks into categories for the table - Using unique tasks for the listing
-  const rawDaily = tasks.filter(t => t.type === 'checklist' && t.frequency?.toLowerCase() === 'daily');
-  const dailyTasks = getUniqueTasks(rawDaily);
+  const checklistTasks = getUniqueTasks(tasks.filter(t => t.type === 'checklist'))
+    .map(t => ({ ...t, displayType: 'Checklist', displayFrequency: t.frequency || 'N/A' }));
 
-  const rawWeekly = tasks.filter(t => t.type === 'checklist' && t.frequency?.toLowerCase() === 'weekly');
-  const weeklyTasks = getUniqueTasks(rawWeekly);
-
-  const rawMonthly = tasks.filter(t => t.type === 'checklist' && t.frequency?.toLowerCase() === 'monthly');
-  const monthlyTasks = getUniqueTasks(rawMonthly);
-
-  const delegationTasks = tasks.filter(t => t.type === 'delegation');
+  const delegationTasks = getUniqueTasks(tasks.filter(t => t.type === 'delegation' || t.is_delegated))
+    .map(t => ({ ...t, displayType: 'Delegation', displayFrequency: 'One Time' }));
   
-  const rawMaintenance = hasMaintenanceAccess 
-    ? tasks.filter(t => t.type === 'maintenance')
+  const maintenanceTasks = hasMaintenanceAccess 
+    ? getUniqueTasks(tasks.filter(t => t.type === 'maintenance'))
+        .map(t => ({ ...t, displayType: 'Maintenance', displayFrequency: t.frequency || 'N/A' }))
     : [];
-  const maintenanceTasks = getUniqueTasks(rawMaintenance);
+
+  const allSortedTasks = [...checklistTasks, ...delegationTasks, ...maintenanceTasks];
 
   // Stats Calculation (Based on TOTAL occurrences for accurate performance)
   const calculateStats = (taskList) => {
@@ -92,25 +89,15 @@ const EmployeePerformanceReportModal = ({
   };
 
   const checklistStats = calculateStats(tasks.filter(t => t.type === 'checklist'));
-  const delegationStats = calculateStats(delegationTasks);
+  const delegationStats = calculateStats(tasks.filter(t => t.type === 'delegation' || t.is_delegated));
   const maintenanceStats = hasMaintenanceAccess 
     ? calculateStats(tasks.filter(t => t.type === 'maintenance'))
     : { total: 0, completed: 0, onTime: 0, workDoneScore: 0, onTimeScore: 0 };
-
-  // Maximum number of rows needed for the unique list
-  const maxRows = hasMaintenanceAccess
-    ? Math.max(dailyTasks.length, delegationTasks.length, weeklyTasks.length, monthlyTasks.length, maintenanceTasks.length, 1)
-    : Math.max(dailyTasks.length, delegationTasks.length, weeklyTasks.length, monthlyTasks.length, 1);
 
   // Dynamic grid columns based on maintenance access
   const infoGridCols = hasMaintenanceAccess
     ? 'grid-cols-[1.2fr_1fr_1fr_1.2fr_1fr]'
     : 'grid-cols-[1.5fr_1.2fr_1.2fr_1.2fr]';
-
-  const tableColCount = hasMaintenanceAccess ? 6 : 5;
-  const totalGridCols = hasMaintenanceAccess
-    ? 'grid-cols-[60px_1fr_1fr_1fr_1fr_1fr]'
-    : 'grid-cols-[60px_1fr_1fr_1fr_1fr]';
 
   return (
     <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -141,90 +128,117 @@ const EmployeePerformanceReportModal = ({
           </div>
 
           {/* Employee Info Grid - Dynamic columns based on maintenance access */}
+          {/* Employee Info Grid - New 2-Row Layout */}
           <div className="bg-white border-b border-gray-300 text-[10px]">
-            <div className={`grid ${infoGridCols} divide-x divide-gray-300`}>
-              {/* Column 1: Basic Info */}
+            <div className="grid grid-cols-[1fr_220px] divide-x divide-gray-300">
+              {/* Left Section: Details (Row 1) & Stats (Row 2) */}
               <div className="divide-y divide-gray-300">
-                <div className="grid grid-cols-[80px_1fr] h-10">
-                  <div className="bg-[#F8F9FA] px-2 flex items-center font-bold uppercase text-gray-600 border-r border-gray-300">Name</div>
-                  <div className="px-2 flex items-center font-bold text-gray-800">{staffName}</div>
-                </div>
-                <div className="grid grid-cols-[80px_1fr] h-10">
-                  <div className="bg-[#F8F9FA] px-2 flex items-center font-bold uppercase text-gray-600 border-r border-gray-300">Division</div>
-                  <div className="px-2 flex items-center font-bold text-gray-800 truncate">{staffData.division || "Admin"}</div>
-                </div>
-                <div className="grid grid-cols-[80px_1fr] h-10">
-                  <div className="bg-[#F8F9FA] px-2 flex items-center font-bold uppercase text-gray-600 border-r border-gray-300">Dept</div>
-                  <div className="px-2 flex items-center font-bold text-gray-800 truncate">{staffData.department || "HR"}</div>
-                </div>
-              </div>
-
-              {/* Column 2: Checklist Stats */}
-              <div className="divide-y divide-gray-300">
-                <div className="bg-green-50/50 h-10 flex items-center justify-center font-bold border-b border-gray-300 uppercase tracking-tighter text-green-800">Checklist</div>
-                <div className="grid grid-cols-2 h-10">
-                  <div className="bg-[#F8F9FA] px-2 flex items-center font-bold uppercase text-gray-400 border-r border-gray-300">Assigned / Done</div>
-                  <div className="px-2 flex items-center justify-center font-bold text-gray-800">{checklistStats.total} / {checklistStats.completed}</div>
-                </div>
-                <div className="grid grid-cols-2 h-10">
-                  <div className="bg-[#F8F9FA] px-2 flex items-center font-bold uppercase text-gray-400 border-r border-gray-300 px-1 truncate">Score / OnTime</div>
-                  <div className="px-2 flex items-center justify-center gap-1">
-                    <span className="font-bold text-green-700">{checklistStats.workDoneScore}%</span>
-                    <span className="text-gray-300">|</span>
-                    <span className="text-blue-600 font-bold">{checklistStats.onTimeScore}%</span>
+                {/* Row 1: All Details */}
+                <div className="grid grid-cols-5 h-14 divide-x divide-gray-300">
+                  <div className="flex flex-col">
+                    <div className="bg-[#F8F9FA] px-2 h-6 flex items-center font-bold uppercase text-gray-500 border-b border-gray-200 text-[9px]">Name</div>
+                    <div className="px-2 flex-1 flex items-center font-bold text-gray-800 truncate leading-tight py-1.5 text-xs">{staffName}</div>
+                  </div>
+                  <div className="flex flex-col">
+                    <div className="bg-[#F8F9FA] px-2 h-6 flex items-center font-bold uppercase text-gray-500 border-b border-gray-200 text-[9px]">Emp ID</div>
+                    <div className="px-2 flex-1 flex items-center font-bold text-gray-800 text-xs">{staffData.employee_id || "—"}</div>
+                  </div>
+                  <div className="flex flex-col">
+                    <div className="bg-[#F8F9FA] px-2 h-6 flex items-center font-bold uppercase text-gray-500 border-b border-gray-200 text-[9px]">Desg</div>
+                    <div className="px-2 flex-1 flex items-center font-bold text-gray-800 truncate leading-tight py-1.5 text-xs">{staffData.designation || "—"}</div>
+                  </div>
+                  <div className="flex flex-col">
+                    <div className="bg-[#F8F9FA] px-2 h-6 flex items-center font-bold uppercase text-gray-500 border-b border-gray-200 text-[9px]">Div</div>
+                    <div className="px-2 flex-1 flex items-center font-bold text-gray-800 truncate leading-tight py-1.5 text-xs">{staffData.division || "Admin"}</div>
+                  </div>
+                  <div className="flex flex-col">
+                    <div className="bg-[#F8F9FA] px-2 h-6 flex items-center font-bold uppercase text-gray-500 border-b border-gray-200 text-[9px]">Dept</div>
+                    <div className="px-2 flex-1 flex items-center font-bold text-gray-800 truncate leading-tight py-1.5 text-xs">{staffData.department || "HR"}</div>
                   </div>
                 </div>
-              </div>
 
-              {/* Column 3: Delegation Stats */}
-              <div className="divide-y divide-gray-300">
-                <div className="bg-blue-50/50 h-10 flex items-center justify-center font-bold border-b border-gray-300 uppercase tracking-tighter text-blue-800">Delegation</div>
-                <div className="grid grid-cols-2 h-10">
-                  <div className="bg-[#F8F9FA] px-2 flex items-center font-bold uppercase text-gray-400 border-r border-gray-300">Assigned / Done</div>
-                  <div className="px-2 flex items-center justify-center font-bold text-gray-800">{delegationStats.total} / {delegationStats.completed}</div>
-                </div>
-                <div className="grid grid-cols-2 h-10">
-                  <div className="bg-[#F8F9FA] px-2 flex items-center font-bold uppercase text-gray-400 border-r border-gray-300 px-1 truncate">Score / OnTime</div>
-                  <div className="px-2 flex items-center justify-center gap-1">
-                    <span className="font-bold text-green-700">{delegationStats.workDoneScore}%</span>
-                    <span className="text-gray-300">|</span>
-                    <span className="text-blue-600 font-bold">{delegationStats.onTimeScore}%</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Column 4: Maintenance Stats (conditional) */}
-              {hasMaintenanceAccess && (
-                <div className="divide-y divide-gray-300">
-                  <div className="bg-orange-50/50 h-10 flex items-center justify-center font-bold border-b border-gray-300 uppercase tracking-tighter text-orange-800">Maintenance</div>
-                  <div className="grid grid-cols-2 h-10">
-                    <div className="bg-[#F8F9FA] px-2 flex items-center font-bold uppercase text-gray-400 border-r border-gray-300">Assigned / Done</div>
-                    <div className="px-2 flex items-center justify-center font-bold text-gray-800">{maintenanceStats.total} / {maintenanceStats.completed}</div>
-                  </div>
-                  <div className="grid grid-cols-2 h-10">
-                    <div className="bg-[#F8F9FA] px-2 flex items-center font-bold uppercase text-gray-400 border-r border-gray-300 px-1 truncate">Score / OnTime</div>
-                    <div className="px-2 flex items-center justify-center gap-1">
-                      <span className="font-bold text-green-700">{maintenanceStats.workDoneScore}%</span>
-                      <span className="text-gray-300">|</span>
-                      <span className="text-blue-600 font-bold">{maintenanceStats.onTimeScore}%</span>
+                {/* Row 2: Performance Stats */}
+                <div className={`grid ${hasMaintenanceAccess ? 'grid-cols-3' : 'grid-cols-2'} h-20 divide-x divide-gray-300`}>
+                  {/* Checklist Stats */}
+                  <div className="flex flex-col divide-y divide-gray-200">
+                    <div className="bg-gray-100/80 px-2 h-6 flex items-center justify-center font-bold uppercase text-gray-700 text-[10px] tracking-widest">Checklist</div>
+                    <div className="flex-1 grid grid-cols-2 divide-x divide-gray-200">
+                      <div className="flex flex-col items-center justify-center py-2">
+                        <span className="text-[9px] text-gray-400 uppercase font-bold mb-1">Assigned / Done</span>
+                        <span className="text-base font-bold text-gray-800 leading-none">{checklistStats.total} / {checklistStats.completed}</span>
+                      </div>
+                      <div className="flex flex-col items-center justify-center py-2 bg-green-50/20">
+                        <span className="text-[9px] text-gray-400 uppercase font-bold mb-1">Score / OnTime</span>
+                        <div className="flex items-center gap-2 font-bold text-base">
+                          <span className="text-green-700">{checklistStats.workDoneScore}%</span>
+                          <span className="text-gray-300">|</span>
+                          <span className="text-blue-600">{checklistStats.onTimeScore}%</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
 
-              {/* Last Column: Report Info */}
-              <div className="divide-y divide-gray-300">
-                <div className="grid grid-cols-[70px_1fr] h-10">
-                  <div className="bg-[#F8F9FA] px-2 flex items-center font-bold uppercase text-gray-500 border-r border-gray-300">Period</div>
-                  <div className="px-2 flex items-center justify-center font-bold text-gray-800">{formatDateForDisplay(reportDate) || "Range"}</div>
+                  {/* Delegation Stats */}
+                  <div className="flex flex-col divide-y divide-gray-200">
+                    <div className="bg-gray-100/80 px-2 h-6 flex items-center justify-center font-bold uppercase text-gray-700 text-[10px] tracking-widest">Delegation</div>
+                    <div className="flex-1 grid grid-cols-2 divide-x divide-gray-200">
+                      <div className="flex flex-col items-center justify-center py-2">
+                        <span className="text-[9px] text-gray-400 uppercase font-bold mb-1">Assigned / Done</span>
+                        <span className="text-base font-bold text-gray-800 leading-none">{delegationStats.total} / {delegationStats.completed}</span>
+                      </div>
+                      <div className="flex flex-col items-center justify-center py-2 bg-blue-50/20">
+                        <span className="text-[9px] text-gray-400 uppercase font-bold mb-1">Score / OnTime</span>
+                        <div className="flex items-center gap-2 font-bold text-base">
+                          <span className="text-green-700">{delegationStats.workDoneScore}%</span>
+                          <span className="text-gray-300">|</span>
+                          <span className="text-blue-600">{delegationStats.onTimeScore}%</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Maintenance Stats */}
+                  {hasMaintenanceAccess && (
+                    <div className="flex flex-col divide-y divide-gray-200">
+                      <div className="bg-gray-100/80 px-2 h-6 flex items-center justify-center font-bold uppercase text-gray-700 text-[10px] tracking-widest">Maintenance</div>
+                      <div className="flex-1 grid grid-cols-2 divide-x divide-gray-200">
+                        <div className="flex flex-col items-center justify-center py-2">
+                          <span className="text-[9px] text-gray-400 uppercase font-bold mb-1">Assigned / Done</span>
+                          <span className="text-base font-bold text-gray-800 leading-none">{maintenanceStats.total} / {maintenanceStats.completed}</span>
+                        </div>
+                        <div className="flex flex-col items-center justify-center py-2 bg-orange-50/20">
+                          <span className="text-[9px] text-gray-400 uppercase font-bold mb-1">Score / OnTime</span>
+                          <div className="flex items-center gap-2 font-bold text-base">
+                            <span className="text-green-700">{maintenanceStats.workDoneScore}%</span>
+                            <span className="text-gray-300">|</span>
+                            <span className="text-blue-600">{maintenanceStats.onTimeScore}%</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="grid grid-cols-[70px_1fr] h-10">
-                  <div className="bg-[#F8F9FA] px-2 flex items-center font-bold uppercase text-gray-500 border-r border-gray-300">From</div>
-                  <div className="px-2 flex items-center justify-center font-bold text-gray-800 whitespace-nowrap">{formatDateForDisplay(startDate) || "N/A"}</div>
+              </div>
+
+              {/* Right Section: Period & Range */}
+              <div className="divide-y divide-gray-300 w-[220px]">
+                {/* Row 1: Period */}
+                <div className="grid grid-cols-[70px_1fr] h-14 divide-x divide-gray-300">
+                  <div className="bg-[#F8F9FA] px-2 flex items-center font-bold uppercase text-gray-500 text-[10px]">Period</div>
+                  <div className="px-2 flex items-center justify-center font-bold text-gray-800 bg-yellow-50/30 text-base">
+                    {formatDateForDisplay(reportDate) || "Range"}
+                  </div>
                 </div>
-                <div className="grid grid-cols-[70px_1fr] h-10">
-                  <div className="bg-[#F8F9FA] px-2 flex items-center font-bold uppercase text-gray-500 border-r border-gray-300">To</div>
-                  <div className="px-2 flex items-center justify-center font-bold text-gray-800 whitespace-nowrap">{formatDateForDisplay(endDate) || "N/A"}</div>
+                {/* Row 2: From & To */}
+                <div className="grid grid-cols-2 h-20 divide-x divide-gray-300">
+                  <div className="flex flex-col">
+                    <div className="bg-[#F8F9FA] px-2 h-6 flex items-center font-bold uppercase text-gray-500 border-b border-gray-200 text-[10px]">From</div>
+                    <div className="px-2 flex-1 flex items-center justify-center font-bold text-gray-800 text-sm">{formatDateForDisplay(startDate) || "N/A"}</div>
+                  </div>
+                  <div className="flex flex-col">
+                    <div className="bg-[#F8F9FA] px-2 h-6 flex items-center font-bold uppercase text-gray-500 border-b border-gray-200 text-[10px]">To</div>
+                    <div className="px-2 flex-1 flex items-center justify-center font-bold text-gray-800 text-sm">{formatDateForDisplay(endDate) || "N/A"}</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -232,57 +246,41 @@ const EmployeePerformanceReportModal = ({
 
           {/* Categorized Tasks Table */}
           <div className="flex-1 overflow-auto bg-white">
-            <table className="w-full border-collapse border-b border-gray-300 text-[11px]">
+            <table className="w-full border-collapse border-b border-gray-300 text-[13px]">
               <thead className="sticky top-0 bg-[#E9F2E9] border-b border-gray-300 z-10">
                 <tr>
-                  <th className="border border-gray-300 p-2 font-bold w-[60px] text-center">Seq No</th>
-                  <th className="border border-gray-300 p-2 font-bold text-center">Daily Task Description</th>
-                  <th className="border border-gray-300 p-2 font-bold text-center">Weekly task</th>
-                  <th className="border border-gray-300 p-2 font-bold text-center">Monthly task</th>
-                  <th className="border border-gray-300 p-2 font-bold text-center">Delegation task</th>
-                  {hasMaintenanceAccess && (
-                    <th className="border border-gray-300 p-2 font-bold text-center">maintenance</th>
-                  )}
+                  <th className="border border-gray-300 p-2 font-bold w-[60px] text-center">Sno.</th>
+                  <th className="border border-gray-300 p-2 font-bold w-[120px] text-center">Task Type</th>
+                  <th className="border border-gray-300 p-2 font-bold text-center">Task Description</th>
+                  <th className="border border-gray-300 p-2 font-bold w-[120px] text-center">Frequency</th>
                 </tr>
               </thead>
               <tbody>
-                {Array.from({ length: maxRows }).map((_, idx) => (
-                  <tr key={idx} className="h-8 hover:bg-gray-50 transition-colors border-b border-gray-200">
-                    <td className="border border-gray-300 text-center font-medium text-gray-800">{idx + 1}</td>
-                    <td className="border border-gray-300 px-2 py-1 text-gray-700 leading-tight">
-                      {dailyTasks[idx]?.task_description || ""}
-                    </td>
-                    <td className="border border-gray-300 px-2 py-1 text-gray-700 leading-tight">
-                      {weeklyTasks[idx]?.task_description || ""}
-                    </td>
-                    <td className="border border-gray-300 px-2 py-1 text-gray-700 leading-tight">
-                      {monthlyTasks[idx]?.task_description || ""}
-                    </td>
-                    <td className="border border-gray-300 px-2 py-1 text-gray-700 leading-tight">
-                      {delegationTasks[idx]?.task_description || ""}
-                    </td>
-                    {hasMaintenanceAccess && (
-                      <td className="border border-gray-300 px-2 py-1 text-gray-700 leading-tight">
-                        {maintenanceTasks[idx]?.task_description || (idx === 0 && maintenanceTasks.length === 0 ? "Nill" : "")}
+                {allSortedTasks.length > 0 ? (
+                  allSortedTasks.map((task, idx) => (
+                    <tr key={idx} className="h-8 hover:bg-gray-50 transition-colors border-b border-gray-200">
+                      <td className="border border-gray-300 text-center font-medium text-gray-800">{idx + 1}</td>
+                      <td className="border border-gray-300 px-2 py-1 text-center font-bold text-gray-600 uppercase tracking-tighter">
+                        {task.displayType}
                       </td>
-                    )}
+                      <td className="border border-gray-300 px-3 py-1 text-gray-700 leading-tight font-medium">
+                        {task.task_description || "N/A"}
+                      </td>
+                      <td className="border border-gray-300 px-2 py-1 text-center text-gray-600 font-bold uppercase">
+                        {task.displayFrequency}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="4" className="p-8 text-center text-gray-400 italic">No tasks found for this period</td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
 
-          {/* Footer Area with Totals */}
-          <div className={`bg-[#FEF9E7] border-t border-gray-300 divide-x divide-gray-300 grid ${totalGridCols} h-10`}>
-            <div className="flex items-center justify-center font-bold text-xs">Total</div>
-            <div className="flex items-center justify-center font-bold">{dailyTasks.length}</div>
-            <div className="flex items-center justify-center font-bold">{weeklyTasks.length}</div>
-            <div className="flex items-center justify-center font-bold">{monthlyTasks.length}</div>
-            <div className="flex items-center justify-center font-bold">{delegationTasks.length}</div>
-            {hasMaintenanceAccess && (
-              <div className="flex items-center justify-center font-bold">{maintenanceTasks.length}</div>
-            )}
-          </div>
+          <div className="h-6"></div>
 
           {/* Modal Controls (Desktop) */}
           <div className="p-4 bg-gray-50 flex items-center justify-between shrink-0">

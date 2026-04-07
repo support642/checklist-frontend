@@ -1171,6 +1171,7 @@ const [userForm, setUserForm] = useState({
   email: '',
   password: '',
   phone: '',
+  designation: '',
   unit: '',
   division: '',
   department: '',
@@ -1236,6 +1237,7 @@ const handleUpdateUser = async (e) => {
     user_name: userForm.username,
     email_id: userForm.email,
     number: userForm.phone,
+    designation: userForm.designation,
     role: userForm.role,
     status: userForm.status,
     user_access: isSuperAdminRole ? userForm.department : (Object.keys(unifiedPermissions).length > 0 ? userForm.department : null),
@@ -1434,6 +1436,7 @@ const handleEditUser = (userId) => {
     email: user.email_id || '',
     password: user.password || '',
     phone: user.number || '',
+    designation: user.designation || '',
     unit: user?.unit || deptRecord?.unit || '',
     division: user?.division || deptRecord?.division || '',
     department: user?.department || user?.user_access || '',
@@ -1478,6 +1481,7 @@ const resetUserForm = () => {
     email: '',
     password: '',
     phone: '',
+    designation: '',
     unit: '',
     division: '',
     department: '',
@@ -2352,6 +2356,7 @@ const resetUserForm = () => {
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div><span className="text-gray-500">Email:</span> <span className="font-medium">{user?.email_id || "—"}</span></div>
                 <div><span className="text-gray-500">Phone:</span> <span className="font-medium">{user?.number || "—"}</span></div>
+                <div><span className="text-gray-500">Designation:</span> <span className="font-medium">{user?.designation || "—"}</span></div>
                 <div><span className="text-gray-500">Dept:</span> <span className="font-medium">{user?.user_access || user?.department || "N/A"}</span></div>
                 <div><span className="text-gray-500">Unit:</span> <span className="font-medium">{(() => {
                   if (user?.unit) return user.unit;
@@ -2386,6 +2391,9 @@ const resetUserForm = () => {
             </th>
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Phone No.
+            </th>
+            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Designation
             </th>
 
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -2469,6 +2477,10 @@ const resetUserForm = () => {
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-900">{user?.number}</div>
                 </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900">{user?.designation || "—"}</div>
+                </td>
+                
 
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-900">{user?.user_access || user?.department || 'N/A'}</div>
@@ -3608,6 +3620,21 @@ const resetUserForm = () => {
                              value={userForm.phone}
 
                             onChange={handleUserInputChange}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                          />
+                        </div>
+
+                        <div className="sm:col-span-3">
+                          <label htmlFor="designation" className="block text-sm font-medium text-gray-700">
+                            Designation
+                          </label>
+                          <input
+                            type="text"
+                            name="designation"
+                            id="designation"
+                            value={userForm.designation}
+                            onChange={handleUserInputChange}
+                            placeholder="Enter designation"
                             className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                           />
                         </div>

@@ -200,8 +200,8 @@ export default function StaffTasksTable({
       const parts = dateStr.includes('T') ? dateStr.split('T')[0].split('-') : dateStr.split('-');
       if (parts.length !== 3) return dateStr;
       const [year, month, day] = parts;
-      // Output: mm/dd/yyyy
-      return `${month}/${day}/${year}`;
+      // Output: dd/mm/yyyy
+      return `${day}/${month}/${year}`;
     } catch (e) {
       return dateStr;
     }
@@ -219,41 +219,23 @@ export default function StaffTasksTable({
     const fromDateVal = queryFrom;
     const toDateVal = queryTo;
     
-    // Categorize data (matches PDF logic)
-    const getUniqueTasksCSV = (taskList) => {
-      const seen = new Set();
-      return taskList.filter(t => {
-        const key = `${t.task_description}-${t.frequency || ''}`;
-        if (!t.task_description || seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-    };
+    // Categorize and Process Data (Matches UI Modal Logic)
+    const checklistTasks = getUniqueTasksCSV(staffTaskDetails.filter(t => t.type === 'checklist'))
+      .map(t => ({ taskType: 'Checklist', description: t.task_description, frequency: t.frequency || 'N/A' }));
 
-    const targetDateForFiltering = tillDate || new Date().toLocaleDateString('en-CA');
-    const matchesTargetDate = (t) => 
-      t.start_date === targetDateForFiltering || 
-      (t.task_start_date && t.task_start_date.startsWith(targetDateForFiltering));
+    const delegationTasks = staffTaskDetails.filter(t => t.type === 'delegation' || t.is_delegated)
+      .map(t => ({ taskType: 'Delegation', description: t.task_description, frequency: 'Delegated' }));
+    // No unique filter for delegation as they are usually distinct occurrences, but let's be consistent if needed.
+    // Actually, getUniqueTasksCSV is good for de-duplicating by description+frequency.
+    const uniqueDelegation = getUniqueTasksCSV(staffTaskDetails.filter(t => t.type === 'delegation' || t.is_delegated))
+      .map(t => ({ taskType: 'Delegation', description: t.task_description, frequency: 'One Time' }));
 
-    const rawDaily = staffTaskDetails.filter(t => t.type === 'checklist' && t.frequency?.toLowerCase() === 'daily');
-    const dailyTasks = getUniqueTasksCSV(rawDaily);
-
-    const delegationTasks = staffTaskDetails.filter(t => t.type === 'delegation');
-
-    const rawWeekly = staffTaskDetails.filter(t => t.type === 'checklist' && t.frequency?.toLowerCase() === 'weekly');
-    const weeklyTasks = getUniqueTasksCSV(rawWeekly);
-
-    const rawMonthly = staffTaskDetails.filter(t => t.type === 'checklist' && t.frequency?.toLowerCase() === 'monthly');
-    const monthlyTasks = getUniqueTasksCSV(rawMonthly);
-
-    const rawMaintenance = hasMaintenanceAccess 
-      ? staffTaskDetails.filter(t => t.type === 'maintenance')
+    const maintenanceTasks = hasMaintenanceAccess 
+      ? getUniqueTasksCSV(staffTaskDetails.filter(t => t.type === 'maintenance'))
+          .map(t => ({ taskType: 'Maintenance', description: t.task_description, frequency: t.frequency || 'N/A' }))
       : [];
-    const maintenanceTasks = getUniqueTasksCSV(rawMaintenance);
 
-    const maxRows = hasMaintenanceAccess
-      ? Math.max(dailyTasks.length, delegationTasks.length, weeklyTasks.length, monthlyTasks.length, maintenanceTasks.length, 1)
-      : Math.max(dailyTasks.length, delegationTasks.length, weeklyTasks.length, monthlyTasks.length, 1);
+    const allSortedTasks = [...checklistTasks, ...uniqueDelegation, ...maintenanceTasks];
 
     // Stats Calculation
     const calculateStats = (taskList) => {
@@ -266,7 +248,7 @@ export default function StaffTasksTable({
     };
 
     const checklistStats = calculateStats(staffTaskDetails.filter(t => t.type === 'checklist'));
-    const delegationStats = calculateStats(delegationTasks);
+    const delegationStats = calculateStats(staffTaskDetails.filter(t => t.type === 'delegation' || t.is_delegated));
     const maintenanceStats = calculateStats(staffTaskDetails.filter(t => t.type === 'maintenance'));
 
     const staffInfo = staffMembers.find(s => s.name === selectedStaffName) || {};
@@ -280,8 +262,8 @@ export default function StaffTasksTable({
     csvData.push([]);
 
     // Profile Info
-    csvData.push(["Name", selectedStaffName, "Division", staffInfo.division || "Admin"]);
-    csvData.push(["Department", staffInfo.department || "HR", "Period", selectedMonthYear || "Range"]);
+    csvData.push(["Name", selectedStaffName, "Emp ID", staffInfo.employee_id || "—", "Designation", staffInfo.designation || "—"]);
+    csvData.push(["Division", staffInfo.division || "Admin", "Department", staffInfo.department || "HR", "Period", selectedMonthYear || "Range"]);
     csvData.push(["From", formatDateForDisplay(fromDateVal), "To", formatDateForDisplay(toDateVal)]);
     csvData.push([]);
 
@@ -296,35 +278,20 @@ export default function StaffTasksTable({
     csvData.push([]);
 
     // Task Table Header
-    const tableHeader = ["Seq No", "Daily Task Description", "Weekly task", "Monthly task", "Delegation task"];
-    if (hasMaintenanceAccess) tableHeader.push("Maintenance task");
+    const tableHeader = ["Sno.", "Task Type", "Task Description", "Frequency"];
     csvData.push(tableHeader);
 
     // Task Rows
-    for (let i = 0; i < maxRows; i++) {
-      const row = [
-        i + 1,
-        dailyTasks[i]?.task_description || "",
-        weeklyTasks[i]?.task_description || "",
-        monthlyTasks[i]?.task_description || "",
-        delegationTasks[i]?.task_description || "",
-      ];
-      if (hasMaintenanceAccess) {
-        row.push(maintenanceTasks[i]?.task_description || (i === 0 && maintenanceTasks.length === 0 ? "Nill" : ""));
-      }
-      csvData.push(row);
-    }
+    allSortedTasks.forEach((task, idx) => {
+      csvData.push([
+        idx + 1,
+        task.taskType,
+        task.description || "N/A",
+        task.frequency
+      ]);
+    });
 
-    // Totals Row
-    const totalsRow = [
-      "TOTAL",
-      dailyTasks.length,
-      weeklyTasks.length,
-      monthlyTasks.length,
-      delegationTasks.length
-    ];
-    if (hasMaintenanceAccess) totalsRow.push(maintenanceTasks.length);
-    csvData.push(totalsRow);
+    csvData.push([]);
 
     // Generate CSV
     const csv = Papa.unparse(csvData);
@@ -366,40 +333,19 @@ export default function StaffTasksTable({
       });
     };
 
-    // Categorize data for the table - Filtered by current date
-    const targetDateForFiltering = tillDate || new Date().toLocaleDateString('en-CA');
-    const matchesTargetDate = (t) => 
-      t.start_date === targetDateForFiltering || 
-      (t.task_start_date && t.task_start_date.startsWith(targetDateForFiltering));
+    // Categorize and Process Data (Matches UI Modal Logic)
+    const checklistTasks = getUniqueTasksPDF(staffTaskDetails.filter(t => t.type === 'checklist'))
+      .map(t => ({ taskType: 'Checklist', description: t.task_description, frequency: t.frequency || 'N/A' }));
 
-    // Apply unique task filtering to match the modal display
-    const rawDaily = staffTaskDetails.filter(t => 
-      t.type === 'checklist' && 
-      t.frequency?.toLowerCase() === 'daily'
-    );
-    const dailyTasks = getUniqueTasksPDF(rawDaily);
+    const delegationTasks = getUniqueTasksPDF(staffTaskDetails.filter(t => t.type === 'delegation' || t.is_delegated))
+      .map(t => ({ taskType: 'Delegation', description: t.task_description, frequency: 'One Time' }));
 
-    const rawWeekly = staffTaskDetails.filter(t => 
-      t.type === 'checklist' && 
-      t.frequency?.toLowerCase() === 'weekly'
-    );
-    const weeklyTasks = getUniqueTasksPDF(rawWeekly);
-
-    const rawMonthly = staffTaskDetails.filter(t => 
-      t.type === 'checklist' && 
-      t.frequency?.toLowerCase() === 'monthly'
-    );
-    const monthlyTasks = getUniqueTasksPDF(rawMonthly);
-
-    const delegationTasks = staffTaskDetails.filter(t => t.type === 'delegation');
-
-    const rawMaintenance = hasMaintenanceAccess 
-      ? staffTaskDetails.filter(t => t.type === 'maintenance')
+    const maintenanceTasks = hasMaintenanceAccess 
+      ? getUniqueTasksPDF(staffTaskDetails.filter(t => t.type === 'maintenance'))
+          .map(t => ({ taskType: 'Maintenance', description: t.task_description, frequency: t.frequency || 'N/A' }))
       : [];
-    const maintenanceTasks = getUniqueTasksPDF(rawMaintenance);
-    const maxRows = hasMaintenanceAccess
-      ? Math.max(dailyTasks.length, delegationTasks.length, weeklyTasks.length, monthlyTasks.length, maintenanceTasks.length, 1)
-      : Math.max(dailyTasks.length, delegationTasks.length, weeklyTasks.length, monthlyTasks.length, 1);
+
+    const allSortedTasks = [...checklistTasks, ...delegationTasks, ...maintenanceTasks];
 
     const calculateStats = (taskList) => {
       const total = taskList.length;
@@ -411,7 +357,7 @@ export default function StaffTasksTable({
     };
 
     const checklistTasksAll = staffTaskDetails.filter(t => t.type === 'checklist');
-    const delegationTasksAll = staffTaskDetails.filter(t => t.type === 'delegation');
+    const delegationTasksAll = staffTaskDetails.filter(t => t.type === 'delegation' || t.is_delegated);
     const maintenanceTasksAll = hasMaintenanceAccess 
       ? staffTaskDetails.filter(t => t.type === 'maintenance')
       : [];
@@ -459,155 +405,146 @@ export default function StaffTasksTable({
     doc.setFontSize(11);
     doc.text("EMPLOYEE PERFORMANCE REPORT", centerX, subHeaderY + 5.5, { align: "center" });
 
-    // 3. Employee Info Grid (dynamic columns based on maintenance permission)
+    // 3. Employee Info Grid (New 2-Row Layout)
     const startY = 38;
-    const cellH = 7;
-    const infoCols = hasMaintenanceAccess ? 5 : 4;
-    const colW = usableW / infoCols;
-    const labelW = 20; // Fixed width for labels inside non-performance cells
+    const row1H = 12;
+    const row2H = 20;
+    const rightColW = 45; 
+    const mainColW = usableW - rightColW;
 
-    // Draw a standard info cell with label on left, value on right (word-wrap if text overflows)
-    const drawStandardCell = (col, row, label, value) => {
-      const x = marginX + col * colW;
-      const y = startY + row * cellH;
-      // Label background
+    // Helper: Draw a detail block (Label top, Value bottom)
+    const drawDetailBlock = (x, y, w, h, label, value) => {
       doc.setFillColor(248, 249, 250);
-      doc.rect(x, y, labelW, cellH, 'F');
-      // Cell border
+      doc.rect(x, y, w, h / 3, 'F');
       doc.setDrawColor(200);
-      doc.rect(x, y, colW, cellH);
-      // Label-value separator line
-      doc.line(x + labelW, y, x + labelW, y + cellH);
+      doc.rect(x, y, w, h);
+      doc.line(x, y + h / 3, x + w, y + h / 3);
       
-      // Label text
-      doc.setFontSize(6);
+      doc.setFontSize(6.5);
       doc.setFont("helvetica", "bold");
-      doc.setTextColor(100);
-      doc.text(label.toUpperCase(), x + 1, y + 4.5);
+      doc.setTextColor(120);
+      doc.text(label.toUpperCase(), x + w / 2, y + 2.8, { align: "center" });
       
-      // Value text - word-wrap and center each line vertically
       doc.setTextColor(0);
-      doc.setFont("helvetica", "bold");
-      const valueStr = String(value);
-      const availableW = colW - labelW - 2; // 2mm padding
-      const valueX = x + labelW + (colW - labelW) / 2;
+      const valStr = String(value || "—");
+      const baseFontSize = 8.5;
+      const minFontSize = 6;
+      let fontSize = valStr.length > 20 ? 7 : baseFontSize;
+      doc.setFontSize(fontSize);
       
-      doc.setFontSize(7);
-      const lines = doc.splitTextToSize(valueStr, availableW);
-      const lineH = 2.5; // line height in mm for ~7pt font
-      const totalTextH = lines.length * lineH;
-      const startTextY = y + (cellH - totalTextH) / 2 + lineH * 0.7; // baseline offset
+      let lines = doc.splitTextToSize(valStr, w - 2);
+      // If still too many lines, try minor font reduction
+      if (lines.length > 2 && fontSize > minFontSize) {
+        fontSize = minFontSize;
+        doc.setFontSize(fontSize);
+        lines = doc.splitTextToSize(valStr, w - 2);
+      }
+
+      const lineStep = fontSize * 0.3528 * 1.1; // roughly 1.1x font size in mm
+      const totalTextH = lines.length * lineStep;
+      const startTextY = (y + h / 3) + (2 * h / 3 - totalTextH) / 2 + (lineStep * 0.8);
       
       lines.forEach((line, i) => {
-        doc.text(line, valueX, startTextY + i * lineH, { align: "center" });
+        doc.text(line, x + w / 2, startTextY + (i * lineStep), { align: "center" });
       });
     };
 
-    // Draw a performance header cell (full-width centered title)
-    const drawPerfHeaderCell = (col, row, title) => {
-      const x = marginX + col * colW;
-      const y = startY + row * cellH;
-      doc.setFillColor(248, 249, 250);
-      doc.rect(x, y, colW, cellH, 'F');
+    // Helper: Draw a Stat block
+    const drawStatBlock = (x, y, w, h, title, stats) => {
+      doc.setFillColor(245, 245, 245);
+      doc.rect(x, y, w, 6, 'F');
       doc.setDrawColor(200);
-      doc.rect(x, y, colW, cellH);
-      doc.setFontSize(5.5);
+      doc.rect(x, y, w, h);
+      doc.line(x, y + 6, x + w, y + 6);
+      doc.line(x + w / 2, y + 6, x + w / 2, y + h);
+
+      doc.setFontSize(7.5);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(80);
-      doc.text(title.toUpperCase(), x + colW / 2, y + 4.5, { align: "center" });
-    };
+      doc.text(title.toUpperCase(), x + w / 2, y + 4, { align: "center" });
 
-    // Draw a performance stat cell with label on left half, value on right half
-    const drawPerfStatCell = (col, row, label, value) => {
-      const x = marginX + col * colW;
-      const y = startY + row * cellH;
-      const halfW = colW / 2;
-      // Label background (left half)
-      doc.setFillColor(248, 249, 250);
-      doc.rect(x, y, halfW, cellH, 'F');
-      // Cell border
-      doc.setDrawColor(200);
-      doc.rect(x, y, colW, cellH);
-      // Separator between label and value
-      doc.line(x + halfW, y, x + halfW, y + cellH);
-      
-      // Label text - fitted to left half
-      doc.setFontSize(5);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(150);
-      doc.text(label.toUpperCase(), x + 1, y + 4.5);
-      
-      // Value text - centered in right half
+      doc.setTextColor(120);
+      doc.setFontSize(5.5);
+      doc.text("ASSIGNED / DONE", x + w / 4, y + 10, { align: "center" });
+      doc.text("SCORE / ON-TIME", x + 3 * w / 4, y + 10, { align: "center" });
+
       doc.setTextColor(0);
-      doc.setFontSize(6.5);
-      doc.setFont("helvetica", "bold");
-      doc.text(String(value), x + halfW + halfW / 2, y + 4.5, { align: "center" });
+      doc.setFontSize(9);
+      doc.text(`${stats.total} / ${stats.completed}`, x + w / 4, y + 16, { align: "center" });
+      doc.text(`${stats.workDoneScore}% | ${stats.onTimeScore}%`, x + 3 * w / 4, y + 16, { align: "center" });
     };
 
-    // Row 0: Titles / Headers
-    let colIdx = 0;
-    drawStandardCell(colIdx++, 0, "Name", selectedStaffName);
-    drawPerfHeaderCell(colIdx++, 0, "Checklist");
-    drawPerfHeaderCell(colIdx++, 0, "Delegation");
-    if (hasMaintenanceAccess) drawPerfHeaderCell(colIdx++, 0, "Maintenance");
-    drawStandardCell(colIdx, 0, "Period", selectedMonthYear || "Range");
+    // --- ROW 1: Employee Details ---
+    const detailW = mainColW / 5;
+    drawDetailBlock(marginX + 0 * detailW, startY, detailW, row1H, "Name", selectedStaffName);
+    drawDetailBlock(marginX + 1 * detailW, startY, detailW, row1H, "Emp ID", staffInfo.employee_id);
+    drawDetailBlock(marginX + 2 * detailW, startY, detailW, row1H, "Desg", staffInfo.designation);
+    drawDetailBlock(marginX + 3 * detailW, startY, detailW, row1H, "Div", staffInfo.division || "Admin");
+    drawDetailBlock(marginX + 4 * detailW, startY, detailW, row1H, "Dept", staffInfo.department || "Account");
 
-    // Row 1: Stats 1
-    colIdx = 0;
-    drawStandardCell(colIdx++, 1, "Division", staffInfo.division || "Admin");
-    drawPerfStatCell(colIdx++, 1, "Assigned/Done", `${checklistStats.total} / ${checklistStats.completed}`);
-    drawPerfStatCell(colIdx++, 1, "Assigned/Done", `${delegationStats.total} / ${delegationStats.completed}`);
-    if (hasMaintenanceAccess) drawPerfStatCell(colIdx++, 1, "Assigned/Done", `${maintenanceStats.total} / ${maintenanceStats.completed}`);
-    drawStandardCell(colIdx, 1, "From", pdfFromDate);
+    // Period (Right)
+    doc.setFillColor(248, 249, 250);
+    doc.rect(marginX + mainColW, startY, 15, row1H, 'F');
+    doc.setDrawColor(200);
+    doc.rect(marginX + mainColW, startY, rightColW, row1H);
+    doc.line(marginX + mainColW + 15, startY, marginX + mainColW + 15, startY + row1H);
+    doc.setFontSize(6.5);
+    doc.setTextColor(120);
+    doc.text("PERIOD", marginX + mainColW + 7.5, startY + row1H / 2 + 1, { align: "center" });
+    doc.setFontSize(9);
+    doc.setTextColor(0);
+    doc.text(selectedMonthYear || "Range", marginX + mainColW + 15 + (rightColW - 15) / 2, startY + row1H / 2 + 1.5, { align: "center" });
 
-    // Row 2: Stats 2
-    colIdx = 0;
-    drawStandardCell(colIdx++, 2, "Dept", staffInfo.department || "HR");
-    drawPerfStatCell(colIdx++, 2, "Score/OnTime", `${checklistStats.workDoneScore}% | ${checklistStats.onTimeScore}%`);
-    drawPerfStatCell(colIdx++, 2, "Score/OnTime", `${delegationStats.workDoneScore}% | ${delegationStats.onTimeScore}%`);
-    if (hasMaintenanceAccess) drawPerfStatCell(colIdx++, 2, "Score/OnTime", `${maintenanceStats.workDoneScore}% | ${maintenanceStats.onTimeScore}%`);
-    drawStandardCell(colIdx, 2, "To", pdfToDate);
+    // --- ROW 2: Performance Stats ---
+    const statW = mainColW / (hasMaintenanceAccess ? 3 : 2);
+    drawStatBlock(marginX, startY + row1H, statW, row2H, "Checklist", checklistStats);
+    drawStatBlock(marginX + statW, startY + row1H, statW, row2H, "Delegation", delegationStats);
+    if (hasMaintenanceAccess) {
+      drawStatBlock(marginX + 2 * statW, startY + row1H, statW, row2H, "Maintenance", maintenanceStats);
+    }
 
-    // 4. Categorized Table (sized for portrait A4) - columns depend on maintenance access
-    const tableHeader = hasMaintenanceAccess
-      ? ["Seq No", "Daily Task Description", "Weekly task", "Monthly task", "Delegation task", "maintenance"]
-      : ["Seq No", "Daily Task Description", "Weekly task", "Monthly task", "Delegation task"];
-    const tableBody = Array.from({ length: maxRows }).map((_, idx) => {
-      const row = [
-        idx + 1,
-        dailyTasks[idx]?.task_description || "",
-        weeklyTasks[idx]?.task_description || "",
-        monthlyTasks[idx]?.task_description || "",
-        delegationTasks[idx]?.task_description || "",
-      ];
-      if (hasMaintenanceAccess) {
-        row.push(maintenanceTasks[idx]?.task_description || (idx === 0 && maintenanceTasks.length === 0 ? "Nill" : ""));
-      }
-      return row;
-    });
+    // From / To (Right)
+    const dateY = startY + row1H;
+    const labelW_Date = 12;
+    doc.setDrawColor(200);
+    doc.rect(marginX + mainColW, dateY, rightColW, row2H);
+    doc.line(marginX + mainColW, dateY + row2H/2, marginX + mainColW + rightColW, dateY + row2H/2);
+    doc.line(marginX + mainColW + labelW_Date, dateY, marginX + mainColW + labelW_Date, dateY + row2H);
+    
+    doc.setFontSize(6); doc.setTextColor(120);
+    doc.text("FROM", marginX + mainColW + labelW_Date / 2, dateY + row2H / 4 + 1, { align: "center" });
+    doc.text("TO", marginX + mainColW + labelW_Date / 2, dateY + 3 * row2H / 4 + 1, { align: "center" });
+    
+    doc.setFontSize(9); doc.setTextColor(0);
+    doc.text(pdfFromDate, marginX + mainColW + labelW_Date + (rightColW - labelW_Date) / 2, dateY + row2H / 4 + 1.5, { align: "center" });
+    doc.text(pdfToDate, marginX + mainColW + labelW_Date + (rightColW - labelW_Date) / 2, dateY + 3 * row2H / 4 + 1.5, { align: "center" });
+
+    // 4. Categorized Table (sized for portrait A4)
+    const tableHeader = ["Sno.", "Task Type", "Task Description", "Frequency"];
+    const tableBody = allSortedTasks.map((task, idx) => [
+      idx + 1,
+      task.taskType,
+      task.description || "N/A",
+      task.frequency
+    ]);
 
     // Column widths: distribute evenly across available data columns
-    const tableFoot = hasMaintenanceAccess
-      ? ["Total", dailyTasks.length, weeklyTasks.length, monthlyTasks.length, delegationTasks.length, maintenanceTasks.length]
-      : ["Total", dailyTasks.length, weeklyTasks.length, monthlyTasks.length, delegationTasks.length];
+    const tableFoot = [allSortedTasks.length, "TOTAL", "", "Tasks"];
 
-    const dataCols = hasMaintenanceAccess ? 5 : 4; // excluding seq col
-    const tblColW = Math.floor((usableW - 10) / dataCols); // 10mm for seq col
-    const columnStyles = { 0: { halign: 'center', cellWidth: 10 } };
-    for (let c = 1; c < dataCols; c++) {
-      columnStyles[c] = { cellWidth: tblColW };
-    }
-    columnStyles[dataCols] = { cellWidth: 'auto' }; // last data col gets remaining space
+    const columnStyles = { 
+      0: { halign: 'center', cellWidth: 15 },
+      1: { halign: 'center', cellWidth: 25, fontStyle: 'bold' },
+      2: { cellWidth: 'auto' }, 
+      3: { halign: 'center', cellWidth: 25, fontStyle: 'bold' } 
+    };
 
     autoTable(doc, {
       head: [tableHeader],
       body: tableBody,
-      foot: [tableFoot],
-      startY: startY + 3 * cellH + 3,
-      showFoot: 'lastPage',
+      startY: startY + row1H + row2H + 3,
       margin: { left: marginX, right: marginX },
-      styles: { fontSize: 7, cellPadding: 1.5, lineWidth: 0.1, lineColor: [200, 200, 200] },
-      headStyles: { fillColor: [233, 242, 233], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center', fontSize: 6.5 },
+      styles: { fontSize: 8.5, cellPadding: 2, lineWidth: 0.1, lineColor: [200, 200, 200] },
+      headStyles: { fillColor: [233, 242, 233], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center', fontSize: 9 },
       footStyles: { fillColor: [254, 249, 231], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center', fontSize: 7 },
       bodyStyles: { textColor: [50, 50, 50], minCellHeight: 7 },
       columnStyles,
