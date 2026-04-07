@@ -220,13 +220,13 @@ const EmployeePerformanceReportModal = ({
                 </div>
               </div>
 
-              {/* Right Section: Period & Range */}
+              {/* Right Section: Print Date & Range */}
               <div className="divide-y divide-gray-300 w-[220px]">
-                {/* Row 1: Period */}
+                {/* Row 1: Print Date */}
                 <div className="grid grid-cols-[70px_1fr] h-14 divide-x divide-gray-300">
-                  <div className="bg-[#F8F9FA] px-2 flex items-center font-bold uppercase text-gray-500 text-[10px]">Period</div>
+                  <div className="bg-[#F8F9FA] px-2 flex items-center font-bold uppercase text-gray-500 text-[10px]">Print Date</div>
                   <div className="px-2 flex items-center justify-center font-bold text-gray-800 bg-yellow-50/30 text-base">
-                    {formatDateForDisplay(reportDate) || "Range"}
+                    {new Date().toLocaleDateString('en-GB')}
                   </div>
                 </div>
                 {/* Row 2: From & To */}

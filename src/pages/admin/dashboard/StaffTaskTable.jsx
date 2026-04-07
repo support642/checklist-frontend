@@ -263,7 +263,7 @@ export default function StaffTasksTable({
 
     // Profile Info
     csvData.push(["Name", selectedStaffName, "Emp ID", staffInfo.employee_id || "—", "Designation", staffInfo.designation || "—"]);
-    csvData.push(["Division", staffInfo.division || "Admin", "Department", staffInfo.department || "HR", "Period", selectedMonthYear || "Range"]);
+    csvData.push(["Division", staffInfo.division || "Admin", "Department", staffInfo.department || "HR", "Print Date", new Date().toLocaleDateString('en-GB')]);
     csvData.push(["From", formatDateForDisplay(fromDateVal), "To", formatDateForDisplay(toDateVal)]);
     csvData.push([]);
 
@@ -482,18 +482,18 @@ export default function StaffTasksTable({
     drawDetailBlock(marginX + 3 * detailW, startY, detailW, row1H, "Div", staffInfo.division || "Admin");
     drawDetailBlock(marginX + 4 * detailW, startY, detailW, row1H, "Dept", staffInfo.department || "Account");
 
-    // Period (Right)
+    // Print Date (Right)
     doc.setFillColor(248, 249, 250);
-    doc.rect(marginX + mainColW, startY, 15, row1H, 'F');
+    doc.rect(marginX + mainColW, startY, 20, row1H, 'F');
     doc.setDrawColor(200);
     doc.rect(marginX + mainColW, startY, rightColW, row1H);
-    doc.line(marginX + mainColW + 15, startY, marginX + mainColW + 15, startY + row1H);
-    doc.setFontSize(6.5);
+    doc.line(marginX + mainColW + 20, startY, marginX + mainColW + 20, startY + row1H);
+    doc.setFontSize(6);
     doc.setTextColor(120);
-    doc.text("PERIOD", marginX + mainColW + 7.5, startY + row1H / 2 + 1, { align: "center" });
+    doc.text("PRINT DATE", marginX + mainColW + 10, startY + row1H / 2 + 1, { align: "center" });
     doc.setFontSize(9);
     doc.setTextColor(0);
-    doc.text(selectedMonthYear || "Range", marginX + mainColW + 15 + (rightColW - 15) / 2, startY + row1H / 2 + 1.5, { align: "center" });
+    doc.text(new Date().toLocaleDateString('en-GB'), marginX + mainColW + 20 + (rightColW - 20) / 2, startY + row1H / 2 + 1.5, { align: "center" });
 
     // --- ROW 2: Performance Stats ---
     const statW = mainColW / (hasMaintenanceAccess ? 3 : 2);
