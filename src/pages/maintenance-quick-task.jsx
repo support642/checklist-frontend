@@ -493,13 +493,16 @@ function MaintenanceQuickTaskPage({ searchTerm, nameFilter, deptFilter, divFilte
             <table className="min-w-full divide-y divide-gray-200 hidden sm:table">
               <thead className="bg-gray-50 sticky top-0 z-20">
                 <tr>
-                  <th className="px-2 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                  <th className="px-2 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12 bg-gray-50 sticky left-0 z-30">
                     <input
                       type="checkbox"
                       checked={selectedTasks.length === filteredTasks.length && filteredTasks.length > 0}
                       onChange={() => handleSelectAll(filteredTasks)}
                       className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                     />
+                  </th>
+                  <th className="px-2 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 sticky left-[48px] z-30 shadow-[1px_0_0_0_rgba(229,231,235,1)]">
+                    ACTIONS
                   </th>
                   {[
                     { key: 'task_id', label: 'Task ID' },
@@ -517,7 +520,6 @@ function MaintenanceQuickTaskPage({ searchTerm, nameFilter, deptFilter, divFilte
                     { key: 'duration', label: 'Duration' },
                     { key: 'status', label: 'Status' },
                     { key: 'remark', label: 'Remarks' },
-                    { key: 'actions', label: 'Actions' },
                   ].map((column) => (
                     <th
                       key={column.label}
@@ -533,13 +535,36 @@ function MaintenanceQuickTaskPage({ searchTerm, nameFilter, deptFilter, divFilte
                 {filteredTasks.length > 0 ? (
                   filteredTasks.map((task, index) => (
                     <tr key={index} className="hover:bg-gray-50">
-                      <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap">
+                      <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap bg-white sticky left-0 z-10">
                         <input
                           type="checkbox"
                           checked={selectedTasks.some(t => t.task_id === task.task_id)}
                           onChange={() => handleCheckboxChange(task)}
                           className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                         />
+                      </td>
+
+                      {/* Actions */}
+                      <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-sm text-gray-500 bg-white sticky left-[48px] z-10 shadow-[1px_0_0_0_rgba(229,231,235,1)]">
+                        {editingTaskId === task.task_id ? (
+                          <div className="flex gap-2 flex-col xl:flex-row">
+                            <button onClick={handleSaveEdit} disabled={isSaving} className="flex items-center gap-1 px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 justify-center">
+                              <Save size={14} />
+                              {isSaving ? '...' : 'Save'}
+                            </button>
+                            <button onClick={handleCancelEdit} className="flex items-center gap-1 px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-700 justify-center">
+                              <X size={14} />
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          hasModifyAccess("quick_task") && (
+                          <button onClick={() => handleEditClick(task)} className="flex items-center gap-1 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 justify-center">
+                            <Edit size={14} />
+                            Edit
+                          </button>
+                          )
+                        )}
                       </td>
 
                       {/* Task ID */}
@@ -681,28 +706,7 @@ function MaintenanceQuickTaskPage({ searchTerm, nameFilter, deptFilter, divFilte
                         <div className="break-words truncate" title={task.remark}>{task.remark || "—"}</div>
                       </td>
 
-                      {/* Actions */}
-                      <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-sm text-gray-500">
-                        {editingTaskId === task.task_id ? (
-                          <div className="flex gap-2 flex-col xl:flex-row">
-                            <button onClick={handleSaveEdit} disabled={isSaving} className="flex items-center gap-1 px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 justify-center">
-                              <Save size={14} />
-                              {isSaving ? '...' : 'Save'}
-                            </button>
-                            <button onClick={handleCancelEdit} className="flex items-center gap-1 px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-700 justify-center">
-                              <X size={14} />
-                              Cancel
-                            </button>
-                          </div>
-                        ) : (
-                          hasModifyAccess("quick_task") && (
-                          <button onClick={() => handleEditClick(task)} className="flex items-center gap-1 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 justify-center">
-                            <Edit size={14} />
-                            Edit
-                          </button>
-                          )
-                        )}
-                      </td>
+                      {/* Actions moved to front */}
                     </tr>
                   ))
                 ) : (

@@ -263,7 +263,7 @@ export default function StaffTasksTable({
 
     // Profile Info
     csvData.push(["Name", selectedStaffName, "Emp ID", staffInfo.employee_id || "—", "Designation", staffInfo.designation || "—"]);
-    csvData.push(["Division", staffInfo.division || "Admin", "Department", staffInfo.department || "HR", "Print Date", new Date().toLocaleDateString('en-GB')]);
+    csvData.push(["Division", staffInfo.division || "Admin", "Department", staffInfo.department || "HR"]);
     csvData.push(["From", formatDateForDisplay(fromDateVal), "To", formatDateForDisplay(toDateVal)]);
     csvData.push([]);
 
@@ -334,15 +334,24 @@ export default function StaffTasksTable({
     };
 
     // Categorize and Process Data (Matches UI Modal Logic)
+    const freqOrderPDF = { 'DAILY': 1, 'WEEKLY': 2, 'MONTHLY': 3, 'ONE TIME': 4, 'N/A': 5 };
+    const sortByFreqPDF = (a, b) => {
+      const orderA = freqOrderPDF[(a.frequency || '').toUpperCase()] || 99;
+      const orderB = freqOrderPDF[(b.frequency || '').toUpperCase()] || 99;
+      return orderA - orderB;
+    };
     const checklistTasks = getUniqueTasksPDF(staffTaskDetails.filter(t => t.type === 'checklist'))
-      .map(t => ({ taskType: 'Checklist', description: t.task_description, frequency: t.frequency || 'N/A' }));
+      .map(t => ({ taskType: 'Checklist', description: t.task_description, frequency: t.frequency || 'N/A' }))
+      .sort(sortByFreqPDF);
 
     const delegationTasks = getUniqueTasksPDF(staffTaskDetails.filter(t => t.type === 'delegation' || t.is_delegated))
-      .map(t => ({ taskType: 'Delegation', description: t.task_description, frequency: 'One Time' }));
+      .map(t => ({ taskType: 'Delegation', description: t.task_description, frequency: 'One Time' }))
+      .sort(sortByFreqPDF);
 
     const maintenanceTasks = hasMaintenanceAccess 
       ? getUniqueTasksPDF(staffTaskDetails.filter(t => t.type === 'maintenance'))
           .map(t => ({ taskType: 'Maintenance', description: t.task_description, frequency: t.frequency || 'N/A' }))
+          .sort(sortByFreqPDF)
       : [];
 
     const allSortedTasks = [...checklistTasks, ...delegationTasks, ...maintenanceTasks];
@@ -474,28 +483,20 @@ export default function StaffTasksTable({
       doc.text(`${stats.workDoneScore}% | ${stats.onTimeScore}%`, x + 3 * w / 4, y + 16, { align: "center" });
     };
 
-    // --- ROW 1: Employee Details ---
-    const detailW = mainColW / 5;
-    drawDetailBlock(marginX + 0 * detailW, startY, detailW, row1H, "Name", selectedStaffName);
-    drawDetailBlock(marginX + 1 * detailW, startY, detailW, row1H, "Emp ID", staffInfo.employee_id);
-    drawDetailBlock(marginX + 2 * detailW, startY, detailW, row1H, "Desg", staffInfo.designation);
-    drawDetailBlock(marginX + 3 * detailW, startY, detailW, row1H, "Div", staffInfo.division || "Admin");
-    drawDetailBlock(marginX + 4 * detailW, startY, detailW, row1H, "Dept", staffInfo.department || "Account");
+    // --- ROW 1: Employee Details (Full Width - Redistributed) ---
+    const nameW = 55;
+    const desgW = 45;
+    const deptW = 35;
+    const divW = 30;
+    const idW = 25;
+    
+    drawDetailBlock(marginX, startY, nameW, row1H, "Name", selectedStaffName);
+    drawDetailBlock(marginX + nameW, startY, desgW, row1H, "Designation", staffInfo.designation);
+    drawDetailBlock(marginX + nameW + desgW, startY, deptW, row1H, "Department", staffInfo.department || "Account");
+    drawDetailBlock(marginX + nameW + desgW + deptW, startY, divW, row1H, "Division", staffInfo.division || "Admin");
+    drawDetailBlock(marginX + nameW + desgW + deptW + divW, startY, idW, row1H, "Emp ID", staffInfo.employee_id);
 
-    // Print Date (Right)
-    doc.setFillColor(248, 249, 250);
-    doc.rect(marginX + mainColW, startY, 20, row1H, 'F');
-    doc.setDrawColor(200);
-    doc.rect(marginX + mainColW, startY, rightColW, row1H);
-    doc.line(marginX + mainColW + 20, startY, marginX + mainColW + 20, startY + row1H);
-    doc.setFontSize(6);
-    doc.setTextColor(120);
-    doc.text("PRINT DATE", marginX + mainColW + 10, startY + row1H / 2 + 1, { align: "center" });
-    doc.setFontSize(9);
-    doc.setTextColor(0);
-    doc.text(new Date().toLocaleDateString('en-GB'), marginX + mainColW + 20 + (rightColW - 20) / 2, startY + row1H / 2 + 1.5, { align: "center" });
-
-    // --- ROW 2: Performance Stats ---
+    // --- ROW 2: Performance Stats & Range (Split) ---
     const statW = mainColW / (hasMaintenanceAccess ? 3 : 2);
     drawStatBlock(marginX, startY + row1H, statW, row2H, "Checklist", checklistStats);
     drawStatBlock(marginX + statW, startY + row1H, statW, row2H, "Delegation", delegationStats);
@@ -521,12 +522,19 @@ export default function StaffTasksTable({
 
     // 4. Categorized Table (sized for portrait A4)
     const tableHeader = ["Sno.", "Task Type", "Task Description", "Frequency"];
-    const tableBody = allSortedTasks.map((task, idx) => [
-      idx + 1,
-      task.taskType,
-      task.description || "N/A",
-      task.frequency
-    ]);
+    const tableBody = [];
+    allSortedTasks.forEach((task, idx) => {
+      // Frequency Separator Row
+      if (idx > 0 && allSortedTasks[idx - 1].frequency !== task.frequency) {
+        tableBody.push([{ content: '', colSpan: 4, styles: { minCellHeight: 2, fillColor: [245, 245, 245] } }]);
+      }
+      tableBody.push([
+        idx + 1,
+        task.taskType,
+        task.description || "N/A",
+        task.frequency
+      ]);
+    });
 
     // Column widths: distribute evenly across available data columns
     const tableFoot = [allSortedTasks.length, "TOTAL", "", "Tasks"];
@@ -561,6 +569,14 @@ export default function StaffTasksTable({
       doc.setLineWidth(0.3);
       doc.line(marginX, footerY - 3, marginX + usableW, footerY - 3);
       // Footer text - measure widths for true centering
+      // Footer timestamp: Print Date & Time at bottom right
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(150);
+      const timestamp = `${new Date().toLocaleDateString('en-GB')} ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`;
+      doc.text(timestamp, marginX + usableW, footerY, { align: "right" });
+
+      // Footer: "Powered By Botivate" centered
       doc.setFontSize(8);
       doc.setFont("helvetica", "normal");
       const prefixText = "Powered By  ";
@@ -818,7 +834,7 @@ const loadStaffData = useCallback(async () => {
       doc.setFontSize(10);
       doc.setTextColor(100);
       doc.text(`Period: ${selectedMonthYear || 'All Months'} (Till: ${formatDateForDisplay(tillDate) || 'N/A'})`, 14, 22);
-      doc.text(`Generated on: ${new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })} ${new Date().toLocaleTimeString()}`, 14, 27);
+      doc.text(`${new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })} ${new Date().toLocaleTimeString()}`, 14, 27);
       
       // Define table headers
       const tableColumn = ["Seq", "Name", "Division", "Department", "Total", "Done", "Pending", "Overdue", "On Time", "Score"];

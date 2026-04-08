@@ -1527,7 +1527,7 @@ const filteredMaintenanceTasks = useMemo(() => {
                 <table className="min-w-full divide-y divide-gray-200 hidden sm:table">
                   <thead className="bg-gray-50 sticky top-0 z-20">
                     <tr>
-                      <th className="px-2 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                      <th className="px-2 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12 bg-gray-50 sticky left-0 z-30">
                         <input
                           type="checkbox"
                           checked={selectedTasks.length === filteredChecklistTasks.length && filteredChecklistTasks.length > 0}
@@ -1535,6 +1535,9 @@ const filteredMaintenanceTasks = useMemo(() => {
                           disabled={!canModifyTasks}
                           className={`rounded border-gray-300 text-purple-600 focus:ring-purple-500 ${!canModifyTasks ? 'opacity-50 cursor-not-allowed' : ''}`}
                         />
+                      </th>
+                      <th className="px-2 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 sticky left-[48px] z-30 shadow-[1px_0_0_0_rgba(229,231,235,1)]">
+                        ACTIONS
                       </th>
                       {[
                         { key: 'department', label: 'Department' },
@@ -1548,7 +1551,6 @@ const filteredMaintenanceTasks = useMemo(() => {
                         { key: 'frequency', label: 'Frequency' },
                         { key: 'enable_reminder', label: 'Reminders' },
                         { key: 'require_attachment', label: 'Attachment' },
-                        { key: 'actions', label: 'Actions' },
                       ].map((column) => (
                         <th
                           key={column.label}
@@ -1572,7 +1574,7 @@ const filteredMaintenanceTasks = useMemo(() => {
                     {filteredChecklistTasks.length > 0 ? (
                       filteredChecklistTasks.map((task, index) => (
                         <tr key={index} className="hover:bg-gray-50">
-                          <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap">
+                          <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap bg-white sticky left-0 z-10">
                             <input
                               type="checkbox"
                               checked={selectedTasks.includes(task)}
@@ -1580,6 +1582,40 @@ const filteredMaintenanceTasks = useMemo(() => {
                               disabled={!canModifyTasks}
                               className={`rounded border-gray-300 text-purple-600 focus:ring-purple-500 ${!canModifyTasks ? 'opacity-50 cursor-not-allowed' : ''}`}
                             />
+                          </td>
+
+                          {/* Actions */}
+                          <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-sm text-gray-500 bg-white sticky left-[48px] z-10 shadow-[1px_0_0_0_rgba(229,231,235,1)]">
+                            {editingTaskId === task.task_id ? (
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={handleSaveEdit}
+                                  disabled={isSaving}
+                                  className="flex items-center gap-1 px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+                                >
+                                  <Save size={14} />
+                                  {isSaving ? '...' : 'Save'}
+                                </button>
+                                <button
+                                  onClick={handleCancelEdit}
+                                  className="flex items-center gap-1 px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-700"
+                                >
+                                  <X size={14} />
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
+                              // REMOVED THE submission_date CHECK - ALWAYS SHOW EDIT BUTTON
+                              canModifyTasks && (
+                              <button
+                                onClick={() => handleEditClick(task)}
+                                className="flex items-center gap-1 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                              >
+                                <Edit size={14} />
+                                Edit
+                              </button>
+                              )
+                            )}
                           </td>
 
                           {/* Department */}
@@ -1726,41 +1762,6 @@ const filteredMaintenanceTasks = useMemo(() => {
                               </select>
                             ) : (
                               task.require_attachment || "—"
-                            )}
-                          </td>
-
-                          {/* Actions */}
-                          {/* Actions */}
-                          <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-sm text-gray-500">
-                            {editingTaskId === task.task_id ? (
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={handleSaveEdit}
-                                  disabled={isSaving}
-                                  className="flex items-center gap-1 px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
-                                >
-                                  <Save size={14} />
-                                  {isSaving ? 'Saving...' : 'Save'}
-                                </button>
-                                <button
-                                  onClick={handleCancelEdit}
-                                  className="flex items-center gap-1 px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-700"
-                                >
-                                  <X size={14} />
-                                  Cancel
-                                </button>
-                              </div>
-                            ) : (
-                              // REMOVED THE submission_date CHECK - ALWAYS SHOW EDIT BUTTON
-                              canModifyTasks && (
-                              <button
-                                onClick={() => handleEditClick(task)}
-                                className="flex items-center gap-1 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
-                              >
-                                <Edit size={14} />
-                                Edit
-                              </button>
-                              )
                             )}
                           </td>
                         </tr>
