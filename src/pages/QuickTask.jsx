@@ -1540,15 +1540,15 @@ const filteredMaintenanceTasks = useMemo(() => {
                         ACTIONS
                       </th>
                       {[
-                        { key: 'department', label: 'Department' },
-                        { key: 'unit', label: 'Unit' },
-                        { key: 'division', label: 'Division' },
-                        { key: 'given_by', label: 'Given By' },
-                        { key: 'name', label: 'Name' },
                         { key: 'task_description', label: 'Task Description', minWidth: 'whitespace-nowrap' },
+                        { key: 'name', label: 'Name', minWidth: 'min-w-[180px]' },
+                        { key: 'given_by', label: 'Given By', minWidth: 'min-w-[180px]' },
                         { key: 'task_start_date', label: 'Start Date', bg: 'bg-yellow-50' },
                         { key: 'task_end_date', label: 'End Date', bg: 'bg-yellow-50' },
                         { key: 'frequency', label: 'Frequency' },
+                        { key: 'department', label: 'Department' },
+                        { key: 'unit', label: 'Unit' },
+                        { key: 'division', label: 'Division' },
                         { key: 'enable_reminder', label: 'Reminders' },
                         { key: 'require_attachment', label: 'Attachment' },
                       ].map((column) => (
@@ -1618,6 +1618,81 @@ const filteredMaintenanceTasks = useMemo(() => {
                             )}
                           </td>
 
+                          {/* Task Description */}
+                          <td className="px-2 sm:px-6 py-2 sm:py-4 text-sm text-gray-500 max-w-xs">
+                            {editingTaskId === task.task_id ? (
+                              <textarea
+                                value={editFormData.task_description}
+                                onChange={(e) => handleInputChange('task_description', e.target.value)}
+                                className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                rows="3"
+                              />
+                            ) : (
+                              <div className="break-words">
+                                {task.task_description || "—"}
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Name */}
+                          <td className="px-2 sm:px-6 py-2 sm:py-4 text-sm text-gray-500 min-w-[180px]">
+                            {editingTaskId === task.task_id ? (
+                              <input
+                                type="text"
+                                value={editFormData.name}
+                                onChange={(e) => handleInputChange('name', e.target.value)}
+                                className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                              />
+                            ) : (
+                              <div className="break-words">
+                                {task.name || "—"}
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Given By */}
+                          <td className="px-2 sm:px-6 py-2 sm:py-4 text-sm text-gray-500 min-w-[180px]">
+                            {editingTaskId === task.task_id ? (
+                              <input
+                                type="text"
+                                value={editFormData.given_by}
+                                onChange={(e) => handleInputChange('given_by', e.target.value)}
+                                className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                              />
+                            ) : (
+                              <div className="break-words">
+                                {task.given_by || "—"}
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Task Start Date with Time */}
+                          <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-sm text-gray-500 bg-yellow-50">
+                            {editingTaskId === task.task_id ? (
+                              <span className="px-2 py-1 bg-gray-100 text-gray-500 rounded text-sm cursor-not-allowed">
+                                {formatTimestampWithTime(task.task_start_date)}
+                              </span>
+                            ) : (
+                              formatTimestampWithTime(task.task_start_date)
+                            )}
+                          </td>
+
+                          {/* End Date (Last Task Date) */}
+                          <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-sm text-gray-500 bg-yellow-50">
+                            {calculateLastTaskDate(task)}
+                          </td>
+
+                          {/* Frequency - Non-editable */}
+                          <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-sm text-gray-500">
+                            <span className={`px-2 py-1 rounded-full text-xs ${task.frequency === 'Daily' ? 'bg-blue-100 text-blue-800' :
+                              task.frequency === 'Weekly' ? 'bg-green-100 text-green-800' :
+                                task.frequency === 'Monthly' ? 'bg-purple-100 text-purple-800' :
+                                  'bg-gray-100 text-gray-800'
+                              }${editingTaskId === task.task_id ? ' opacity-60 cursor-not-allowed' : ''}`}>
+                              {task.frequency || "—"}
+                            </span>
+                          </td>
+
                           {/* Department */}
                           <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             {editingTaskId === task.task_id ? (
@@ -1658,77 +1733,6 @@ const filteredMaintenanceTasks = useMemo(() => {
                             ) : (
                               task.division || "—"
                             )}
-                          </td>
-
-                          {/* Given By */}
-                          <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-sm text-gray-500">
-                            {editingTaskId === task.task_id ? (
-                              <input
-                                type="text"
-                                value={editFormData.given_by}
-                                onChange={(e) => handleInputChange('given_by', e.target.value)}
-                                className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                              />
-                            ) : (
-                              task.given_by || "—"
-                            )}
-                          </td>
-
-                          {/* Name */}
-                          <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-sm text-gray-500">
-                            {editingTaskId === task.task_id ? (
-                              <input
-                                type="text"
-                                value={editFormData.name}
-                                onChange={(e) => handleInputChange('name', e.target.value)}
-                                className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                              />
-                            ) : (
-                              task.name || "—"
-                            )}
-                          </td>
-
-                          {/* Task Description */}
-                          <td className="px-2 sm:px-6 py-2 sm:py-4 text-sm text-gray-500 max-w-xs">
-                            {editingTaskId === task.task_id ? (
-                              <textarea
-                                value={editFormData.task_description}
-                                onChange={(e) => handleInputChange('task_description', e.target.value)}
-                                className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                                rows="3"
-                              />
-                            ) : (
-                              <div className="break-words">
-                                {task.task_description || "—"}
-                              </div>
-                            )}
-                          </td>
-
-                          {/* Task Start Date with Time */}
-                          <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-sm text-gray-500 bg-yellow-50">
-                            {editingTaskId === task.task_id ? (
-                              <span className="px-2 py-1 bg-gray-100 text-gray-500 rounded text-sm cursor-not-allowed">
-                                {formatTimestampWithTime(task.task_start_date)}
-                              </span>
-                            ) : (
-                              formatTimestampWithTime(task.task_start_date)
-                            )}
-                          </td>
-
-                          {/* End Date (Last Task Date) */}
-                          <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-sm text-gray-500 bg-yellow-50">
-                            {calculateLastTaskDate(task)}
-                          </td>
-
-                          {/* Frequency - Non-editable */}
-                          <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-sm text-gray-500">
-                            <span className={`px-2 py-1 rounded-full text-xs ${task.frequency === 'Daily' ? 'bg-blue-100 text-blue-800' :
-                              task.frequency === 'Weekly' ? 'bg-green-100 text-green-800' :
-                                task.frequency === 'Monthly' ? 'bg-purple-100 text-purple-800' :
-                                  'bg-gray-100 text-gray-800'
-                              }${editingTaskId === task.task_id ? ' opacity-60 cursor-not-allowed' : ''}`}>
-                              {task.frequency || "—"}
-                            </span>
                           </td>
 
                           {/* Enable Reminders */}

@@ -505,18 +505,18 @@ function MaintenanceQuickTaskPage({ searchTerm, nameFilter, deptFilter, divFilte
                     ACTIONS
                   </th>
                   {[
-                    { key: 'task_id', label: 'Task ID' },
                     { key: 'task_description', label: 'Task Description', minWidth: 'whitespace-nowrap' },
+                    { key: 'name', label: 'Name', minWidth: 'min-w-[180px]' },
+                    { key: 'given_by', label: 'Assign From', minWidth: 'min-w-[180px]' },
+                    { key: 'task_start_date', label: 'Start Date' },
+                    { key: 'planned_date', label: 'Planned Date' },
+                    { key: 'frequency', label: 'Frequency' },
+                    { key: 'task_id', label: 'Task ID' },
                     { key: 'machine_name', label: 'Machine Name' },
                     { key: 'part_name', label: 'Part Name' },
                     { key: 'part_area', label: 'Part Area' },
                     { key: 'machine_department', label: 'Dept' },
                     { key: 'machine_division', label: 'Div' },
-                    { key: 'given_by', label: 'Assign From' },
-                    { key: 'name', label: 'Name' },
-                    { key: 'planned_date', label: 'Planned Date' },
-                    { key: 'task_start_date', label: 'Start Date' },
-                    { key: 'frequency', label: 'Frequency' },
                     { key: 'duration', label: 'Duration' },
                     { key: 'status', label: 'Status' },
                     { key: 'remark', label: 'Remarks' },
@@ -567,11 +567,6 @@ function MaintenanceQuickTaskPage({ searchTerm, nameFilter, deptFilter, divFilte
                         )}
                       </td>
 
-                      {/* Task ID */}
-                      <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-sm text-gray-500">
-                        {task.task_id || "—"}
-                      </td>
-
                       {/* Task Description */}
                       <td className="px-2 sm:px-6 py-2 sm:py-4 text-sm text-gray-500 max-w-xs">
                         {editingTaskId === task.task_id ? (
@@ -579,6 +574,51 @@ function MaintenanceQuickTaskPage({ searchTerm, nameFilter, deptFilter, divFilte
                         ) : (
                           <div className="break-words">{task.task_description || "—"}</div>
                         )}
+                      </td>
+
+                      {/* Name */}
+                      {/* Name */}
+                      <td className="px-2 sm:px-6 py-2 sm:py-4 text-sm text-gray-500 min-w-[180px]">
+                        {editingTaskId === task.task_id ? (
+                          <input type="text" value={editFormData.name} onChange={(e) => handleInputChange('name', e.target.value)} className="w-full px-2 py-1 border border-gray-300 rounded text-sm" />
+                        ) : (
+                          <div className="break-words">
+                            {task.name || "—"}
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Assign From / Given By */}
+                      <td className="px-2 sm:px-6 py-2 sm:py-4 text-sm text-gray-500 min-w-[180px]">
+                        {editingTaskId === task.task_id ? (
+                          <input type="text" value={editFormData.given_by} onChange={(e) => handleInputChange('given_by', e.target.value)} className="w-full px-2 py-1 border border-gray-300 rounded text-sm" />
+                        ) : (
+                          <div className="break-words">
+                            {task.given_by || "—"}
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Start Date */}
+                      <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-sm text-gray-500">
+                        {task.task_start_date ? new Date(task.task_start_date).toLocaleDateString() : '—'}
+                      </td>
+
+                      {/* Planned Date */}
+                      <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-sm text-gray-500">
+                        {task.planned_date ? new Date(task.planned_date).toLocaleDateString() : '—'}
+                      </td>
+
+                      {/* Frequency */}
+                      <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-sm text-gray-500">
+                        <span className={`px-2 py-1 rounded-full text-xs bg-purple-100 text-purple-800`}>
+                          {task.frequency || "—"}
+                        </span>
+                      </td>
+
+                      {/* Task ID */}
+                      <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-sm text-gray-500">
+                        {task.task_id || "—"}
                       </td>
 
                       {/* Machine Name */}
@@ -637,37 +677,6 @@ function MaintenanceQuickTaskPage({ searchTerm, nameFilter, deptFilter, divFilte
                         ) : (task.machine_division || "—")}
                       </td>
 
-                      {/* Assign From */}
-                      <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-sm text-gray-500">
-                        {editingTaskId === task.task_id ? (
-                          <input type="text" value={editFormData.given_by} onChange={(e) => handleInputChange('given_by', e.target.value)} className="w-full px-2 py-1 border border-gray-300 rounded text-sm" />
-                        ) : (task.given_by || "—")}
-                      </td>
-
-                      {/* Name */}
-                      <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-sm text-gray-500">
-                        {editingTaskId === task.task_id ? (
-                          <input type="text" value={editFormData.name} onChange={(e) => handleInputChange('name', e.target.value)} className="w-full px-2 py-1 border border-gray-300 rounded text-sm" />
-                        ) : (task.name || "—")}
-                      </td>
-
-                       {/* Planned Date */}
-                      <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-sm text-gray-500">
-                        {task.planned_date ? new Date(task.planned_date).toLocaleDateString() : '—'}
-                      </td>
-
-                      {/* Working Day (Task Start Date) */}
-                      <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-sm text-gray-500">
-                        {task.task_start_date ? new Date(task.task_start_date).toLocaleDateString() : '—'}
-                      </td>
-
-                      {/* Frequency */}
-                      <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-sm text-gray-500">
-                        <span className={`px-2 py-1 rounded-full text-xs bg-purple-100 text-purple-800`}>
-                          {task.frequency || "—"}
-                        </span>
-                      </td>
-
                       {/* Duration */}
                       <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-sm text-gray-500">
                         {editingTaskId === task.task_id ? (
@@ -711,7 +720,7 @@ function MaintenanceQuickTaskPage({ searchTerm, nameFilter, deptFilter, divFilte
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={13} className="px-2 sm:px-6 py-2 sm:py-4 text-center text-gray-500">
+                    <td colSpan={17} className="px-2 sm:px-6 py-2 sm:py-4 text-center text-gray-500">
                       {searchTerm || nameFilter || freqFilter ? "No tasks matching your filters" : "No maintenance tasks available"}
                     </td>
                   </tr>

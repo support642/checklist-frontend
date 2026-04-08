@@ -1769,6 +1769,8 @@ const handleSubmit = async () => {
               <table className="min-w-full divide-y divide-gray-200 hidden lg:table">
                 <thead className="bg-gray-50 sticky top-0 z-10">
                   <tr>
+                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap border-b w-16">Seq. No.</th>
+                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap border-b text-purple-600">Task Status</th>
                     {(userRole === "user" || (userRole === "admin" || userRole === "div_admin") || userRole === "super_admin") && (
                       <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12 border-b">
                         <input
@@ -1792,11 +1794,13 @@ const handleSubmit = async () => {
                         />
                       </th>
                     )}
-                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap border-b">ID</th>
-                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap border-b text-purple-600">Task Status</th>
-                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap border-b bg-yellow-50">Status</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[200px] border-b">Task Description</th>
+                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[180px] border-b">Name</th>
+                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[180px] border-b">Given By</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[150px] border-b bg-orange-50">Remark</th>
+                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap border-b bg-yellow-50">Planned</th>
+                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap border-b bg-yellow-50">Status</th>
+                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap border-b">ID</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap border-b bg-green-50">File</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap border-b">Unit</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap border-b">Division</th>
@@ -1806,9 +1810,6 @@ const handleSubmit = async () => {
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap border-b">Machine</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap border-b">Part</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap border-b">Area</th>
-                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap border-b">Given By</th>
-                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap border-b">Name</th>
-                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap border-b">Planned</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap border-b">Freq</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap border-b">Remind</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap border-b">Attach</th>
@@ -1821,18 +1822,11 @@ const handleSubmit = async () => {
                       const taskStatus = getTaskStatus(item.task_start_date || item.planned_date);
                       return (
                         <tr key={index} className={`${isSelected ? "bg-purple-50" : taskStatus === 'upcoming' ? "bg-blue-50" : taskStatus === 'overdue' ? "bg-red-50" : ""} hover:bg-gray-50`}>
-                          {(userRole === "user" || (userRole === "admin" || userRole === "div_admin") || userRole === "super_admin") && (
-                            <td className="px-2 sm:px-3 py-2 sm:py-4 w-12 border-b">
-                              <input
-                                type="checkbox"
-                                className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                                checked={isSelected}
-                                onChange={(e) => handleMaintCheckboxClick(e, item.task_id)}
-                              />
-                            </td>
-                          )}
-                          {/* <td className="px-2 sm:px-3 py-2 sm:py-4 border-b whitespace-nowrap"><div className="text-xs sm:text-sm text-gray-900">{item.time || "—"}</div></td> */}
-                          <td className="px-2 sm:px-3 py-2 sm:py-4 border-b whitespace-nowrap"><div className="text-xs sm:text-sm text-gray-900">{item.task_id || "—"}</div></td>
+                          <td className="px-2 sm:px-3 py-2 sm:py-4 border-b whitespace-nowrap">
+                            <div className="text-xs sm:text-sm font-medium text-gray-900 text-center">
+                              {index + 1}
+                            </div>
+                          </td>
                           <td className="px-2 sm:px-3 py-2 sm:py-4 border-b">
                             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                               taskStatus === 'today' 
@@ -1845,6 +1839,42 @@ const handleSubmit = async () => {
                             }`}>
                               {taskStatus === 'today' ? 'Today' : taskStatus === 'upcoming' ? 'Upcoming' : taskStatus === 'overdue' ? 'Overdue' : '—'}
                             </span>
+                          </td>
+                          {(userRole === "user" || (userRole === "admin" || userRole === "div_admin") || userRole === "super_admin") && (
+                            <td className="px-2 sm:px-3 py-2 sm:py-4 w-12 border-b">
+                              <input
+                                type="checkbox"
+                                className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                checked={isSelected}
+                                onChange={(e) => handleMaintCheckboxClick(e, item.task_id)}
+                              />
+                            </td>
+                          )}
+                          <td className="px-2 sm:px-3 py-2 sm:py-4 min-w-[200px] border-b">
+                            <div className="text-xs sm:text-sm text-gray-900 break-words" title={item.task_description}>
+                              {item.task_description || "—"}
+                            </div>
+                          </td>
+                          <td className="px-2 sm:px-3 py-2 sm:py-4 min-w-[180px] border-b">
+                            <div className="text-xs sm:text-sm text-gray-900 break-words">{item.name || "—"}</div>
+                          </td>
+                          <td className="px-2 sm:px-3 py-2 sm:py-4 min-w-[180px] border-b">
+                            <div className="text-xs sm:text-sm text-gray-900 break-words">{item.given_by || "—"}</div>
+                          </td>
+                          <td className="px-2 sm:px-3 py-2 sm:py-4 bg-orange-50 min-w-[150px] border-b">
+                            <input
+                              type="text"
+                              placeholder="Enter remarks"
+                              disabled={!isSelected || !maintAdditionalData[item.task_id]}
+                              value={maintRemarksData[item.task_id] || ""}
+                              onChange={(e) => setMaintRemarksData((prev) => ({ ...prev, [item.task_id]: e.target.value }))}
+                              className="border rounded-md px-2 py-1 w-full min-w-32 border-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed text-xs sm:text-sm"
+                            />
+                          </td>
+                          <td className="px-2 sm:px-3 py-2 sm:py-4 bg-yellow-50 border-b">
+                            <div className="text-xs sm:text-sm text-gray-900 break-words">
+                              {item.planned_date || "—"}
+                            </div>
                           </td>
                           <td className="px-2 sm:px-3 py-2 sm:py-4 bg-yellow-50 border-b">
                             <select
@@ -1863,16 +1893,8 @@ const handleSubmit = async () => {
                               <option value="No">No</option>
                             </select>
                           </td>
-                          <td className="px-2 sm:px-3 py-2 sm:py-4 min-w-[200px] border-b"><div className="text-xs sm:text-sm text-gray-900" title={item.task_description}>{item.task_description || "—"}</div></td>
-                          <td className="px-2 sm:px-3 py-2 sm:py-4 bg-orange-50 min-w-[150px] border-b">
-                            <input
-                              type="text"
-                              placeholder="Enter remarks"
-                              disabled={!isSelected || !maintAdditionalData[item.task_id]}
-                              value={maintRemarksData[item.task_id] || ""}
-                              onChange={(e) => setMaintRemarksData((prev) => ({ ...prev, [item.task_id]: e.target.value }))}
-                              className="border rounded-md px-2 py-1 w-full min-w-32 border-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed text-xs sm:text-sm"
-                            />
+                          <td className="px-2 sm:px-3 py-2 sm:py-4 border-b">
+                            <div className="text-xs sm:text-sm text-gray-900 break-words">{item.task_id || "—"}</div>
                           </td>
                           <td className="px-2 sm:px-3 py-2 sm:py-4 bg-green-50 border-b">
                             {maintUploadedImages[item.task_id] || item.image ? (
@@ -1951,9 +1973,6 @@ const handleSubmit = async () => {
                             })()}
                           </td>
                           <td className="px-2 sm:px-3 py-2 sm:py-4 border-b whitespace-nowrap"><div className="text-xs sm:text-sm text-gray-900">{item.part_area || "—"}</div></td>
-                          <td className="px-2 sm:px-3 py-2 sm:py-4 border-b whitespace-nowrap"><div className="text-xs sm:text-sm text-gray-900">{item.given_by || "—"}</div></td>
-                          <td className="px-2 sm:px-3 py-2 sm:py-4 border-b whitespace-nowrap"><div className="text-xs sm:text-sm text-gray-900">{item.name || "—"}</div></td>
-                          <td className="px-2 sm:px-3 py-2 sm:py-4 border-b whitespace-nowrap"><div className="text-xs sm:text-sm text-gray-900">{item.planned_date || "—"}</div></td>
                           <td className="px-2 sm:px-3 py-2 sm:py-4 border-b whitespace-nowrap"><div className="text-xs sm:text-sm text-gray-900">{item.frequency || "—"}</div></td>
                           <td className="px-2 sm:px-3 py-2 sm:py-4 border-b whitespace-nowrap"><div className="text-xs sm:text-sm text-gray-900">{item.enable_reminders || "—"}</div></td>
                           <td className="px-2 sm:px-3 py-2 sm:py-4 border-b whitespace-nowrap"><div className="text-xs sm:text-sm text-gray-900">{item.require_attachment || "—"}</div></td>
@@ -1962,7 +1981,7 @@ const handleSubmit = async () => {
                     })
                   ) : (
                     <tr>
-                      <td colSpan={19} className="px-4 sm:px-6 py-4 text-center text-gray-500 text-xs sm:text-sm">
+                      <td colSpan={22} className="px-4 sm:px-6 py-4 text-center text-gray-500 text-xs sm:text-sm">
                         {searchTerm ? "No maintenance tasks matching your search" : "No pending maintenance tasks found"}
                       </td>
                     </tr>
@@ -2193,16 +2212,25 @@ const handleSubmit = async () => {
                         />
                       </th>
                     )}
-                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                      Status
-                    </th>
-                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[150px]">
+                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[200px]">
                       Task Description
                     </th>
-                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
-                      Remarks
+                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[180px]">
+                      Name
                     </th>
-                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[180px]">
+                      Given By
+                    </th>
+                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[150px] bg-orange-50">
+                      Remark
+                    </th>
+                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-yellow-50 whitespace-nowrap">
+                      Task End Date
+                    </th>
+                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap bg-yellow-50">
+                      Status
+                    </th>
+                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap bg-green-50">
                       Upload File
                     </th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
@@ -2216,15 +2244,6 @@ const handleSubmit = async () => {
                     </th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                       Division
-                    </th>
-                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                      Given By
-                    </th>
-                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                      Name
-                    </th>
-                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-yellow-50 whitespace-nowrap">
-                      Task End Date
                     </th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                       Freq
@@ -2276,6 +2295,32 @@ const handleSubmit = async () => {
                               />
                             </td>
                           )}
+                          <td className="px-2 sm:px-3 py-2 sm:py-4 min-w-[200px]">
+                            <div className="text-xs sm:text-sm text-gray-900 break-words" title={account.task_description}>
+                              {account.task_description || "—"}
+                            </div>
+                          </td>
+                          <td className="px-2 sm:px-3 py-2 sm:py-4 min-w-[180px]">
+                            <div className="text-xs sm:text-sm text-gray-900 break-words">{account.name || "—"}</div>
+                          </td>
+                          <td className="px-2 sm:px-3 py-2 sm:py-4 min-w-[180px]">
+                            <div className="text-xs sm:text-sm text-gray-900 break-words">{account.given_by || "—"}</div>
+                          </td>
+                          <td className="px-2 sm:px-3 py-2 sm:py-4 bg-orange-50 min-w-[150px]">
+                            <input
+                              type="text"
+                              placeholder="Enter remarks"
+                              disabled={!isSelected || !additionalData[account.task_id]}
+                              value={remarksData[account.task_id] || ""}
+                              onChange={(e) => setRemarksData((prev) => ({ ...prev, [account.task_id]: e.target.value }))}
+                              className="border rounded-md px-2 py-1 w-full border-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed text-xs sm:text-sm break-words"
+                            />
+                          </td>
+                          <td className="px-2 sm:px-3 py-2 sm:py-4 bg-yellow-50">
+                            <div className="text-xs sm:text-sm text-gray-900 break-words">
+                              {account.task_start_date || "—"}
+                            </div>
+                          </td>
                           <td className="px-2 sm:px-3 py-2 sm:py-4 bg-yellow-50">
                             <select
                               disabled={!isSelected}
@@ -2296,21 +2341,6 @@ const handleSubmit = async () => {
                               <option value="Yes">Yes</option>
                               <option value="No">No</option>
                             </select>
-                          </td>
-                          <td className="px-2 sm:px-3 py-2 sm:py-4 min-w-[150px]">
-                            <div className="text-xs sm:text-sm text-gray-900 break-words" title={account.task_description}>
-                              {account.task_description || "—"}
-                            </div>
-                          </td>
-                          <td className="px-2 sm:px-3 py-2 sm:py-4 bg-orange-50 min-w-[120px]">
-                            <input
-                              type="text"
-                              placeholder="Enter remarks"
-                              disabled={!isSelected || !additionalData[account.task_id]}
-                              value={remarksData[account.task_id] || ""}
-                              onChange={(e) => setRemarksData((prev) => ({ ...prev, [account.task_id]: e.target.value }))}
-                              className="border rounded-md px-2 py-1 w-full border-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed text-xs sm:text-sm break-words"
-                            />
                           </td>
                           <td className="px-2 sm:px-3 py-2 sm:py-4 bg-green-50">
                             {uploadedImages[account.task_id] || account.image ? (
@@ -2383,18 +2413,6 @@ const handleSubmit = async () => {
                             <div className="text-xs sm:text-sm text-gray-900 break-words">{account.division || "—"}</div>
                           </td>
                           <td className="px-2 sm:px-3 py-2 sm:py-4">
-                            <div className="text-xs sm:text-sm text-gray-900 break-words">{account.given_by || "—"}</div>
-                          </td>
-                          <td className="px-2 sm:px-3 py-2 sm:py-4">
-                            <div className="text-xs sm:text-sm text-gray-900 break-words">{account.name || "—"}</div>
-                          </td>
-
-                          <td className="px-2 sm:px-3 py-2 sm:py-4 bg-yellow-50">
-                            <div className="text-xs sm:text-sm text-gray-900 break-words">
-                              {account.task_start_date || "—"}
-                            </div>
-                          </td>
-                          <td className="px-2 sm:px-3 py-2 sm:py-4">
                             <div className="text-xs sm:text-sm text-gray-900 break-words">{account.frequency || "—"}</div>
                           </td>
                           <td className="px-2 sm:px-3 py-2 sm:py-4">
@@ -2408,7 +2426,7 @@ const handleSubmit = async () => {
                     })
                   ) : (
                     <tr>
-                      <td colSpan={13} className="px-4 sm:px-6 py-4 text-center text-gray-500 text-xs sm:text-sm">
+                      <td colSpan={17} className="px-4 sm:px-6 py-4 text-center text-gray-500 text-xs sm:text-sm">
                         {searchTerm
                           ? "No tasks matching your search"
                           : "No pending tasks found for today, tomorrow, or past due dates"}
