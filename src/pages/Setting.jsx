@@ -1,10 +1,10 @@
 import { authFetch } from "../utils/authFetch";
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 // import { Plus, User, Building, X, Save, Edit, Trash2, Settings, Search, ChevronDown, Calendar, RefreshCw } from 'lucide-react';
 import { Plus, User, Building, X, Save, Edit, Trash2, Settings, Search, ChevronDown, Calendar, RefreshCw, Eye, EyeOff, Upload, Image as ImageIcon, Copy } from 'lucide-react';
 import AdminLayout from '../components/layout/AdminLayout';
 import { useDispatch, useSelector } from 'react-redux';
-import { createDepartment, createUser, deleteUser, departmentOnlyDetails, givenByDetails, departmentDetails, updateDepartment, updateUser, userDetails, machineDetails, createMachineThunk, updateMachineThunk, deleteMachineThunk } from '../redux/slice/settingSlice';
+import { createDepartment, createUser, deleteUser, departmentOnlyDetails, givenByDetails, departmentDetails, updateDepartment, updateUser, userDetails, leaveUserDetails, extendUserDetails, machineDetails, createMachineThunk, updateMachineThunk, deleteMachineThunk, resetUserData, resetLeaveUserData, resetExtendUserData } from '../redux/slice/settingSlice';
 import { extendTaskApi } from '../redux/api/settingApi';
 import { uniqueDoerNameData } from '../redux/slice/assignTaskSlice';
 import { hasPageAccess, hasModifyAccess } from '../utils/permissionUtils';
@@ -129,6 +129,7 @@ const Setting = () => {
   const [leaveEndDate, setLeaveEndDate] = useState('');
   const [remark, setRemark] = useState('');
   const [leaveUsernameFilter, setLeaveUsernameFilter] = useState('');
+  const [extendUsernameFilter, setExtendUsernameFilter] = useState('');
   const [showPasswords, setShowPasswords] = useState({}); // Track which passwords are visible
   const [showModalPassword, setShowModalPassword] = useState(false);
   const [showDeptDropdown, setShowDeptDropdown] = useState(false);
@@ -379,8 +380,21 @@ const Setting = () => {
 
   // Derived: does user have modify access to Settings (for gating UI buttons)
   const canModifySettings = hasModifyAccess('settings');
-
-  const { userData, department, departmentsOnly, givenBy, machines, loading, error } = useSelector((state) => state.setting);
+  const userListRef = useRef(null);
+  const { 
+    userData, 
+    leaveUsers, 
+    extendUsers, 
+    department, 
+    departmentsOnly, 
+    givenBy, 
+    machines, 
+    loading, 
+    error, 
+    pagination, 
+    leavePagination, 
+    extendPagination 
+  } = useSelector((state) => state.setting);
 
   // Filtered Machines Logic
   const filteredMachines = useMemo(() => {
@@ -497,7 +511,8 @@ const Setting = () => {
       
       // Re-fetch data based on active tab
       if (activeTab === 'users') {
-        await dispatch(userDetails()).unwrap();
+        dispatch(resetUserData());
+        await dispatch(userDetails({ page: 1, limit: 50, search: usernameFilter })).unwrap();
       } else if (activeTab === 'departments') {
         await dispatch(departmentDetails()).unwrap();
         await dispatch(departmentOnlyDetails()).unwrap();
@@ -505,11 +520,9 @@ const Setting = () => {
       } else if (activeTab === 'machines') {
         await dispatch(machineDetails()).unwrap();
       } else if (activeTab === 'leave' || activeTab === 'extendTask') {
-        await dispatch(userDetails()).unwrap();
+        dispatch(resetUserData());
+        await dispatch(userDetails({ page: 1, limit: 50 })).unwrap();
       }
-
-      // Optional: Logic for syncing device logs if needed in future
-      // const response = await authFetch(`${import.meta.env.VITE_API_BASE_URL}/logs/device-sync`);
       
     } catch (error) {
       console.error('Error refreshing data:', error);
@@ -595,9 +608,8 @@ const debugUserStatus = async () => {
     setLeaveUsernameFilter(username);
   };
 
-  const clearLeaveUsernameFilter = () => {
-    setLeaveUsernameFilter('');
-  };
+  const clearLeaveUsernameFilter = () => setLeaveUsernameFilter('');
+  const clearExtendUsernameFilter = () => setExtendUsernameFilter('');
 
   const handleUsernameFilterSelect = (username) => {
     setUsernameFilter(username);
@@ -1066,17 +1078,16 @@ const handleConfirmDelegation = async () => {
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     if (tab === 'users') {
-      dispatch(userDetails());
-      dispatch(departmentDetails()); // Ensure departments are fetched
+      if (userData.length === 0) dispatch(userDetails({ page: 1, limit: 50 }));
     } else if (tab === 'departments') {
-      dispatch(departmentDetails());
+      if (department.length === 0) dispatch(departmentDetails());
     } else if (tab === 'leave') {
-      dispatch(userDetails());
-      dispatch(uniqueDoerNameData()); // Fetch all doer names for delegation
+      if (userData.length === 0) dispatch(userDetails({ page: 1, limit: 50 }));
+      dispatch(uniqueDoerNameData());
     } else if (tab === 'extendTask') {
-      dispatch(userDetails());
+      if (userData.length === 0) dispatch(userDetails({ page: 1, limit: 50 }));
     } else if (tab === 'machines') {
-      dispatch(machineDetails());
+      if (machines.length === 0) dispatch(machineDetails());
     }
   };
 
@@ -1192,10 +1203,33 @@ const [userForm, setUserForm] = useState({
     { unit: '', division: '', department: '' }
   ]);
 
+  // Initial and debounced search fetch
   useEffect(() => {
-    dispatch(userDetails());
-    dispatch(departmentDetails()); // Fetch departments on mount
-  }, [dispatch])
+    const handler = setTimeout(() => {
+      if (activeTab === 'users') {
+        dispatch(userDetails({ page: 1, limit: 50, search: usernameFilter }));
+      } else if (activeTab === 'leave') {
+        dispatch(leaveUserDetails({ page: 1, limit: 50, search: leaveUsernameFilter }));
+      } else if (activeTab === 'extendTask') {
+        dispatch(extendUserDetails({ page: 1, limit: 50, search: extendUsernameFilter }));
+      }
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [usernameFilter, leaveUsernameFilter, extendUsernameFilter, dispatch, activeTab]);
+
+  const handleScroll = (e) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.target;
+    // Load more if scrolled to 90%
+    if (scrollTop + clientHeight >= scrollHeight * 0.9) {
+      if (activeTab === 'users' && !pagination.loadingMore && pagination.hasMore) {
+        dispatch(userDetails({ page: pagination.currentPage + 1, search: pagination.searchQuery }));
+      } else if (activeTab === 'leave' && !leavePagination.loadingMore && leavePagination.hasMore) {
+        dispatch(leaveUserDetails({ page: leavePagination.currentPage + 1, search: leavePagination.searchQuery }));
+      } else if (activeTab === 'extendTask' && !extendPagination.loadingMore && extendPagination.hasMore) {
+        dispatch(extendUserDetails({ page: extendPagination.currentPage + 1, search: extendPagination.searchQuery }));
+      }
+    }
+  };
 
   // In your handleAddUser function:
   // Modified handleAddUser
@@ -1739,7 +1773,7 @@ const resetUserForm = () => {
   };
 
   // Add this filtered users calculation for leave tab
-  const filteredLeaveUsers = userData?.filter(user => {
+  const filteredLeaveUsers = leaveUsers?.filter(user => {
     const matchesSearch = !leaveUsernameFilter || user.user_name.toLowerCase().includes(leaveUsernameFilter.toLowerCase());
     
     // Admin department filtering
@@ -1872,7 +1906,7 @@ const resetUserForm = () => {
                     }`}
                     onClick={() => {
                       handleTabChange('leave');
-                      dispatch(userDetails());
+                      dispatch(leaveUserDetails());
                     }}
                   >
                     <Calendar size={20} />
@@ -1886,6 +1920,7 @@ const resetUserForm = () => {
                     }`}
                     onClick={() => {
                       handleTabChange('extendTask');
+                      dispatch(extendUserDetails());
                     }}
                   >
                     <Calendar size={20} />
@@ -1944,7 +1979,7 @@ const resetUserForm = () => {
                       className="w-full sm:w-64 pl-10 pr-8 py-2 border border-purple-200 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm shadow-sm"
                     />
                     <datalist id="leaveUsernameOptions">
-                      {userData?.map(user => (
+                      {leaveUsers?.map(user => (
                         <option key={user.id} value={user.user_name} />
                       ))}
                     </datalist>
@@ -1977,7 +2012,10 @@ const resetUserForm = () => {
 
 
             {/* Users List for Leave Selection */}
-<div className="h-[calc(100vh-400px)] overflow-auto">
+            <div 
+              className="h-[calc(100vh-320px)] overflow-auto custom-scrollbar"
+              onScroll={handleScroll}
+            >
   {/* Mobile Card View */}
   <div className="sm:hidden space-y-3 p-3">
     {filteredLeaveUsers?.map((user) => (
@@ -2112,21 +2150,26 @@ const resetUserForm = () => {
       ))}
     </tbody>
   </table>
-</div>
-          </div>
-        )}
-
+  {/* Infinite Scroll Loading Indicator for Leave Tab */}
+  {leavePagination.loadingMore && leavePagination.hasMore && (
+    <div className="text-center py-4 bg-white border-t border-gray-100">
+      <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-purple-500"></div>
+      <p className="text-purple-600 text-sm mt-1">Loading more users...</p>
+    </div>
+  )}
+    </div>
+  </div>
+)}
 
         {/* Users Tab */}
-        {/* Users Tab */}
-{activeTab === 'users' && (
+        {activeTab === 'users' && (
   <div className="bg-white shadow rounded-lg overflow-hidden border border-purple-200">
-    <div className={`${currentUserRole?.toLowerCase() === 'user' ? 'hidden' : 'bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple px-6 py-4 border-gray-200 flex justify-between items-center'}`}>
+    <div className={`${currentUserRole?.toLowerCase() === 'user' ? 'hidden' : 'bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3'}`}>
       <h2 className="text-lg font-medium text-purple-700">User List</h2>
 
-      {/* Username Filter */}
-      <div className="relative">
-        <div className="flex items-center gap-2">
+      {/* Username Filter container */}
+      <div className="relative w-full sm:w-auto">
+        <div className="flex items-center gap-2 w-full">
           {/* Input with datalist for autocomplete */}
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -2138,7 +2181,7 @@ const resetUserForm = () => {
               placeholder="Filter by username..."
               value={usernameFilter}
               onChange={(e) => setUsernameFilter(e.target.value)}
-              className="w-48 pl-10 pr-8 py-2 border border-purple-200 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+              className="w-full sm:w-64 pl-10 pr-8 py-2 border border-purple-200 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm shadow-sm"
             />
             <datalist id="usernameOptions">
               {userData?.map((user, idx) => (
@@ -2193,7 +2236,11 @@ const resetUserForm = () => {
       </div>
     </div>
 
-    <div className="h-[calc(100vh-275px)] overflow-auto" style={{ maxHeight: 'calc(100vh - 220px)' }}>
+    <div 
+      className="h-[calc(100vh-320px)] overflow-auto custom-scrollbar" 
+      style={{ maxHeight: 'calc(100vh - 300px)' }}
+      onScroll={handleScroll}
+    >
       {currentUserRole?.toLowerCase() === 'user' ? (
         <div className="p-6 bg-white">
           <div className="max-w-4xl mx-auto">
@@ -2325,6 +2372,8 @@ const resetUserForm = () => {
           }
           
           return displayedUsers
+            // Server-side search handles identifying names, 
+            // but we keep a loose client filter for immediate feedback on the current page
             ?.filter(user => !usernameFilter || user.user_name.toLowerCase().includes(usernameFilter.toLowerCase()))
             .map((user, index) => (
             <div key={index} className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
@@ -2553,6 +2602,14 @@ const resetUserForm = () => {
       </table>
       </>
       )}
+      
+      {/* Infinite Scroll Loading Indicator */}
+      {pagination.loadingMore && pagination.hasMore && (
+        <div className="text-center py-6 bg-white border-t border-gray-100">
+          <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-purple-500"></div>
+          <p className="text-purple-600 text-sm font-medium mt-2">Loading more users...</p>
+        </div>
+      )}
     </div>
   </div>
 )}
@@ -2601,7 +2658,7 @@ const resetUserForm = () => {
 
     {/* Departments Sub-tab - Show only department names */}
     {activeDeptSubTab === 'departments' && !loading && (
-      <div className="h-[calc(100vh-275px)] overflow-auto" style={{ maxHeight: 'calc(100vh - 220px)' }}>
+      <div className="h-[calc(100vh-320px)] overflow-auto custom-scrollbar" style={{ maxHeight: 'calc(100vh - 300px)' }}>
         {/* Mobile Card View */}
         <div className="sm:hidden space-y-3 p-3">
           {department && department.length > 0 ? (
@@ -2672,7 +2729,7 @@ const resetUserForm = () => {
 
     {/* Given By Sub-tab - Show only given_by values */}
     {activeDeptSubTab === 'givenBy' && !loading && (
-      <div className="h-[calc(100vh-275px)] overflow-auto" style={{ maxHeight: 'calc(100vh - 220px)' }}>
+      <div className="h-[calc(100vh-320px)] overflow-auto custom-scrollbar" style={{ maxHeight: 'calc(100vh - 300px)' }}>
         {/* Mobile Card View */}
         <div className="sm:hidden space-y-3 p-3">
           {department && department.length > 0 ? (
@@ -2800,10 +2857,10 @@ const resetUserForm = () => {
         {/* Extend Task Tab */}
         {activeTab === 'extendTask' && (
           <div className="bg-white shadow rounded-lg overflow-hidden border border-purple-200">
-            <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple px-6 py-4 border-gray-200 flex justify-between items-center">
+            <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
               <h2 className="text-lg font-medium text-purple-700">Extend Task Management</h2>
 
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
                 {/* Username Search Filter */}
                 <div className="relative">
                   <div className="flex items-center gap-2">
@@ -2813,22 +2870,22 @@ const resetUserForm = () => {
                       </div>
                       <input
                         type="text"
-                        list="leaveUsernameOptions"
+                        list="extendUsernameOptions"
                         placeholder="Filter by username..."
-                        value={leaveUsernameFilter}
-                        onChange={(e) => setLeaveUsernameFilter(e.target.value)}
-                        className="w-48 pl-10 pr-8 py-2 border border-purple-200 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                        value={extendUsernameFilter}
+                        onChange={(e) => setExtendUsernameFilter(e.target.value)}
+                        className="w-full sm:w-64 pl-10 pr-8 py-2 border border-purple-200 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm shadow-sm"
                       />
-                      <datalist id="leaveUsernameOptions">
-                        {userData?.map(user => (
+                      <datalist id="extendUsernameOptions">
+                        {extendUsers?.map(user => (
                           <option key={user.id} value={user.user_name} />
                         ))}
                       </datalist>
 
-                      {leaveUsernameFilter && (
+                      {extendUsernameFilter && (
                         <div className="absolute inset-y-0 right-0 pr-2 flex items-center">
                           <button
-                            onClick={clearLeaveUsernameFilter}
+                            onClick={clearExtendUsernameFilter}
                             className="text-gray-400 hover:text-gray-600"
                           >
                             <X size={16} />
@@ -2842,10 +2899,13 @@ const resetUserForm = () => {
             </div>
 
             {/* Users List for Extend Task Selection */}
-            <div className="h-[calc(100vh-400px)] overflow-auto">
+            <div 
+              className="h-[calc(100vh-320px)] overflow-auto custom-scrollbar"
+              onScroll={handleScroll}
+            >
               {/* Mobile Card View */}
               <div className="sm:hidden space-y-3 p-3">
-                {filteredLeaveUsers?.map((user) => (
+                {extendUsers?.map((user) => (
                   <div key={user.id} className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
                     <div className="flex items-center gap-3">
                       <input
@@ -2867,13 +2927,26 @@ const resetUserForm = () => {
               <table className="min-w-full divide-y divide-gray-200 hidden sm:table">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Select</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <input
+                        type="checkbox"
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        checked={selectedUsers.length === extendUsers.length && extendUsers.length > 0}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedUsers(extendUsers.map(u => u.id));
+                          } else {
+                            setSelectedUsers([]);
+                          }
+                        }}
+                      />
+                    </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pending Tasks</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredLeaveUsers?.map((user) => (
+                  {extendUsers?.map((user) => (
                     <tr key={user.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <input
@@ -2893,6 +2966,13 @@ const resetUserForm = () => {
                   ))}
                 </tbody>
               </table>
+              {/* Infinite Scroll Loading Indicator for Extend Task Tab */}
+              {extendPagination.loadingMore && extendPagination.hasMore && (
+                <div className="text-center py-4 bg-white border-t border-gray-100">
+                  <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-purple-500"></div>
+                  <p className="text-purple-600 text-sm mt-1">Loading more users...</p>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -2925,7 +3005,7 @@ const resetUserForm = () => {
             )}
 
             {!loading && (
-              <div className="h-[calc(100vh-275px)] overflow-auto" style={{ maxHeight: 'calc(100vh - 220px)' }}>
+              <div className="h-[calc(100vh-320px)] overflow-auto custom-scrollbar" style={{ maxHeight: 'calc(100vh - 300px)' }}>
                 {/* Mobile Card View */}
                 <div className="sm:hidden space-y-3 p-3">
                   {filteredMachines && filteredMachines.length > 0 ? (

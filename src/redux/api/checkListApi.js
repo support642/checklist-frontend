@@ -1,7 +1,7 @@
 // checkListApi.js
 import { authFetch } from "../../utils/authFetch";
 // const BASE_URL = "http://localhost:5050/api/checklist";
-const BASE_URL = `${import.meta.env.VITE_API_BASE_URL}/checklist`;
+const BASE_URL = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5050/api'}/checklist`;
 
 // =======================================================
 // 1️⃣ Fetch Pending Checklist (AWS Backend)
@@ -45,58 +45,37 @@ export const fetchChechListDataSortByDate = async (page = 1, search = '', status
 // =======================================================
 // 2️⃣ Fetch Checklist History (AWS Backend)
 // =======================================================
-export const fetchChechListDataForHistory = async (search = "", name = 'all', division = 'all', departmentFilter = 'all') => {
+export const fetchChechListDataForHistory = async (page = 1, search = "", startDate = "", endDate = "", name = 'all', division = 'all', departmentFilter = 'all', approvalStatus = 'all') => {
   const username = localStorage.getItem("user-name");
   const role = localStorage.getItem("role");
   const department = localStorage.getItem("department");
   const unit = localStorage.getItem("unit");
   const divisionLocal = localStorage.getItem("division");
-  const PAGE_SIZE = 50;
+  const limit = 50;
 
-  const encodedSearch = encodeURIComponent(search);
-  let baseUrl = `${BASE_URL}/history?page=1&username=${username}&role=${role}&department=${department}&unit=${unit}&division=${divisionLocal}&search=${encodedSearch}`;
+  let url = `${BASE_URL}/history?page=${page}&limit=${limit}&username=${username}&role=${role}&department=${department}&unit=${unit}&division=${divisionLocal}&search=${encodeURIComponent(search)}`;
 
-  if (name !== 'all') baseUrl += `&nameFilter=${encodeURIComponent(name)}`;
-  if (division !== 'all') baseUrl += `&divisionFilter=${encodeURIComponent(division)}`;
-  if (departmentFilter !== 'all') baseUrl += `&departmentFilter=${encodeURIComponent(departmentFilter)}`;
+  if (name !== 'all') url += `&nameFilter=${encodeURIComponent(name)}`;
+  if (division !== 'all') url += `&divisionFilter=${encodeURIComponent(division)}`;
+  if (departmentFilter !== 'all') url += `&departmentFilter=${encodeURIComponent(departmentFilter)}`;
+  if (startDate) url += `&startDate=${startDate}`;
+  if (endDate) url += `&endDate=${endDate}`;
+  if (approvalStatus !== 'all') url += `&approvalStatus=${approvalStatus}`;
 
-  // Fetch page 1 to get totalCount
-  const firstRes = await authFetch(baseUrl);
+  const response = await authFetch(url);
 
-  if (!firstRes.ok) {
-    const contentType = firstRes.headers.get("content-type");
+  if (!response.ok) {
+    const contentType = response.headers.get("content-type");
     if (contentType && contentType.includes("application/json")) {
-      const errJson = await firstRes.json();
-      throw new Error(errJson.error || `Server error ${firstRes.status}`);
+      const errJson = await response.json();
+      throw new Error(errJson.error || `Server error ${response.status}`);
     } else {
-      throw new Error(`Server returned non-JSON response (${firstRes.status}). Check API URL/Port.`);
+      throw new Error(`Server returned non-JSON response (${response.status}).`);
     }
   }
 
-  const contentType = firstRes.headers.get("content-type");
-  if (!contentType || !contentType.includes("application/json")) {
-    throw new Error("Expected JSON response but received HTML/Text. Check API configuration.");
-  }
-
-  const firstJson = await firstRes.json();
-  const totalCount = firstJson.totalCount || 0;
-  const approvedCount = firstJson.approvedCount || 0;
-  let allData = firstJson.data || [];
-
-  // Fetch remaining pages in parallel
-  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
-  if (totalPages > 1) {
-    const remaining = await Promise.all(
-      Array.from({ length: totalPages - 1 }, (_, i) =>
-        authFetch(`${baseUrl.replace('page=1', `page=${i + 2}`)}`)
-          .then(r => r.json())
-          .then(j => j.data || [])
-      )
-    );
-    allData = [...allData, ...remaining.flat()];
-  }
-
-  return { data: allData, totalCount, approvedCount };
+  const json = await response.json();
+  return json; // { data, totalCount, approvedCount, pendingCount, totalPages, page }
 };
 
 
@@ -122,6 +101,7 @@ export const updateChecklistData = async (submissionData) => {
     throw error;
   }
 };
+
 
 // =======================================================
 // 4️⃣ Admin Done API (AWS Backend)

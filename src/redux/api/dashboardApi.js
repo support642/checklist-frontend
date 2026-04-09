@@ -220,7 +220,10 @@ export const fetchStaffTasksDataApi = async (
   tillDate = "",
   startDate = "",
   endDate = "",
-  search = ""
+  search = "",
+  selectedDepartment = "all",
+  selectedDivision = "all",
+  selectedUnit = "all"
 ) => {
   staffFilter = getFinalStaffFilter(staffFilter);
 
@@ -241,6 +244,11 @@ export const fetchStaffTasksDataApi = async (
     division,
     department
   });
+
+  // Add user-selected filters (from dropdown) — override scope if explicitly chosen
+  if (selectedDepartment && selectedDepartment !== "all") params.append('selectedDepartment', selectedDepartment);
+  if (selectedDivision && selectedDivision !== "all") params.append('selectedDivision', selectedDivision);
+  if (selectedUnit && selectedUnit !== "all") params.append('selectedUnit', selectedUnit);
 
   // Add monthYear if provided
   if (monthYear) {
@@ -264,7 +272,18 @@ export const fetchStaffTasksDataApi = async (
   return await res.json();
 };
 
-export const getStaffTasksCountApi = async (dashboardType, staffFilter = "all", search = "") => {
+export const getStaffTasksCountApi = async (
+  dashboardType,
+  staffFilter = "all",
+  search = "",
+  monthYear = "",
+  tillDate = "",
+  startDate = "",
+  endDate = "",
+  selectedDepartment = "all",
+  selectedDivision = "all",
+  selectedUnit = "all"
+) => {
   staffFilter = getFinalStaffFilter(staffFilter);
   const role = localStorage.getItem("role");
   const username = localStorage.getItem("user-name");
@@ -283,6 +302,13 @@ export const getStaffTasksCountApi = async (dashboardType, staffFilter = "all", 
   });
 
   if (search) params.append('search', search);
+  if (monthYear) params.append('monthYear', monthYear);
+  if (tillDate) params.append('tillDate', tillDate);
+  if (startDate) params.append('startDate', startDate);
+  if (endDate) params.append('endDate', endDate);
+  if (selectedDepartment && selectedDepartment !== "all") params.append('selectedDepartment', selectedDepartment);
+  if (selectedDivision && selectedDivision !== "all") params.append('selectedDivision', selectedDivision);
+  if (selectedUnit && selectedUnit !== "all") params.append('selectedUnit', selectedUnit);
 
   const res = await authFetch(
     `${BASE_URL1}/count?${params.toString()}`

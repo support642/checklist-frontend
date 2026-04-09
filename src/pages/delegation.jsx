@@ -537,7 +537,7 @@ function DelegationDataPage() {
                     </th>
                     <th className="w-32 px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
                     <th className="w-64 px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Remark/Action</th>
-                    <th className="w-80 px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Description</th>
+                    <th className="w-80 px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider min-w-[250px]">Description</th>
                     <th className="w-40 px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Name</th>
                     <th className="w-32 px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Given</th>
                     <th className="w-32 px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Unit</th>

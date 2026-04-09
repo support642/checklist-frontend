@@ -14,6 +14,8 @@ export default function StaffTasksTable({
   dashboardType,
   dashboardStaffFilter,
   departmentFilter,
+  divisionFilter,
+  unitFilter,
   parseTaskStartDate,
   startDate,
   endDate
@@ -22,7 +24,12 @@ export default function StaffTasksTable({
   const [isLoading, setIsLoading] = useState(false)
   const [totalStaffCount, setTotalStaffCount] = useState(0)
   const [totalUsersCount, setTotalUsersCount] = useState(0)
-  const [selectedMonthYear, setSelectedMonthYear] = useState("")
+  const [selectedMonthYear, setSelectedMonthYear] = useState(() => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}`;
+  })
   const [tillDate, setTillDate] = useState(new Date().toLocaleDateString('en-CA'))
   const [monthYearOptions, setMonthYearOptions] = useState([])
   
@@ -75,10 +82,27 @@ export default function StaffTasksTable({
   // Reset page when filters change
   useEffect(() => {
     setDashboardPage(1);
-  }, [dashboardType, dashboardStaffFilter, departmentFilter, selectedMonthYear, tillDate, startDate, endDate, debouncedSearch]);
+  }, [dashboardType, dashboardStaffFilter, departmentFilter, divisionFilter, unitFilter, selectedMonthYear, tillDate, startDate, endDate, debouncedSearch]);
 
   // Module permission flags
   const hasMaintenanceAccess = hasSystemAccess('maintenance');
+
+  // Sync local month and till-date filters with parent date range filters
+  useEffect(() => {
+    if (startDate && endDate) {
+      // If a parent date range is selected, update sub-filters to match
+      const [year, month] = startDate.split('-').slice(0, 2);
+      setSelectedMonthYear(`${year}-${month}`);
+      setTillDate(endDate);
+    } else if (startDate === "" && endDate === "") {
+      // If parent range is explicitly cleared (Reset), revert to defaults
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      setSelectedMonthYear(`${year}-${month}`);
+      setTillDate(new Date().toLocaleDateString('en-CA'));
+    }
+  }, [startDate, endDate]);
 
   // Sync report range with props
   useEffect(() => {
@@ -681,12 +705,26 @@ const loadStaffData = useCallback(async () => {
       tillDate,
       startDate,
       endDate,
-      debouncedSearch
+      debouncedSearch,
+      departmentFilter,
+      divisionFilter,
+      unitFilter
     )
 
-    // Get total counts respecting search
+    // Get total counts respecting search and dates
     const [staffCount, usersCount] = await Promise.all([
-      getStaffTasksCountApi(dashboardType, dashboardStaffFilter, debouncedSearch),
+      getStaffTasksCountApi(
+        dashboardType, 
+        dashboardStaffFilter, 
+        debouncedSearch,
+        selectedMonthYear,
+        tillDate,
+        startDate,
+        endDate,
+        departmentFilter,
+        divisionFilter,
+        unitFilter
+      ),
       getTotalUsersCountApi()
     ]);
     setTotalStaffCount(staffCount)
@@ -704,7 +742,7 @@ const loadStaffData = useCallback(async () => {
   } finally {
     setIsLoading(false)
   }
-}, [dashboardType, dashboardStaffFilter, departmentFilter, selectedMonthYear, tillDate, startDate, endDate, dashboardPage, debouncedSearch])
+}, [dashboardType, dashboardStaffFilter, departmentFilter, divisionFilter, unitFilter, selectedMonthYear, tillDate, startDate, endDate, dashboardPage, debouncedSearch])
 
   // Initial load when component mounts or dependencies change
   useEffect(() => {

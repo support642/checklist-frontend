@@ -14,8 +14,8 @@ export const delegationData = createAsyncThunk(
 
 export const delegationDoneData = createAsyncThunk(
   "delegation/fetchDone",
-  async ({ search = "", startDate = "", endDate = "", name = 'all', division = 'all', departmentFilter = 'all' } = {}) => {
-    return await fetchDelegation_DoneDataSortByDate(search, startDate, endDate, name, division, departmentFilter);
+  async ({ page = 1, search = "", startDate = "", endDate = "", name = 'all', division = 'all', departmentFilter = 'all', approvalStatus = 'all' } = {}) => {
+    return await fetchDelegation_DoneDataSortByDate(page, search, startDate, endDate, name, division, departmentFilter, approvalStatus);
   }
 );
 
@@ -33,6 +33,9 @@ const delegationSlice = createSlice({
     delegation_done: [],
     delegationTotalCount: 0,
     delegationApprovedCount: 0,
+    delegationPendingCount: 0,
+    delegationTotalPages: 0,
+    delegationCurrentPage: 1,
     loading: false,
     error: null,
   },
@@ -61,6 +64,9 @@ const delegationSlice = createSlice({
         state.delegation_done = action.payload.data;
         state.delegationTotalCount = parseInt(action.payload.totalCount) || 0;
         state.delegationApprovedCount = parseInt(action.payload.approvedCount) || 0;
+        state.delegationPendingCount = parseInt(action.payload.pendingCount) || 0;
+        state.delegationTotalPages = parseInt(action.payload.totalPages) || 0;
+        state.delegationCurrentPage = parseInt(action.payload.page) || 1;
       })
       .addCase(delegationDoneData.rejected, (state) => {
         state.loading = false;

@@ -257,28 +257,63 @@ const EmployeePerformanceReportModal = ({
               </thead>
               <tbody>
                 {allSortedTasks.length > 0 ? (
-                  allSortedTasks.map((task, idx) => (
-                    <React.Fragment key={idx}>
-                      {/* Frequency Separator Row */}
-                      {idx > 0 && allSortedTasks[idx - 1].displayFrequency !== task.displayFrequency && (
-                        <tr className="bg-gray-100/50 h-2">
-                          <td colSpan="4" className="border-x border-gray-300"></td>
+                  allSortedTasks.map((task, idx) => {
+                    // Row background tint per task type
+                    const rowBg =
+                      task.displayType === 'Checklist' ? 'bg-blue-50/40' :
+                      task.displayType === 'Delegation' ? 'bg-purple-50/40' :
+                      task.displayType === 'Maintenance' ? 'bg-orange-50/40' : '';
+
+                    // Task type badge styles
+                    const typeBadge =
+                      task.displayType === 'Checklist'
+                        ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                        : task.displayType === 'Delegation'
+                        ? 'bg-purple-100 text-purple-700 border border-purple-200'
+                        : task.displayType === 'Maintenance'
+                        ? 'bg-orange-100 text-orange-700 border border-orange-200'
+                        : 'bg-gray-100 text-gray-600 border border-gray-200';
+
+                    // Frequency badge styles
+                    const freq = (task.displayFrequency || '').toUpperCase();
+                    const freqBadge =
+                      freq === 'DAILY'
+                        ? 'bg-green-100 text-green-700 border border-green-200'
+                        : freq === 'WEEKLY'
+                        ? 'bg-teal-100 text-teal-700 border border-teal-200'
+                        : freq === 'MONTHLY'
+                        ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
+                        : freq === 'ONE TIME'
+                        ? 'bg-amber-100 text-amber-700 border border-amber-200'
+                        : 'bg-gray-100 text-gray-500 border border-gray-200';
+
+                    return (
+                      <React.Fragment key={idx}>
+                        {/* Frequency separator row */}
+                        {idx > 0 && allSortedTasks[idx - 1].displayFrequency !== task.displayFrequency && (
+                          <tr className="bg-gray-100/60 h-2">
+                            <td colSpan="4" className="border-x border-gray-300"></td>
+                          </tr>
+                        )}
+                        <tr className={`h-8 hover:brightness-95 transition-colors border-b border-gray-200 ${rowBg}`}>
+                          <td className="border border-gray-300 text-center font-medium text-gray-500">{idx + 1}</td>
+                          <td className="border border-gray-300 px-2 py-1 text-center">
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-tight ${typeBadge}`}>
+                              {task.displayType}
+                            </span>
+                          </td>
+                          <td className="border border-gray-300 px-3 py-1 text-gray-700 leading-tight font-medium">
+                            {task.task_description || 'N/A'}
+                          </td>
+                          <td className="border border-gray-300 px-2 py-1 text-center">
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-tight ${freqBadge}`}>
+                              {task.displayFrequency}
+                            </span>
+                          </td>
                         </tr>
-                      )}
-                      <tr className="h-8 hover:bg-gray-50 transition-colors border-b border-gray-200">
-                        <td className="border border-gray-300 text-center font-medium text-gray-800">{idx + 1}</td>
-                        <td className="border border-gray-300 px-2 py-1 text-center font-bold text-gray-600 uppercase tracking-tighter">
-                          {task.displayType}
-                        </td>
-                        <td className="border border-gray-300 px-3 py-1 text-gray-700 leading-tight font-medium">
-                          {task.task_description || "N/A"}
-                        </td>
-                        <td className="border border-gray-300 px-2 py-1 text-center text-gray-600 font-bold uppercase">
-                          {task.displayFrequency}
-                        </td>
-                      </tr>
-                    </React.Fragment>
-                  ))
+                      </React.Fragment>
+                    );
+                  })
                 ) : (
                   <tr>
                     <td colSpan="4" className="p-8 text-center text-gray-400 italic">No tasks found for this period</td>

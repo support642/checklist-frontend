@@ -117,14 +117,17 @@ const RequestForm = () => {
     const fetchData = async () => {
       try {
         const [usersRes, machinesRes] = await Promise.all([
-          authFetch(`${import.meta.env.VITE_API_BASE_URL}/settings/users`),
+          authFetch(`${import.meta.env.VITE_API_BASE_URL}/settings/users?limit=1000`),
           authFetch(`${import.meta.env.VITE_API_BASE_URL}/settings/machines`)
         ]);
 
         if (usersRes.ok && machinesRes.ok) {
           const usersData = await usersRes.json();
           const machinesData = await machinesRes.json();
-          setUsers(usersData.map(u => u.user_name).sort());
+          
+          // API now returns { users: [], totalCount: ... } after pagination update
+          const userList = Array.isArray(usersData) ? usersData : (usersData.users || []);
+          setUsers(userList.map(u => u.user_name).sort());
           setAllMachines(machinesData);
         }
       } catch (err) {

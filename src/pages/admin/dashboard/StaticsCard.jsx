@@ -115,7 +115,7 @@ export default function StatisticsCards({
     <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
       {/* Left side - Statistics Cards */}
       <div className="lg:w-1/2">
-        <div className="grid grid-cols-3 sm:grid-cols-2 gap-3 sm:gap-4 justify-center">
+        <div className="grid grid-cols-2 sm:grid-cols-2 gap-3 sm:gap-4 justify-center">
 
           {/* Total Tasks - Updated description for date range */}
           <div 
@@ -217,36 +217,30 @@ export default function StatisticsCards({
             </div>
           </div>
 
-          {/* Not Done Tasks / Completed Twice */}
+          {/* Not Done Tasks - only shown for Delegation as "Completed Twice" */}
+          {dashboardType === "delegation" && (
           <div
             onClick={() => handleCardClick("not_done", 
-              dashboardType === 'delegation'
-                ? (hasPageAccess('admin_approval') ? '/dashboard/history?tab=delegation' : '/dashboard/delegation')
-                : "/dashboard/data/sales"
+              hasPageAccess('admin_approval') ? '/dashboard/history?tab=delegation' : '/dashboard/delegation'
             )}
             className="rounded-lg border border-l-4 border-l-gray-500 shadow-md hover:shadow-lg transition-all bg-white cursor-pointer"
           >
             <div className="flex flex-row items-center justify-between space-y-0 pb-2 bg-gradient-to-r from-gray-50 to-gray-100 rounded-tr-lg p-3 sm:p-4">
               <h3 className="text-xs sm:text-sm font-medium text-gray-700">
-                {dashboardType === "delegation" ? "Completed Twice" : "Not Done"}
+                Completed Twice
               </h3>
-              <CheckCircle2 className={`h-3 w-3 sm:h-4 sm:w-4 ${dashboardType === "delegation" ? "text-gray-500" : "text-gray-500"}`} />
+              <CheckCircle2 className="h-3 w-3 sm:h-4 sm:w-4 text-gray-500" />
             </div>
             <div className="p-3 sm:p-4">
               <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-700">
-                {dashboardType === "delegation" ? completedRatingTwo : notDoneTask}
+                {completedRatingTwo}
               </div>
               <p className="text-xs text-gray-600">
-                {dateRange ? (
-                  dashboardType === "delegation" ? "Completed twice in period" : "Not done in period"
-                ) : dashboardType === "delegation" ? (
-                  "Rating 2 tasks"
-                ) : (
-                  "Absent Day's tasks"
-                )}
+                {dateRange ? "Completed twice in period" : "Rating 2 tasks"}
               </p>
             </div>
           </div>
+          )}
 
           {/* Overdue Tasks / Completed 3+ Times */}
           <div 
@@ -255,7 +249,7 @@ export default function StatisticsCards({
                 ? (hasPageAccess('admin_approval') ? '/dashboard/history?tab=delegation' : '/dashboard/delegation')
                 : '/dashboard/data/sales'
             )}
-            className="rounded-lg border border-l-4 border-l-red-500 shadow-md hover:shadow-lg transition-all bg-white sm:col-span-2 lg:col-span-1 col-span-2 cursor-pointer"
+            className="rounded-lg border border-l-4 border-l-red-500 shadow-md hover:shadow-lg transition-all bg-white cursor-pointer"
           >
             <div className="flex flex-row items-center justify-between space-y-0 pb-2 bg-gradient-to-r from-red-50 to-red-100 rounded-tr-lg p-3 sm:p-4">
               <h3 className="text-xs sm:text-sm font-medium text-red-700">

@@ -24,9 +24,8 @@ export const checklistData = createAsyncThunk(
 // ============================================================
 export const checklistHistoryData = createAsyncThunk(
   "fetch/history",
-  async ({ search = "", name = 'all', division = 'all', departmentFilter = 'all' } = {}) => {
-    const { data, totalCount, approvedCount } = await fetchChechListDataForHistory(search, name, division, departmentFilter);
-    return { data, totalCount, approvedCount };
+  async ({ page = 1, search = "", startDate = "", endDate = "", name = 'all', division = 'all', departmentFilter = 'all', approvalStatus = 'all' } = {}) => {
+    return await fetchChechListDataForHistory(page, search, startDate, endDate, name, division, departmentFilter, approvalStatus);
   }
 );
 
@@ -69,6 +68,8 @@ const checkListSlice = createSlice({
     currentPage: 1,
     historyTotalCount: 0,
     historyApprovedCount: 0,
+    historyPendingCount: 0,
+    historyTotalPages: 0,
   },
 
   reducers: {},
@@ -117,6 +118,8 @@ const checkListSlice = createSlice({
         state.history = action.payload.data;
         state.historyTotalCount = parseInt(action.payload.totalCount) || 0;
         state.historyApprovedCount = parseInt(action.payload.approvedCount) || 0;
+        state.historyPendingCount = parseInt(action.payload.pendingCount) || 0;
+        state.historyTotalPages = parseInt(action.payload.totalPages) || 0;
       })
 
       .addCase(checklistHistoryData.rejected, (state, action) => {

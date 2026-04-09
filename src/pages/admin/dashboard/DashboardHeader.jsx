@@ -129,12 +129,21 @@ export default function DashboardHeader({
   setDivisionFilter,
   availableDivisions,
   isLoadingMore,
-  onDateRangeChange // Add this prop to handle date range selection
+  startDate: propStartDate = "",
+  endDate: propEndDate = "",
+  onDateRangeChange, // Add this prop to handle date range selection
+  onResetFilters // Add this prop to handle resetting all filters
 }) {
   const [totalUsersCount, setTotalUsersCount] = useState(0)
   const [showDateRangePicker, setShowDateRangePicker] = useState(false)
-  const [startDate, setStartDate] = useState("")
-  const [endDate, setEndDate] = useState("")
+  const [startDate, setStartDate] = useState(propStartDate)
+  const [endDate, setEndDate] = useState(propEndDate)
+
+  // Sync internal state with props (useful for Reset action)
+  useEffect(() => {
+    setStartDate(propStartDate);
+    setEndDate(propEndDate);
+  }, [propStartDate, propEndDate]);
 
   // Fetch total users count
   useEffect(() => {
@@ -176,6 +185,16 @@ export default function DashboardHeader({
     }
     setShowDateRangePicker(false)
   }
+
+  // Handle global reset
+  const handleResetAll = () => {
+    setStartDate("");
+    setEndDate("");
+    setShowDateRangePicker(false);
+    if (onResetFilters) {
+      onResetFilters();
+    }
+  };
 
   // Get today's date in YYYY-MM-DD format for max date
   const getTodayDate = () => {
@@ -316,6 +335,16 @@ export default function DashboardHeader({
               <option value={username || ""}>{username || "Current User"}</option>
             </select>
           )}
+
+          {/* Reset All Button */}
+          {isAdmin && (
+            <button
+              onClick={handleResetAll}
+              className="w-full rounded-md border border-purple-200 bg-purple-50 p-2 text-sm font-bold text-purple-600 hover:bg-purple-100 transition-colors"
+            >
+              Reset
+            </button>
+          )}
         </div>
       </div>
 
@@ -441,6 +470,18 @@ export default function DashboardHeader({
             >
               <option value={username || ""}>{username || "Current User"}</option>
             </select>
+          )}
+
+          {/* Reset All Button */}
+          {isAdmin && (
+            <div className="flex items-center">
+              <button
+                onClick={handleResetAll}
+                className="w-full rounded-md border border-purple-200 bg-purple-50 p-2 text-sm font-bold text-purple-600 hover:bg-purple-100 transition-colors whitespace-nowrap px-4"
+              >
+                Reset
+              </button>
+            </div>
           )}
         </div>
       </div>

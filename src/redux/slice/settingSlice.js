@@ -22,10 +22,25 @@ import {
 
 export const userDetails = createAsyncThunk(
   'fetch/user',
-  async () => {
-    const user = await fetchUserDetailsApi();
+  async ({ page = 1, limit = 50, search = '' } = {}) => {
+    const data = await fetchUserDetailsApi(page, limit, search);
+    return { ...data, search };
+  }
+);
 
-    return user;
+export const leaveUserDetails = createAsyncThunk(
+  'fetch/leave-user',
+  async ({ page = 1, limit = 50, search = '' } = {}) => {
+    const data = await fetchUserDetailsApi(page, limit, search);
+    return { ...data, search };
+  }
+);
+
+export const extendUserDetails = createAsyncThunk(
+  'fetch/extend-user',
+  async ({ page = 1, limit = 50, search = '' } = {}) => {
+    const data = await fetchUserDetailsApi(page, limit, search);
+    return { ...data, search };
   }
 );
 
@@ -142,22 +157,170 @@ const settingsSlice = createSlice({
     error: null,
     loading: false,
     isLoggedIn: false,
+    pagination: {
+      currentPage: 1,
+      totalPages: 0,
+      totalCount: 0,
+      hasMore: true,
+      loadingMore: false,
+      searchQuery: ''
+    },
+    // Independent states for Leave and Extend tabs
+    leaveUsers: [],
+    leavePagination: {
+      currentPage: 1,
+      totalPages: 0,
+      totalCount: 0,
+      hasMore: true,
+      loadingMore: false,
+      searchQuery: ''
+    },
+    extendUsers: [],
+    extendPagination: {
+      currentPage: 1,
+      totalPages: 0,
+      totalCount: 0,
+      hasMore: true,
+      loadingMore: false,
+      searchQuery: ''
+    }
   },
-  reducers: {},
+  reducers: {
+    resetUserData: (state) => {
+      state.userData = [];
+      state.pagination = {
+        currentPage: 1,
+        totalPages: 0,
+        totalCount: 0,
+        hasMore: true,
+        loadingMore: false,
+        searchQuery: ''
+      };
+    },
+    resetLeaveUserData: (state) => {
+      state.leaveUsers = [];
+      state.leavePagination = {
+        currentPage: 1,
+        totalPages: 0,
+        totalCount: 0,
+        hasMore: true,
+        loadingMore: false,
+        searchQuery: ''
+      };
+    },
+    resetExtendUserData: (state) => {
+      state.extendUsers = [];
+      state.extendPagination = {
+        currentPage: 1,
+        totalPages: 0,
+        totalCount: 0,
+        hasMore: true,
+        loadingMore: false,
+        searchQuery: ''
+      };
+    }
+  },
   extraReducers: (builder) => {
     builder
-      .addCase(userDetails.pending, (state) => {
-        state.loading = true;
+      .addCase(userDetails.pending, (state, action) => {
+        if (action.meta.arg?.page > 1) {
+          state.pagination.loadingMore = true;
+        } else {
+          state.loading = true;
+        }
         state.error = null;
       })
       .addCase(userDetails.fulfilled, (state, action) => {
         state.loading = false;
-        state.userData = action.payload;
+        state.pagination.loadingMore = false;
+        
+        const { users, totalCount, page, totalPages, search } = action.payload;
+        
+        state.pagination.currentPage = page;
+        state.pagination.totalCount = totalCount;
+        state.pagination.totalPages = totalPages;
+        state.pagination.searchQuery = search || '';
+        state.pagination.hasMore = page < totalPages;
 
+        if (page === 1) {
+          state.userData = users;
+        } else {
+          // Append unique users only
+          const existingIds = new Set(state.userData.map(u => u.id));
+          const newUsers = users.filter(u => !existingIds.has(u.id));
+          state.userData = [...state.userData, ...newUsers];
+        }
+        state.pagination.totalPages = totalPages;
+        state.pagination.hasMore = page < totalPages;
       })
       .addCase(userDetails.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload;
+        state.pagination.loadingMore = false;
+        state.error = action.error.message;
+      })
+      
+      // Leave User Details
+      .addCase(leaveUserDetails.pending, (state, action) => {
+        if (action.meta.arg?.page > 1) {
+          state.leavePagination.loadingMore = true;
+        } else {
+          state.loading = true;
+        }
+        state.error = null;
+      })
+      .addCase(leaveUserDetails.fulfilled, (state, action) => {
+        state.loading = false;
+        state.leavePagination.loadingMore = false;
+        const { users, totalCount, page, totalPages, search } = action.payload;
+        state.leavePagination.currentPage = page;
+        state.leavePagination.totalCount = totalCount;
+        state.leavePagination.totalPages = totalPages;
+        state.leavePagination.searchQuery = search || '';
+        state.leavePagination.hasMore = page < totalPages;
+        if (page === 1) {
+          state.leaveUsers = users;
+        } else {
+          const existingIds = new Set(state.leaveUsers.map(u => u.id));
+          const newUsers = users.filter(u => !existingIds.has(u.id));
+          state.leaveUsers = [...state.leaveUsers, ...newUsers];
+        }
+      })
+      .addCase(leaveUserDetails.rejected, (state, action) => {
+        state.loading = false;
+        state.leavePagination.loadingMore = false;
+        state.error = action.error.message;
+      })
+
+      // Extend User Details
+      .addCase(extendUserDetails.pending, (state, action) => {
+        if (action.meta.arg?.page > 1) {
+          state.extendPagination.loadingMore = true;
+        } else {
+          state.loading = true;
+        }
+        state.error = null;
+      })
+      .addCase(extendUserDetails.fulfilled, (state, action) => {
+        state.loading = false;
+        state.extendPagination.loadingMore = false;
+        const { users, totalCount, page, totalPages, search } = action.payload;
+        state.extendPagination.currentPage = page;
+        state.extendPagination.totalCount = totalCount;
+        state.extendPagination.totalPages = totalPages;
+        state.extendPagination.searchQuery = search || '';
+        state.extendPagination.hasMore = page < totalPages;
+        if (page === 1) {
+          state.extendUsers = users;
+        } else {
+          const existingIds = new Set(state.extendUsers.map(u => u.id));
+          const newUsers = users.filter(u => !existingIds.has(u.id));
+          state.extendUsers = [...state.extendUsers, ...newUsers];
+        }
+      })
+      .addCase(extendUserDetails.rejected, (state, action) => {
+        state.loading = false;
+        state.extendPagination.loadingMore = false;
+        state.error = action.error.message;
       })
       .addCase(departmentDetails.pending, (state) => {
         state.loading = true;
@@ -328,5 +491,7 @@ const settingsSlice = createSlice({
 
   },
 });
+
+export const { resetUserData, resetLeaveUserData, resetExtendUserData } = settingsSlice.actions;
 
 export default settingsSlice.reducer;

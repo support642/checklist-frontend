@@ -47,9 +47,8 @@ export const maintenanceData = createAsyncThunk(
 // ============================================================
 export const maintenanceHistoryData = createAsyncThunk(
     "fetch/maintenanceHistory",
-    async ({ search = "", startDate = "", endDate = "", name = 'all', division = 'all', departmentFilter = 'all' } = {}) => {
-        const { data, totalCount, approvedCount } = await fetchMaintenanceDataForHistory(search, startDate, endDate, name, division, departmentFilter);
-        return { data, totalCount, approvedCount };
+    async ({ page = 1, search = "", startDate = "", endDate = "", name = 'all', division = 'all', departmentFilter = 'all', approvalStatus = 'all' } = {}) => {
+        return await fetchMaintenanceDataForHistory(page, search, startDate, endDate, name, division, departmentFilter, approvalStatus);
     }
 );
 
@@ -152,6 +151,9 @@ const maintenanceSlice = createSlice({
         pendingTotalCount: 0,
         historyTotalCount: 0,
         historyApprovedCount: 0,
+        historyPendingCount: 0,
+        historyTotalPages: 0,
+        historyCurrentPage: 1,
         uniqueMaintenancePage: 0,
         uniqueMaintenanceTotal: 0,
         // Discrete count for header summary
@@ -210,6 +212,9 @@ const maintenanceSlice = createSlice({
                 state.history = action.payload.data;
                 state.historyTotalCount = parseInt(action.payload.totalCount) || 0;
                 state.historyApprovedCount = parseInt(action.payload.approvedCount) || 0;
+                state.historyPendingCount = parseInt(action.payload.pendingCount) || 0;
+                state.historyTotalPages = parseInt(action.payload.totalPages) || 0;
+                state.historyCurrentPage = parseInt(action.payload.page) || 1;
             })
 
             .addCase(maintenanceHistoryData.rejected, (state, action) => {

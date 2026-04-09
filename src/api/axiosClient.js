@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create a custom axios instance
 export const axiosClient = axios.create({
-    baseURL: 'http://localhost:5050/api', // Match the backend server URL
+    baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5050/api', // Match the backend server URL
     headers: {
         'Content-Type': 'application/json',
     },
@@ -28,8 +28,8 @@ axiosClient.interceptors.response.use(
     (error) => {
         // Example: Handle 401 Unauthorized globally
         if (error.response && error.response.status === 401) {
-            console.error('Unauthorized access. Redirecting to login...');
-            // window.location.href = '/login';
+            window.location.href = '/login';
+            localStorage.clear(); // Clear local storage too to be safe.
         }
         return Promise.reject(error);
     }

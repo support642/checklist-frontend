@@ -1,8 +1,8 @@
 // API BASE URL
 import { authFetch } from "../../utils/authFetch";
 // const API_BASE = "http://localhost:5050/api";
-// const API_BASE = `${import.meta.env.VITE_API_BASE_URL}/tasks`;
-const API_BASE = `${import.meta.env.VITE_API_BASE_URL}`;
+// const API = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5050/api'}`;/tasks`;
+const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5050/api'}`;
 
 
 // =========================

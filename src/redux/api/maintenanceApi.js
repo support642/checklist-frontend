@@ -45,46 +45,31 @@ export const fetchMaintenanceDataSortByDate = async (page = 1, search = '', star
 // =======================================================
 // 2️⃣ Fetch Maintenance History
 // =======================================================
-export const fetchMaintenanceDataForHistory = async (search = "", startDate = "", endDate = "", name = 'all', division = 'all', departmentFilter = 'all') => {
+export const fetchMaintenanceDataForHistory = async (page = 1, search = "", startDate = "", endDate = "", name = 'all', division = 'all', departmentFilter = 'all', approvalStatus = 'all') => {
     const username = localStorage.getItem("user-name");
     const role = localStorage.getItem("role");
     const department = localStorage.getItem("department");
     const unit = localStorage.getItem("unit");
     const divisionLocal = localStorage.getItem("division");
-    const PAGE_SIZE = 50;
+    const limit = 50;
 
-    const encodedSearch = encodeURIComponent(search);
+    let url = `${BASE_URL}/history?page=${page}&limit=${limit}&username=${username}&role=${role}&department=${department}&unit=${unit}&division=${divisionLocal}&search=${encodeURIComponent(search)}`;
+    
+    if (startDate) url += `&startDate=${startDate}`;
+    if (endDate) url += `&endDate=${endDate}`;
+    if (name !== 'all') url += `&nameFilter=${encodeURIComponent(name)}`;
+    if (division !== 'all') url += `&divisionFilter=${encodeURIComponent(division)}`;
+    if (departmentFilter !== 'all') url += `&departmentFilter=${encodeURIComponent(departmentFilter)}`;
+    if (approvalStatus !== 'all') url += `&approvalStatus=${approvalStatus}`;
 
-    // Fetch page 1 to get totalCount
-    let baseUrl = `${BASE_URL}/history?page=1&username=${username}&role=${role}&department=${department}&unit=${unit}&division=${divisionLocal}&search=${encodedSearch}`;
-    if (startDate) baseUrl += `&startDate=${startDate}`;
-    if (endDate) baseUrl += `&endDate=${endDate}`;
-    if (name !== 'all') baseUrl += `&nameFilter=${encodeURIComponent(name)}`;
-    if (division !== 'all') baseUrl += `&divisionFilter=${encodeURIComponent(division)}`;
-    if (departmentFilter !== 'all') baseUrl += `&departmentFilter=${encodeURIComponent(departmentFilter)}`;
-
-    const firstRes = await authFetch(baseUrl);
-    const firstJson = await firstRes.json();
-    const totalCount = firstJson.totalCount || 0;
-    const approvedCount = firstJson.approvedCount || 0;
-    let allData = firstJson.data || [];
-
-    // Fetch remaining pages in parallel
-    const totalPages = Math.ceil(totalCount / PAGE_SIZE);
-    if (totalPages > 1) {
-        const remaining = await Promise.all(
-            Array.from({ length: totalPages - 1 }, (_, i) => {
-                const pUrl = baseUrl.replace('page=1', `page=${i + 2}`);
-                return authFetch(pUrl)
-                    .then(r => r.json())
-                    .then(j => j.data || []);
-            })
-        );
-        allData = [...allData, ...remaining.flat()];
+    const response = await authFetch(url);
+    if (!response.ok) {
+        const errJson = await response.json();
+        throw new Error(errJson.error || `Server error ${response.status}`);
     }
 
-    // NOTE: This logic loads all history chunks locally to match checklistApi behavior for exporting
-    return { data: allData, totalCount, approvedCount };
+    const json = await response.json();
+    return json; // { data, totalCount, approvedCount, pendingCount, totalPages, page }
 };
 
 // =======================================================
@@ -166,9 +151,6 @@ export const fetchMachineParts = async () => {
 // =======================================================
 // 6️⃣ Fetch Unique Maintenance Tasks (QuickTask Dashboard)
 // =======================================================
-// =======================================================
-// 6️⃣ Fetch Unique Maintenance Tasks (QuickTask Dashboard)
-// =======================================================
 export const fetchUniqueMaintenanceData = async (page = 0, pageSize = 50, nameFilter = "", freqFilter = "", userRole = "", userDept = "", userDiv = "", userName = "", deptFilter = "", divFilter = "") => {
     const res = await authFetch(`${BASE_URL}/unique`, {
         method: "POST",
@@ -213,6 +195,7 @@ export const updateUniqueMaintenanceTaskApi = async (updatedTask, originalTask) 
     });
     return res.json();
 };
+
 // =======================================================
 // 9️⃣ Send Maintenance Notification API
 // =======================================================

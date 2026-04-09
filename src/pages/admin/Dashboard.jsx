@@ -160,6 +160,40 @@ useEffect(() => {
 
 
 
+  // Reset all filters to default values
+  const resetAllFilters = () => {
+    setDivisionFilter("all");
+    setDepartmentFilter("all");
+    setUnitFilter("all");
+    setDashboardStaffFilter("all");
+    setDateRange({
+      startDate: "",
+      endDate: "",
+      filtered: false
+    });
+    
+    // Also re-apply role-based filters if needed
+    if (profile) {
+      if (userRole === "admin") {
+        if (profile.division) setDivisionFilter(profile.division);
+        if (profile.department && !profile.department.includes(",")) {
+          setDepartmentFilter(profile.department);
+        }
+      } else if (userRole === "div_admin") {
+        if (profile.division) setDivisionFilter(profile.division);
+      }
+    }
+    
+    // Reset local filters and search
+    setFilterStatus("all");
+    setFilterStaff("all");
+    setSearchQuery("");
+    
+    // Reset pagination
+    setCurrentPage(1);
+    setHasMoreData(true);
+  };
+
   // Handle date range change from DashboardHeader
   const handleDateRangeChange = (startDate, endDate) => {
     if (startDate && endDate) {
@@ -1304,7 +1338,10 @@ useEffect(() => {
               setDivisionFilter={setDivisionFilter}
               availableDivisions={availableDivisions}
               isLoadingMore={isLoadingMore}
+              startDate={dateRange.startDate}
+              endDate={dateRange.endDate}
               onDateRangeChange={handleDateRangeChange}
+              onResetFilters={resetAllFilters}
             />
 
             <StatisticsCards
@@ -1360,6 +1397,8 @@ useEffect(() => {
                       dashboardType={dashboardType}
                       dashboardStaffFilter={dashboardStaffFilter}
                       departmentFilter={departmentFilter}
+                      divisionFilter={divisionFilter}
+                      unitFilter={unitFilter}
                       parseTaskStartDate={parseTaskStartDate}
                       startDate={dateRange.startDate}
                       endDate={dateRange.endDate}

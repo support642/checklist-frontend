@@ -134,18 +134,22 @@ import { authFetch } from "../../utils/authFetch";
 
 
 // Dynamic Base URL for settings APIs
-const BASE_URL = `${import.meta.env.VITE_API_BASE_URL}/settings`;
+const BASE_URL = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5050/api'}/settings`;
 
 // =======================================================
 // 1️⃣ FETCH USERS
 // =======================================================
-export const fetchUserDetailsApi = async () => {
+export const fetchUserDetailsApi = async (page = 1, limit = 50, search = '') => {
   try {
-    const response = await authFetch(`${BASE_URL}/users`);
+    let url = `${BASE_URL}/users?page=${page}&limit=${limit}`;
+    if (search) {
+      url += `&search=${encodeURIComponent(search)}`;
+    }
+    const response = await authFetch(url);
     return await response.json();
   } catch (error) {
     console.log("Error fetching users", error);
-    return [];
+    return { users: [], totalCount: 0 };
   }
 };
 

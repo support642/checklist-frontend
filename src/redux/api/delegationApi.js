@@ -2,7 +2,7 @@ import { authAxios, createAuthAxios } from "../../utils/authAxios";
 import axios from "axios";
 import { createAsyncThunk } from "@reduxjs/toolkit";
 // const API = "http://localhost:5050/api";
-const API = `${import.meta.env.VITE_API_BASE_URL}`;
+const API = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5050/api'}`;
 
 const api = createAuthAxios({
   baseURL: API,
@@ -95,13 +95,14 @@ export const fetchDelegationDataSortByDate = async (startDate = "", endDate = ""
 };
 
 // FETCH DONE
-export const fetchDelegation_DoneDataSortByDate = async (search = "", startDate = "", endDate = "", name = 'all', division = 'all', departmentFilter = 'all') => {
+export const fetchDelegation_DoneDataSortByDate = async (page = 1, search = "", startDate = "", endDate = "", name = 'all', division = 'all', departmentFilter = 'all', approvalStatus = 'all') => {
   const role = localStorage.getItem("role");
   const username = localStorage.getItem("user-name");
   const userAccess = localStorage.getItem("user_access");
   const unit = localStorage.getItem("unit");
   const divisionLocal = localStorage.getItem("division");
   const department = localStorage.getItem("department");
+  const limit = 50;
 
   const { data } = await authAxios.get(`${API}/delegation-done`, {
     params: { 
@@ -116,7 +117,10 @@ export const fetchDelegation_DoneDataSortByDate = async (search = "", startDate 
       endDate,
       nameFilter: name,
       divisionFilter: division,
-      departmentFilter: departmentFilter
+      departmentFilter: departmentFilter,
+      page,
+      limit,
+      approvalStatus
     },
   });
 

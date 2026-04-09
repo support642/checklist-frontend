@@ -66,10 +66,35 @@ function HistoryPage() {
   const [fileModal, setFileModal] = useState({ isOpen: false, urls: [] })
   const [adminRemarks, setAdminRemarks] = useState({}) // New state for admin remarks
 
-  const { history, historyTotalCount, historyApprovedCount, loading } = useSelector((state) => state.checkList)
-  const { delegation_done, delegationTotalCount, delegationApprovedCount } = useSelector((state) => state.delegation)
+  const { 
+    history, 
+    historyTotalCount, 
+    historyApprovedCount, 
+    historyPendingCount, 
+    historyTotalPages,
+    loading 
+  } = useSelector((state) => state.checkList)
+  
+  const { 
+    delegation_done, 
+    delegationTotalCount, 
+    delegationApprovedCount,
+    delegationPendingCount,
+    delegationTotalPages,
+    delegationCurrentPage: delegationPageFromRedux
+  } = useSelector((state) => state.delegation)
+  
   const { doerName } = useSelector((state) => state.assignTask)
-  const { history: maintHistory, historyTotalCount: maintTotalCount, historyApprovedCount: maintApprovedCount, loading: maintLoading } = useSelector((state) => state.maintenance)
+  
+  const { 
+    history: maintHistory, 
+    historyTotalCount: maintTotalCount, 
+    historyApprovedCount: maintApprovedCount, 
+    historyPendingCount: maintPendingCount,
+    historyTotalPages: maintTotalPagesFromRedux,
+    historyCurrentPage: maintPageFromRedux,
+    loading: maintLoading 
+  } = useSelector((state) => state.maintenance)
   const dispatch = useDispatch()
   const [searchParams] = useSearchParams()
 
@@ -82,16 +107,49 @@ function HistoryPage() {
 
   useEffect(() => {
     const filters = {
+      page: currentPage,
       search: debouncedSearch,
+      startDate,
+      endDate,
       name: nameFilter,
       division: divisionFilter,
-      departmentFilter: departmentFilter
+      departmentFilter: departmentFilter,
+      approvalStatus: approvalStatusFilter
     }
     dispatch(checklistHistoryData(filters))
+  }, [dispatch, debouncedSearch, nameFilter, divisionFilter, departmentFilter, startDate, endDate, approvalStatusFilter, currentPage])
+
+  useEffect(() => {
+    const filters = {
+      page: delegationCurrentPage,
+      search: debouncedSearch,
+      startDate,
+      endDate,
+      name: nameFilter,
+      division: divisionFilter,
+      departmentFilter: departmentFilter,
+      approvalStatus: approvalStatusFilter
+    }
     dispatch(delegationDoneData(filters))
-    dispatch(uniqueDoerNameData())
+  }, [dispatch, debouncedSearch, nameFilter, divisionFilter, departmentFilter, startDate, endDate, approvalStatusFilter, delegationCurrentPage])
+
+  useEffect(() => {
+    const filters = {
+      page: maintCurrentPage,
+      search: debouncedSearch,
+      startDate,
+      endDate,
+      name: nameFilter,
+      division: divisionFilter,
+      departmentFilter: departmentFilter,
+      approvalStatus: approvalStatusFilter
+    }
     dispatch(maintenanceHistoryData(filters))
-  }, [dispatch, debouncedSearch, nameFilter, divisionFilter, departmentFilter])
+  }, [dispatch, debouncedSearch, nameFilter, divisionFilter, departmentFilter, startDate, endDate, approvalStatusFilter, maintCurrentPage])
+
+  useEffect(() => {
+    dispatch(uniqueDoerNameData())
+  }, [dispatch])
 
   useEffect(() => {
     const role = localStorage.getItem("role")
@@ -259,15 +317,26 @@ function HistoryPage() {
         throw new Error(error.message || "Failed to mark items as done")
       }
 
+      const currentFilters = {
+        page: type === "checklist" ? currentPage : (type === "maintenance" ? maintCurrentPage : delegationCurrentPage),
+        search: debouncedSearch,
+        startDate,
+        endDate,
+        name: nameFilter,
+        division: divisionFilter,
+        departmentFilter: departmentFilter,
+        approvalStatus: approvalStatusFilter
+      }
+
       if (type === "checklist") {
         setSelectedHistoryItems([])
-        dispatch(checklistHistoryData())
+        dispatch(checklistHistoryData(currentFilters))
       } else if (type === "maintenance") {
         setSelectedMaintenanceItems([])
-        dispatch(maintenanceHistoryData({}))
+        dispatch(maintenanceHistoryData(currentFilters))
       } else {
         setSelectedDelegationItems([])
-        dispatch(delegationDoneData())
+        dispatch(delegationDoneData(currentFilters))
       }
       
       let count
@@ -285,141 +354,18 @@ function HistoryPage() {
     }
   }
 
-  // Filtered checklist data
-  const filteredHistoryData = useMemo(() => {
-    if (!Array.isArray(history)) return []
+  // Use data directly from Redux (already filtered & paginated by backend)
+  const filteredHistoryData = history || []
 
-    return history
-      .filter((item) => {
-        const matchesSearch = searchTerm
-          ? Object.entries(item).some(([key, value]) => {
-            if (['image', 'admin_done'].includes(key)) return false
-            return value && value.toString().toLowerCase().includes(searchTerm.toLowerCase())
-          })
-          : true
-
-        const matchesMember = selectedMembers.length > 0
-          ? selectedMembers.some(m => m?.toLowerCase()?.trim() === item.name?.toLowerCase()?.trim())
-          : (nameFilter !== 'all' ? item.name?.toLowerCase()?.trim() .includes(nameFilter?.toLowerCase()?.trim()) : true)
-
-        const matchesDiv = divisionFilter !== 'all' ? item.division?.toLowerCase()?.trim() .includes(divisionFilter?.toLowerCase()?.trim()) : true
-        const matchesDept = departmentFilter !== 'all' ? item.department?.toLowerCase()?.trim() .includes(departmentFilter?.toLowerCase()?.trim()) : true
-
-        let matchesDateRange = true
-        if (startDate || endDate) {
-          const itemDate = parseSupabaseDate(item.task_start_date)
-          if (!itemDate || isNaN(itemDate.getTime())) return false
-
-          const itemDateOnly = new Date(
-            itemDate.getFullYear(),
-            itemDate.getMonth(),
-            itemDate.getDate()
-          )
-
-          const start = startDate ? new Date(startDate) : null
-          if (start) start.setHours(0, 0, 0, 0)
-
-          const end = endDate ? new Date(endDate) : null
-          if (end) end.setHours(23, 59, 59, 999)
-
-          if (start && itemDateOnly < start) matchesDateRange = false
-          if (end && itemDateOnly > end) matchesDateRange = false
-        }
-
-        return matchesSearch && matchesMember && matchesDateRange && matchesDiv && matchesDept
-      })
-      .filter((item) => {
-        // Apply approval status filter
-        if (approvalStatusFilter === "pending") {
-          return item.admin_done !== 'Done'
-        } else if (approvalStatusFilter === "completed") {
-          return item.admin_done === 'Done'
-        }
-        return true // 'all'
-      })
-      .sort((a, b) => {
-        const dateA = parseSupabaseDate(a.submission_date)
-        const dateB = parseSupabaseDate(b.submission_date)
-        if (!dateA) return 1
-        if (!dateB) return -1
-        return dateB - dateA
-      })
-  }, [history, searchTerm, selectedMembers, startDate, endDate, approvalStatusFilter, nameFilter, divisionFilter, departmentFilter])
-
-  // Filtered maintenance history data
-  const filteredMaintenanceData = useMemo(() => {
-    if (!Array.isArray(maintHistory)) return []
-
-    return maintHistory
-      .filter((item) => {
-        const matchesSearch = searchTerm
-          ? Object.entries(item).some(([key, value]) => {
-            if (['image', 'admin_done'].includes(key)) return false
-            return value && value.toString().toLowerCase().includes(searchTerm.toLowerCase())
-          })
-          : true
-
-        const matchesMember = selectedMembers.length > 0
-          ? selectedMembers.some(m => m?.toLowerCase()?.trim() === item.name?.toLowerCase()?.trim())
-          : (nameFilter !== 'all' ? item.name?.toLowerCase()?.trim() .includes(nameFilter?.toLowerCase()?.trim()) : true)
-
-        const matchesDiv = divisionFilter !== 'all' ? item.division?.toLowerCase()?.trim() .includes(divisionFilter?.toLowerCase()?.trim()) : true
-        const matchesDept = departmentFilter !== 'all' ? item.department?.toLowerCase()?.trim() .includes(departmentFilter?.toLowerCase()?.trim()) : true
-
-        let matchesDateRange = true
-        if (startDate || endDate) {
-          const itemDate = parseSupabaseDate(item.submission_date)
-          if (!itemDate || isNaN(itemDate.getTime())) return false
-
-          const itemDateOnly = new Date(
-            itemDate.getFullYear(),
-            itemDate.getMonth(),
-            itemDate.getDate()
-          )
-
-          const start = startDate ? new Date(startDate) : null
-          if (start) start.setHours(0, 0, 0, 0)
-
-          const end = endDate ? new Date(endDate) : null
-          if (end) end.setHours(23, 59, 59, 999)
-
-          if (start && itemDateOnly < start) matchesDateRange = false
-          if (end && itemDateOnly > end) matchesDateRange = false
-        }
-
-        return matchesSearch && matchesMember && matchesDateRange && matchesDiv && matchesDept
-      })
-      .filter((item) => {
-        const isDone = item.admin_done === 'Done' || item.admin_done === 'true' || item.admin_done === true;
-        if (approvalStatusFilter === "pending") {
-          return !isDone;
-        } else if (approvalStatusFilter === "completed") {
-          return isDone;
-        }
-        return true;
-      })
-      .sort((a, b) => {
-        const dateA = parseSupabaseDate(a.submission_date)
-        const dateB = parseSupabaseDate(b.submission_date)
-        if (!dateA) return 1
-        if (!dateB) return -1
-        return dateB - dateA
-      })
-  }, [maintHistory, searchTerm, selectedMembers, startDate, endDate, approvalStatusFilter, nameFilter, divisionFilter, departmentFilter])
+  const filteredMaintenanceData = maintHistory || []
 
   // Maintenance pagination
-  const maintTotalPages = Math.ceil(filteredMaintenanceData.length / ITEMS_PER_PAGE) || 1
+  const maintTotalPages = maintTotalPagesFromRedux || 1
   const maintStartRecord = filteredMaintenanceData.length > 0 ? (maintCurrentPage - 1) * ITEMS_PER_PAGE + 1 : 0
-  const maintEndRecord = Math.min(maintCurrentPage * ITEMS_PER_PAGE, filteredMaintenanceData.length)
-  const paginatedMaintenanceData = useMemo(() => {
-    const start = (maintCurrentPage - 1) * ITEMS_PER_PAGE
-    return filteredMaintenanceData.slice(start, start + ITEMS_PER_PAGE)
-  }, [filteredMaintenanceData, maintCurrentPage])
+  const maintEndRecord = Math.min(maintCurrentPage * ITEMS_PER_PAGE, maintTotalCount)
+  const paginatedMaintenanceData = filteredMaintenanceData
 
-  const pendingMaintenanceApprovalCount = filteredMaintenanceData.filter(item => {
-    const isDone = item.admin_done === 'Done' || item.admin_done === 'true' || item.admin_done === true
-    return !isDone
-  }).length
+  const pendingMaintenanceApprovalCount = maintPendingCount
 
   const isMaintItemDone = (item) => {
     return item.admin_done === 'Done' || item.admin_done === 'true' || item.admin_done === true
@@ -457,98 +403,29 @@ function HistoryPage() {
   }, [searchTerm, selectedMembers, startDate, endDate, approvalStatusFilter])
 
   // Pagination helpers (based on filtered data, not raw DB total)
-  const totalPages = Math.ceil(filteredHistoryData.length / ITEMS_PER_PAGE) || 1
+  const totalPagesDerived = historyTotalPages || 1
   const startRecord = filteredHistoryData.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0
-  const endRecord = Math.min(currentPage * ITEMS_PER_PAGE, filteredHistoryData.length)
+  const endRecord = Math.min(currentPage * ITEMS_PER_PAGE, historyTotalCount)
 
   // Paginated slice of filtered data for display
-  const paginatedData = useMemo(() => {
-    const start = (currentPage - 1) * ITEMS_PER_PAGE
-    return filteredHistoryData.slice(start, start + ITEMS_PER_PAGE)
-  }, [filteredHistoryData, currentPage])
+  const paginatedData = filteredHistoryData
 
   // Filtered delegation data
-  const filteredDelegationData = useMemo(() => {
-    if (!Array.isArray(delegation_done)) return []
+  const filteredDelegationData = delegation_done || []
 
-    return delegation_done
-      .filter((item) => item.status !== 'extend') // Hide extended tasks from this list
-      .filter((item) => {
-        const userMatch =
-          userRole === "admin" || userRole === "div_admin" ||
-          userRole === "super_admin" ||
-          (item.name && item.name.toLowerCase() === username.toLowerCase())
-        if (!userMatch) return false
-
-        const matchesSearch = searchTerm
-          ? Object.entries(item).some(([key, value]) => {
-            if (['image_url', 'admin_done'].includes(key)) return false
-            return value && value.toString().toLowerCase().includes(searchTerm.toLowerCase())
-          })
-          : true
-
-        let matchesDateRange = true
-        if (startDate || endDate) {
-          const itemDate = item.created_at ? new Date(item.created_at) : null
-          if (!itemDate || isNaN(itemDate.getTime())) return false
-
-          if (startDate) {
-            const startDateObj = new Date(startDate)
-            startDateObj.setHours(0, 0, 0, 0)
-            if (itemDate < startDateObj) matchesDateRange = false
-          }
-
-          if (endDate) {
-            const endDateObj = new Date(endDate)
-            endDateObj.setHours(23, 59, 59, 999)
-            if (itemDate > endDateObj) matchesDateRange = false
-          }
-        }
-
-        const matchesMember = nameFilter !== 'all' ? item.name?.toLowerCase()?.trim() .includes(nameFilter?.toLowerCase()?.trim()) : true
-        const matchesDiv = divisionFilter !== 'all' ? item.division?.toLowerCase()?.trim() .includes(divisionFilter?.toLowerCase()?.trim()) : true
-        const matchesDept = departmentFilter !== 'all' ? (item.department || item.user_access)?.toLowerCase()?.trim() .includes(departmentFilter?.toLowerCase()?.trim()) : true
-
-        return matchesSearch && matchesDateRange && matchesMember && matchesDiv && matchesDept
-      })
-      .filter((item) => {
-        // Apply approval status filter
-        if (approvalStatusFilter === "pending") {
-          // Show all non-admin-approved entries (completed OR extend — both need admin review)
-          // Note: extend is already filtered out above
-          return item.admin_done !== 'Done'
-        } else if (approvalStatusFilter === "completed") {
-          return item.admin_done === 'Done'
-        }
-        return true // 'all'
-      })
-      .sort((a, b) => {
-        const dateA = a.created_at ? new Date(a.created_at) : null
-        const dateB = b.created_at ? new Date(b.created_at) : null
-        if (!dateA && !dateB) return 0
-        if (!dateA) return 1
-        if (!dateB) return -1
-        return dateB.getTime() - dateA.getTime()
-      })
-  }, [delegation_done, searchTerm, startDate, endDate, userRole, username, approvalStatusFilter, nameFilter, divisionFilter, departmentFilter])
 
   // Recalculate delegation stats based on visible (non-extended) tasks
-  const delegationStats = useMemo(() => {
-    const baseData = (delegation_done || []).filter(item => item.status !== 'extend');
-    const total = baseData.length;
-    const approved = baseData.filter(item => item.admin_done === 'Done').length;
-    const pending = total - approved;
-    return { total, approved, pending };
-  }, [delegation_done]);
+  const delegationStats = { 
+    total: delegationTotalCount, 
+    approved: delegationApprovedCount, 
+    pending: delegationPendingCount 
+  }
 
   // Delegation pagination
-  const delegationTotalPages = Math.ceil(filteredDelegationData.length / ITEMS_PER_PAGE) || 1
+  const delegationTotalPagesDerived = delegationTotalPages || 1
   const delegationStartRecord = filteredDelegationData.length > 0 ? (delegationCurrentPage - 1) * ITEMS_PER_PAGE + 1 : 0
-  const delegationEndRecord = Math.min(delegationCurrentPage * ITEMS_PER_PAGE, filteredDelegationData.length)
-  const paginatedDelegationData = useMemo(() => {
-    const start = (delegationCurrentPage - 1) * ITEMS_PER_PAGE
-    return filteredDelegationData.slice(start, start + ITEMS_PER_PAGE)
-  }, [filteredDelegationData, delegationCurrentPage])
+  const delegationEndRecord = Math.min(delegationCurrentPage * ITEMS_PER_PAGE, delegationTotalCount)
+  const paginatedDelegationData = filteredDelegationData
 
   const handleMemberSelection = (member) => {
     setSelectedMembers((prev) => {
@@ -578,8 +455,8 @@ function HistoryPage() {
   }
 
   // Count pending approval items
-  const pendingApprovalCount = filteredHistoryData.filter(item => item.admin_done !== 'Done').length
-  const pendingDelegationApprovalCount = filteredDelegationData.filter(item => item.admin_done !== 'Done').length
+  const pendingApprovalCount = historyPendingCount
+  const pendingDelegationApprovalCount = delegationPendingCount
   
 
   // Confirmation Modal Component
@@ -885,12 +762,11 @@ function HistoryPage() {
               </div>
             </div>
 
-            {/* Stats - Inline */}
             <div className="flex gap-3 ml-0 sm:ml-auto text-xs py-1">
               {activeTab === "maintenance" ? (
                 <>
                   <span className="text-purple-600 font-medium">{maintTotalCount} Total</span>
-                  <span className="text-orange-600 font-medium">{maintTotalCount - maintApprovedCount} Pending</span>
+                  <span className="text-orange-600 font-medium">{maintPendingCount} Pending</span>
                   <span className="text-green-600 font-medium">{maintApprovedCount} Approved</span>
                 </>
               ) : activeTab === "delegation" ? (
@@ -902,7 +778,7 @@ function HistoryPage() {
               ) : (
                 <>
                   <span className="text-purple-600 font-medium">{historyTotalCount} Total</span>
-                  <span className="text-orange-600 font-medium">{historyTotalCount - historyApprovedCount} Pending</span>
+                  <span className="text-orange-600 font-medium">{historyPendingCount} Pending</span>
                   <span className="text-green-600 font-medium">{historyApprovedCount} Approved</span>
                 </>
               )}
@@ -1075,7 +951,7 @@ function HistoryPage() {
                     )}
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task ID</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[150px]">Task/Machine</th>
+                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[250px]">Task/Machine</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Given By</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit</th>
@@ -1282,19 +1158,17 @@ function HistoryPage() {
                     {isSuperAdmin && (
                       <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-purple-50">Admin Remarks</th>
                     )}
+                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[250px]">Task Description</th>
+                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-yellow-50">Task Start Date</th>
+                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Frequency</th>
+                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-green-50">Submission Date</th>
+                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50">Status</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task ID</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Division</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Given By</th>
-                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[150px]">Task Description</th>
-                    {/* <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-purple-50">Admin Remarks</th> */}
-                    {/* <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task ID</th> */}
-                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-yellow-50">Task Start Date</th>
-                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Frequency</th>
-                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-green-50">Submission Date</th>
-                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50">Status</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-purple-50 min-w-[120px]">Remarks</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">File</th>
                   </tr>
@@ -1347,21 +1221,6 @@ function HistoryPage() {
                             )}
                           </td>
                         )}
-                        <td className="px-2 sm:px-3 py-2 sm:py-4" data-label="Task ID">
-                          <div className="text-xs sm:text-sm font-medium text-gray-900">{historyItem.task_id || "—"}</div>
-                        </td>
-                        <td className="px-2 sm:px-3 py-2 sm:py-4" data-label="Department">
-                          <div className="text-xs sm:text-sm text-gray-900">{historyItem.department || "—"}</div>
-                        </td>
-                        <td className="px-2 sm:px-3 py-2 sm:py-4" data-label="Unit">
-                          <div className="text-xs sm:text-sm text-gray-900">{historyItem.unit || "—"}</div>
-                        </td>
-                        <td className="px-2 sm:px-3 py-2 sm:py-4" data-label="Division">
-                          <div className="text-xs sm:text-sm text-gray-900">{historyItem.division || "—"}</div>
-                        </td>
-                        <td className="px-2 sm:px-3 py-2 sm:py-4" data-label="Given By">
-                          <div className="text-xs sm:text-sm text-gray-900">{historyItem.given_by || "—"}</div>
-                        </td>
                         <td className="px-2 sm:px-3 py-2 sm:py-4" data-label="Name">
                           <div className="text-xs sm:text-sm text-gray-900">{historyItem.name || "—"}</div>
                         </td>
@@ -1414,6 +1273,21 @@ function HistoryPage() {
                           }`}>
                             {historyItem.status || "—"}
                           </span>
+                        </td>
+                        <td className="px-2 sm:px-3 py-2 sm:py-4" data-label="Task ID">
+                          <div className="text-xs sm:text-sm font-medium text-gray-900">{historyItem.task_id || "—"}</div>
+                        </td>
+                        <td className="px-2 sm:px-3 py-2 sm:py-4" data-label="Department">
+                          <div className="text-xs sm:text-sm text-gray-900">{historyItem.department || "—"}</div>
+                        </td>
+                        <td className="px-2 sm:px-3 py-2 sm:py-4" data-label="Unit">
+                          <div className="text-xs sm:text-sm text-gray-900">{historyItem.unit || "—"}</div>
+                        </td>
+                        <td className="px-2 sm:px-3 py-2 sm:py-4" data-label="Division">
+                          <div className="text-xs sm:text-sm text-gray-900">{historyItem.division || "—"}</div>
+                        </td>
+                        <td className="px-2 sm:px-3 py-2 sm:py-4" data-label="Given By">
+                          <div className="text-xs sm:text-sm text-gray-900">{historyItem.given_by || "—"}</div>
                         </td>
                         <td className="px-2 sm:px-3 py-2 sm:py-4 bg-purple-50 min-w-[120px]" data-label="Remarks">
                           <div className="text-xs sm:text-sm text-gray-900" title={historyItem.remark}>
@@ -1475,7 +1349,7 @@ function HistoryPage() {
                         />
                       </th>
                     )}
-                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[150px]">Task Description</th>
+                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[250px]">Task Description</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-purple-50 min-w-[120px]">Reply</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Given By</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
@@ -1668,7 +1542,7 @@ function HistoryPage() {
               <>
                 <span className="text-xs text-gray-600">
                   {filteredDelegationData.length > 0
-                    ? `Showing ${delegationStartRecord}–${delegationEndRecord} of ${filteredDelegationData.length} records`
+                    ? `Showing ${delegationStartRecord}–${delegationEndRecord} of ${delegationTotalCount} records`
                     : "No records"}
                 </span>
                 <div className="flex items-center gap-2">
@@ -1680,11 +1554,11 @@ function HistoryPage() {
                     <ChevronLeft className="h-3 w-3" /> Previous
                   </button>
                   <span className="text-xs font-medium text-gray-700">
-                    Page {delegationCurrentPage} of {delegationTotalPages}
+                    Page {delegationCurrentPage} of {delegationTotalPagesDerived}
                   </span>
                   <button
-                    onClick={() => setDelegationCurrentPage(prev => Math.min(prev + 1, delegationTotalPages))}
-                    disabled={delegationCurrentPage >= delegationTotalPages || loading}
+                    onClick={() => setDelegationCurrentPage(prev => Math.min(prev + 1, delegationTotalPagesDerived))}
+                    disabled={delegationCurrentPage >= delegationTotalPagesDerived || loading}
                     className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
                     Next <ChevronRight className="h-3 w-3" />
@@ -1695,7 +1569,7 @@ function HistoryPage() {
               <>
                 <span className="text-xs text-gray-600">
                   {filteredHistoryData.length > 0
-                    ? `Showing ${startRecord}–${endRecord} of ${filteredHistoryData.length} records (${historyTotalCount} in database)`
+                    ? `Showing ${startRecord}–${endRecord} of ${historyTotalCount} records`
                     : "No records"}
                 </span>
                 <div className="flex items-center gap-2">
@@ -1707,11 +1581,11 @@ function HistoryPage() {
                     <ChevronLeft className="h-3 w-3" /> Previous
                   </button>
                   <span className="text-xs font-medium text-gray-700">
-                    Page {currentPage} of {totalPages}
+                    Page {currentPage} of {totalPagesDerived}
                   </span>
                   <button
-                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                    disabled={currentPage >= totalPages || loading}
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPagesDerived))}
+                    disabled={currentPage >= totalPagesDerived || loading}
                     className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
                     Next <ChevronRight className="h-3 w-3" />
