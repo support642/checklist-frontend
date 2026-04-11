@@ -245,7 +245,9 @@ const SubscriptionApproval = () => {
                 <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto items-center">
                     {/* Search */}
                     <div className="relative w-full sm:w-64">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                        <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-gray-400">
+                            <Search className="h-5 w-5" />
+                        </div>
                         <input
                             type="text"
                             placeholder="Search..."

@@ -147,7 +147,9 @@ const AllSubscriptions = () => {
           </div>
           <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-3">
             <div className="relative flex-1 sm:flex-initial">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+              <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-gray-400">
+                <Search className="h-5 w-5" />
+              </div>
               <input
                 type="text"
                 placeholder="Search subscriptions..."
@@ -169,7 +171,7 @@ const AllSubscriptions = () => {
                   <option key={freq} value={freq}>{freq}</option>
                 ))}
               </select>
-              <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-400">
+              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-400">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
               </div>
             </div>

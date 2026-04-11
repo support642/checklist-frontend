@@ -48,7 +48,9 @@ const MasterPage = () => {
                     </div>
                     <div className="flex flex-col sm:flex-row w-full md:w-auto gap-4 items-center">
                         <div className="relative w-full sm:w-64">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                            <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-gray-400">
+                                <Search className="h-5 w-5" />
+                            </div>
                             <input
                                 type="text"
                                 placeholder="Search records..."
