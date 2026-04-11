@@ -75,23 +75,47 @@ interface DashboardLoan {
     finalSettlementStatus?: string;
 }
 
-const StatCard = ({ title, value, icon: Icon, color, subtext, onClick, bgColor = "bg-white" }: any) => (
-    <div
-        onClick={onClick}
-        className={`${bgColor} p-6 pb-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer group relative overflow-hidden`}
-    >
-        <div className="relative z-10 flex justify-between items-start">
-            <div className="space-y-1">
-                <p className="text-gray-400 text-[11px] font-bold tracking-wider uppercase">{title}</p>
-                <h3 className="text-4xl font-bold text-gray-900 mt-1 tracking-tight group-hover:text-purple-600 transition-colors">{value}</h3>
-                {subtext && <p className="text-[11px] text-gray-400 mt-3 font-medium">{subtext}</p>}
+const StatCard = ({ title, value, icon: Icon, color, subtext, onClick }: any) => {
+    // Extract base color name (e.g., "purple" from "bg-purple-600 text-purple-600")
+    const colorClasses = color.split(' ');
+    const textClass = colorClasses.find((c: string) => c.startsWith('text-')) || 'text-purple-600';
+    const baseColor = textClass.replace('text-', '').split('-')[0];
+
+    return (
+        <div
+            onClick={onClick}
+            className={`relative bg-white p-6 pb-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-500 cursor-pointer group overflow-hidden`}
+        >
+            {/* Subtle Gradient Background */}
+            <div className={`absolute inset-0 bg-gradient-to-br from-white to-${baseColor}-50/40 opacity-50 group-hover:opacity-100 transition-opacity duration-500`} />
+            
+            {/* Decorative soft glow element */}
+            <div className={`absolute -right-4 -top-4 w-24 h-24 bg-${baseColor}-100/30 rounded-full blur-3xl group-hover:bg-${baseColor}-200/40 transition-all duration-500`} />
+            
+            {/* Accent Border */}
+            <div className={`absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-transparent via-${baseColor}-500/20 to-transparent group-hover:via-${baseColor}-500/40 transition-all`} />
+
+            <div className="relative z-10 flex justify-between items-start">
+                <div className="space-y-1">
+                    <p className="text-gray-400 text-[11px] font-bold tracking-wider uppercase">{title}</p>
+                    <div className="flex items-baseline gap-2">
+                        <h3 className={`text-4xl font-bold text-gray-900 mt-1 tracking-tight group-hover:text-${baseColor}-600 transition-colors`}>{value}</h3>
+                    </div>
+                    {subtext && <p className="text-[11px] text-gray-400 mt-3 font-medium flex items-center gap-1.5 italic">
+                        <span className={`w-1 h-1 rounded-full bg-${baseColor}-400`} />
+                        {subtext}
+                    </p>}
+                </div>
+                <div className={`p-4 rounded-xl ${colorClasses[0]} bg-opacity-10 group-hover:bg-opacity-20 transition-all duration-300 transform group-hover:scale-110 group-hover:rotate-3`}>
+                    <Icon size={24} className={textClass} />
+                </div>
             </div>
-            <div className={`p-3.5 rounded-xl ${color.split(' ')[0]} bg-opacity-10 group-hover:bg-opacity-20 transition-all`}>
-                <Icon size={26} className={color.split(' ')[1]} />
-            </div>
+
+            {/* Bottom highlight beam on hover */}
+            <div className={`absolute bottom-0 left-0 w-0 h-[2px] bg-${baseColor}-500 group-hover:w-full transition-all duration-700 ease-out`} />
         </div>
-    </div>
-);
+    );
+};
 
 const Dashboard = () => {
     const { setTitle } = useHeaderStore();

@@ -78,13 +78,10 @@ const RepairDashboard = () => {
             total: repairs.length,
             // Technician stage: Not Completed/Approved/Rejected
             pending: repairs.filter(r => 
-              r.status === 'Pending' || 
-              r.status === 'Observation' || 
-              r.status === 'Temporary' || 
-              r.status === 'Cancelled' ||
-              r.status === 'Pending (लंबित)' ||
-              r.status === 'Observation (निरीक्षण)' ||
-              r.status === 'Temporary (अस्थायी)'
+              r.status !== 'Approved' && 
+              r.status !== 'Completed' && 
+              r.status !== '✅ Completed (कार्य पूर्ण)' && 
+              r.status !== 'Cancelled'
             ).length,
             // Awaiting Admin: Needs Approval
             approved: repairs.filter(r => r.status === 'Completed' || r.status === '✅ Completed (कार्य पूर्ण)').length,

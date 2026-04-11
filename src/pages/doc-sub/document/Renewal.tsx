@@ -42,7 +42,7 @@ const DocumentRenewal = () => {
     const loadRenewalDocuments = useCallback(async () => {
         try {
             const data = await fetchDocumentsNeedingRenewal();
-            console.log("Getting ddd", data)
+
             setDocuments(data.map((doc: BackendDocument) => mapBackendToFrontend(doc)));
         } catch (err) {
             console.error('Failed to load renewal documents:', err);
