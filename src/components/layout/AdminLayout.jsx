@@ -99,7 +99,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
             { name: "Dashboard", route: "/dashboard/admin", page: "dashboard", icon: Database },
             { name: "Quick Task", route: "/dashboard/quick-task", page: "quick_task", icon: Zap },
             { name: "Assign Task", route: "/dashboard/assign-task", page: "assign_task", icon: CheckSquare },
-            { name: "Working Date", route: "/dashboard/working-date", page: "working_date", icon: CalendarCheck },
+            { name: "Daily Working", route: "/dashboard/working-date", page: "working_date", icon: CalendarCheck },
             { name: "Delegation", route: "/dashboard/delegation", page: "delegation", icon: ClipboardList },
             { name: "Pending Task", route: "/dashboard/data/sales", page: "pending_task", icon: CalendarCheck },
             { name: "Admin Approval", route: "/dashboard/history", page: "admin_approval", icon: History },

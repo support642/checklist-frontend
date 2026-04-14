@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import AdminLayout from '../components/layout/AdminLayout';
 import { 
   Calendar, Clock, Search, ChevronDown, Plus, Trash2, 
-  Upload, Image as ImageIcon, X, Save, RefreshCw, CheckCircle2, Database 
+  Upload, Image as ImageIcon, X, Save, RefreshCw, CheckCircle2, Database,
+  Download
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { authFetch } from '../utils/authFetch';
@@ -144,6 +145,46 @@ const WorkingDate = () => {
   // Helper to get formatted current time
   const getFormattedTime = () => {
     return new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true });
+  };
+
+  const handleExportCSV = () => {
+    if (!employeeHistory || employeeHistory.length === 0) {
+      toast.error("No data to export");
+      return;
+    }
+
+    // CSV Headers
+    const headers = ["User Name", "Working Details", "Assign By", "Image URL", "Date", "Time", "ID"];
+    
+    // CSV Rows
+    const rows = employeeHistory.map(item => [
+      selectedEmployee.userName || "",
+      item.workDetail ? `"${item.workDetail.replace(/"/g, '""')}"` : "",
+      item.assignBy ? `"${item.assignBy.replace(/"/g, '""')}"` : "",
+      item.image || "",
+      item.date || "",
+      item.time || "",
+      item.id || ""
+    ]);
+
+    // Create CSV content
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => row.join(","))
+    ].join("\n");
+
+    // Download the file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `${selectedEmployee.name}_working_history.csv`);
+    link.className = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success("CSV Exported successfully");
   };
 
   const [rows, setRows] = useState(
@@ -312,7 +353,7 @@ const WorkingDate = () => {
         {/* Header Section */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight">Working Date Management</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight">Daily Working Management</h1>
             <div className="flex items-center gap-2 mt-1">
               <span className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse"></span>
               <p className="text-slate-500 text-sm font-medium">Daily Task Submission & Tracking</p>
@@ -1028,12 +1069,21 @@ const WorkingDate = () => {
                   </div>
                   <h2 className="text-3xl font-bold text-purple-950 mt-1 tracking-tight">{selectedEmployee.name}</h2>
                 </div>
-                <button 
-                  onClick={() => setIsModalOpen(false)}
-                  className="p-3 bg-white/20 hover:bg-white/40 text-purple-950 rounded-2xl transition-all border border-white/20"
-                >
-                  <X size={24} />
-                </button>
+                <div className="flex items-center gap-4">
+                  <button 
+                    onClick={handleExportCSV}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-white/40 hover:bg-white/60 text-purple-950 rounded-2xl transition-all border border-white/20 font-bold text-xs uppercase tracking-wider shadow-sm"
+                  >
+                    <Download size={18} />
+                    <span className="hidden sm:inline">Export CSV</span>
+                  </button>
+                  <button 
+                    onClick={() => setIsModalOpen(false)}
+                    className="p-3 bg-white/20 hover:bg-white/40 text-purple-950 rounded-2xl transition-all border border-white/20"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
               </div>
 
               {/* Modal Content - History Table */}
@@ -1071,31 +1121,17 @@ const WorkingDate = () => {
                   <table className="hidden md:table w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-white text-[10px] uppercase font-black tracking-[0.2em] text-slate-400">
-                        <th className="px-8 py-5">Date</th>
-                        <th className="px-8 py-5">Time</th>
-                        <th className="px-8 py-5">ID</th>
                         <th className="px-8 py-5 min-w-[200px]">Working Details</th>
                         <th className="px-8 py-5">Assign By</th>
                         <th className="px-8 py-5 text-center">Image</th>
+                        <th className="px-8 py-5">Date</th>
+                        <th className="px-8 py-5">Time</th>
+                        <th className="px-8 py-5">ID</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white">
                       {employeeHistory.map((item, idx) => (
                         <tr key={`detail-${item.id || 'na'}-${idx}`} className="group hover:bg-white transition-colors">
-                          <td className="px-8 py-6">
-                            <span className="text-sm font-bold text-slate-700">{item.date}</span>
-                          </td>
-                          <td className="px-8 py-6">
-                             <div className="flex items-center gap-2 text-purple-600 font-semibold">
-                               <Clock size={14} className="opacity-50" />
-                               <span className="text-sm">{item.time}</span>
-                             </div>
-                          </td>
-                          <td className="px-8 py-6">
-                            <span className="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-lg text-[11px] font-bold border border-indigo-100 uppercase">
-                              {item.id}
-                            </span>
-                          </td>
                           <td className="px-8 py-6">
                             <p className="text-sm font-medium text-slate-600 leading-relaxed tracking-tight">
                               {item.workDetail}
@@ -1126,6 +1162,20 @@ const WorkingDate = () => {
                                   <ImageIcon size={18} />
                                </div>
                              )}
+                          </td>
+                          <td className="px-8 py-6">
+                            <span className="text-sm font-bold text-slate-700">{item.date}</span>
+                          </td>
+                          <td className="px-8 py-6">
+                             <div className="flex items-center gap-2 text-purple-600 font-semibold">
+                               <Clock size={14} className="opacity-50" />
+                               <span className="text-sm">{item.time}</span>
+                             </div>
+                          </td>
+                          <td className="px-8 py-6">
+                            <span className="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-lg text-[11px] font-bold border border-indigo-100 uppercase">
+                              {item.id}
+                            </span>
                           </td>
                         </tr>
                       ))}
