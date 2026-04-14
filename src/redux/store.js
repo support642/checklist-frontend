@@ -9,6 +9,7 @@ import settingReducer from './slice/settingSlice'
 import userProfileReducer from './slice/userProfileSlice'
 import maintenanceReducer from './slice/maintenanceSlice'
 import { productApi } from './asset-redux/slices/productApi';
+import { workingDateHistoryApi } from "./slice/workingDateHistoryApi";
 
 const store = configureStore({
     reducer: {
@@ -22,13 +23,14 @@ const store = configureStore({
         userProfile: userProfileReducer,
         maintenance: maintenanceReducer,
         [productApi.reducerPath]: productApi.reducer,
+        [workingDateHistoryApi.reducerPath]: workingDateHistoryApi.reducer,
     },
     middleware: (getDefaultMiddleware) =>
         getDefaultMiddleware({
             serializableCheck: {
                 warnAfter: 128,
             },
-        }).concat(productApi.middleware),
+        }).concat(productApi.middleware, workingDateHistoryApi.middleware),
 })
 
 export default store;

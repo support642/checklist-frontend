@@ -430,10 +430,12 @@ const Setting = () => {
       user_name: localStorage.getItem('user-name'),
       role: localStorage.getItem('role'),
       email_id: localStorage.getItem('email_id'),
+      number: localStorage.getItem('number'),
       unit: localStorage.getItem('unit'),
       division: localStorage.getItem('division'),
       department: localStorage.getItem('department'),
-      user_access: localStorage.getItem('user_access')
+      user_access: localStorage.getItem('user_access'),
+      designation: localStorage.getItem('designation')
     };
   }, [currentUser]);
 
@@ -492,13 +494,13 @@ const Setting = () => {
       setUserForm({
         username: dataToUse.user_name || '',
         email: dataToUse.email_id || '',
-        password: dataToUse.password || '',
+        password: '', // Don't fetch password for display
         phone: dataToUse.number || '',
         unit: dataToUse?.unit || deptRecord?.unit || '',
         division: dataToUse?.division || deptRecord?.division || '',
         department: dataToUse?.department || dataToUse?.user_access || '',
         role: dataToUse.role || 'user',
-        status: dataToUse.status || 'active'
+        designation: dataToUse.designation || ''
       });
       
       setUnifiedPermissions(buildUnifiedPermissions(dataToUse));
@@ -1280,7 +1282,8 @@ const handleUpdateUser = async (e) => {
     division: userForm.division,
     system_access: isSuperAdminRole ? ["*"] : system_access,
     page_access: isSuperAdminRole ? ["*"] : page_access,
-    subscription_access_system: isSuperAdminRole ? { systems: ["*"], pages: ["*"] } : subscription_access_system
+    subscription_access_system: isSuperAdminRole ? { systems: ["*"], pages: ["*"] } : subscription_access_system,
+    requesterRole: currentUserRole // Pass requester role for backend check
   };
 
 
@@ -1407,6 +1410,7 @@ const availableUnits = React.useMemo(() => {
   }
   return [];
 }, [department]);
+
 
 // Get divisions filtered by selected unit
 const availableDivisions = React.useMemo(() => {
@@ -2237,111 +2241,123 @@ const resetUserForm = () => {
     </div>
 
     <div 
-      className="h-[calc(100vh-320px)] overflow-auto custom-scrollbar" 
+      className={`h-[calc(100vh-320px)] ${currentUserRole?.toLowerCase() === 'user' ? 'overflow-hidden' : 'overflow-auto custom-scrollbar'}`}
       style={{ maxHeight: 'calc(100vh - 300px)' }}
       onScroll={handleScroll}
     >
       {currentUserRole?.toLowerCase() === 'user' ? (
-        <div className="p-6 bg-white">
-          <div className="max-w-4xl mx-auto">
-            <div className="flex items-center gap-3 mb-6 border-b border-gray-100 pb-4">
-              <div className="bg-purple-100 p-3 rounded-full text-purple-600">
-                <User size={24} />
+        <div className="p-4 bg-white h-full">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex items-center gap-2 mb-4 border-b border-gray-100 pb-2">
+              <div className="bg-purple-100 p-2 rounded-full text-purple-600">
+                <User size={20} />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-gray-800">My Profile</h2>
-                <p className="text-sm text-gray-500">View and update your personal information</p>
+                <h2 className="text-lg font-bold text-gray-800 leading-tight">My Profile</h2>
+                <p className="text-xs text-gray-500">Update your personal information</p>
               </div>
             </div>
             
-            <form onSubmit={handleUpdateUser} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <form onSubmit={handleUpdateUser} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                  <label className="block text-xs font-semibold text-gray-600 mb-0.5">Username</label>
                   <input
                     type="text"
                     name="username"
                     value={userForm.username}
                     onChange={handleUserInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                  <label className="block text-xs font-semibold text-gray-600 mb-0.5">Email Address</label>
                   <input
                     type="email"
                     name="email"
                     value={userForm.email}
                     onChange={handleUserInputChange}
-                    placeholder={userForm.email ? "" : "Enter your email address"}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
+                    placeholder={userForm.email ? "" : "Enter email"}
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
                   />
                 </div>
                 <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                  <label className="block text-xs font-semibold text-gray-600 mb-0.5">Password</label>
                   <div className="relative">
                     <input
                       type={showModalPassword ? "text" : "password"}
                       name="password"
                       value={userForm.password}
                       onChange={handleUserInputChange}
-                      placeholder={userForm.password ? "Leave empty to keep current password" : "Enter new password"}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
+                      placeholder={userForm.password ? "••••••••" : "New password"}
+                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all pr-8"
                     />
                     <button
                       type="button"
                       onClick={() => setShowModalPassword(!showModalPassword)}
-                      className="absolute right-3 top-1/2 bottom-1/4 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                     >
-                      {showModalPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      {showModalPassword ? <EyeOff size={14} /> : <Eye size={14} />}
                     </button>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                  <label className="block text-xs font-semibold text-gray-600 mb-0.5">Phone Number</label>
                   <input
                     type="tel"
                     name="phone"
                     value={userForm.phone}
                     onChange={handleUserInputChange}
-                    placeholder={userForm.phone ? "" : "Enter your phone number"}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
+                    placeholder={userForm.phone ? "" : "Phone"}
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-0.5">Designation</label>
+                  <input
+                    type="text"
+                    name="designation"
+                    value={userForm.designation}
+                    onChange={handleUserInputChange}
+                    placeholder="Enter designation"
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
                   />
                 </div>
 
                 {/* Read-only fields for regular users */}
-                <div className="space-y-1 opacity-70">
-                  <label className="block text-sm font-medium text-gray-700">Unit</label>
-                  <div className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-600 text-sm">
+                <div className="space-y-0.5 opacity-80">
+                  <label className="block text-xs font-semibold text-gray-600">Unit</label>
+                  <div className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded text-gray-600 text-sm truncate">
                     {userForm.unit || 'N/A'}
                   </div>
                 </div>
-                <div className="space-y-1 opacity-70">
-                  <label className="block text-sm font-medium text-gray-700">Division</label>
-                  <div className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-600 text-sm">
+                <div className="space-y-0.5 opacity-80">
+                  <label className="block text-xs font-semibold text-gray-600">Division</label>
+                  <div className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded text-gray-600 text-sm truncate">
                     {userForm.division || 'N/A'}
                   </div>
                 </div>
-                <div className="space-y-1 opacity-70">
-                  <label className="block text-sm font-medium text-gray-700">Department</label>
-                  <div className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-600 text-sm">
+                <div className="space-y-0.5 opacity-80">
+                  <label className="block text-xs font-semibold text-gray-600">Department</label>
+                  <div className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded text-gray-600 text-sm truncate">
                     {userForm.department || 'N/A'}
                   </div>
                 </div>
-                <div className="space-y-1 opacity-70">
-                  <label className="block text-sm font-medium text-gray-700">Role</label>
-                  <div className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-600 text-sm capitalize">
+                <div className="space-y-0.5 opacity-80">
+                  <label className="block text-xs font-semibold text-gray-600">Role</label>
+                  <div className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded text-gray-600 text-sm capitalize truncate">
                     {userForm.role || 'user'}
                   </div>
                 </div>
+
               </div>
 
-              <div className="flex justify-end pt-6 border-t border-gray-100">
+              <div className="flex justify-end pt-2 border-t border-gray-100">
                 <button
                   type="submit"
-                  className="flex items-center gap-2 px-6 py-2.5 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 shadow-md transition-all active:scale-95"
+                  className="flex items-center gap-2 px-4 py-1.5 bg-purple-600 text-white text-sm font-semibold rounded hover:bg-purple-700 shadow transition-all active:scale-95"
                 >
-                  <Save size={18} />
+                  <Save size={14} />
                   Update Profile
                 </button>
               </div>
@@ -3693,16 +3709,16 @@ const resetUserForm = () => {
                           <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
                             Phone
                           </label>
-                          <input
+                           <input
                             type="tel"
                             name="phone"
                             id="phone"
                              value={userForm.phone}
-
                             onChange={handleUserInputChange}
                             className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                           />
                         </div>
+
 
                         <div className="sm:col-span-3">
                           <label htmlFor="designation" className="block text-sm font-medium text-gray-700">

@@ -3,7 +3,8 @@ import {
   fetchChechListDataForHistory,
   fetchChechListDataSortByDate,
   postChecklistAdminDoneAPI,
-  updateChecklistData
+  updateChecklistData,
+  fetchChecklistMetadata
 } from "../api/checkListApi";
 
 
@@ -55,7 +56,18 @@ export const checklistAdminDone = createAsyncThunk(
 
 
 // ============================================================
-// 5️⃣ SLICE
+// 5️⃣ FETCH METADATA (DIVISIONS & DEPARTMENTS)
+// ============================================================
+export const checklistMetadata = createAsyncThunk(
+  "fetch/metadata",
+  async () => {
+    return await fetchChecklistMetadata();
+  }
+);
+
+
+// ============================================================
+// 6️⃣ SLICE
 // ============================================================
 const checkListSlice = createSlice({
   name: "checklist",
@@ -70,6 +82,8 @@ const checkListSlice = createSlice({
     historyApprovedCount: 0,
     historyPendingCount: 0,
     historyTotalPages: 0,
+    uniqueDivisions: [],
+    uniqueDepartments: [],
   },
 
   reducers: {},
@@ -162,6 +176,14 @@ const checkListSlice = createSlice({
       .addCase(checklistAdminDone.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error?.message || "Admin update failed";
+      })
+
+      // -----------------------------
+      // FETCH METADATA
+      // -----------------------------
+      .addCase(checklistMetadata.fulfilled, (state, action) => {
+        state.uniqueDivisions = action.payload.divisions || [];
+        state.uniqueDepartments = action.payload.departments || [];
       });
   },
 });

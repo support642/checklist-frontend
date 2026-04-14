@@ -41,27 +41,30 @@ const Dashboard = () => {
     };
 
     const stats = [
-        { title: 'Total Products', value: totalProducts, icon: Package, color: 'bg-purple-600', colorLight: 'bg-purple-50' },
-        { title: 'Active Assets', value: activeAssets, icon: CheckCircle, color: 'bg-green-500', colorLight: 'bg-green-50' },
-        { title: 'Maintenance Due', value: maintenanceDue, icon: AlertCircle, color: 'bg-amber-500', colorLight: 'bg-amber-50' },
-        { title: 'Total Value', value: formatValue(totalValue), icon: TrendingUp, color: 'bg-purple-700', colorLight: 'bg-purple-100' },
+        { title: 'Total Products', value: totalProducts, icon: Package, color: 'bg-purple-500', colorLight: 'bg-purple-100/50' },
+        { title: 'Active Assets', value: activeAssets, icon: CheckCircle, color: 'bg-emerald-500', colorLight: 'bg-emerald-100/50' },
+        { title: 'Maintenance Due', value: maintenanceDue, icon: AlertCircle, color: 'bg-rose-500', colorLight: 'bg-rose-100/50' },
+        { title: 'Total Value', value: formatValue(totalValue), icon: TrendingUp, color: 'bg-purple-600', colorLight: 'bg-purple-200/50' },
     ];
 
     return (
-        <div className="flex flex-col min-h-full bg-slate-50">
+        <div className="flex flex-col min-h-screen bg-[#fcf8ff]">
             <div className="flex-1 space-y-6 p-4 lg:p-6">
                 {/* Header */}
-                <div className="bg-purple-600 rounded-2xl p-4 sm:p-6 text-white shadow-sm">
+                <div 
+                    className="rounded-2xl p-4 sm:p-6 shadow-sm border border-purple-100"
+                    style={{ background: 'linear-gradient(135deg, #f3e8ff, #d8b4fe)' }}
+                >
                     <div className="flex items-center gap-3 mb-2">
-                        <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
-                            <span className="text-xl font-bold">{user?.name?.charAt(0)?.toUpperCase() || 'U'}</span>
+                        <div className="w-12 h-12 rounded-full bg-purple-600/10 flex items-center justify-center border border-purple-200">
+                            <span className="text-xl font-bold text-purple-700">{user?.name?.charAt(0)?.toUpperCase() || 'U'}</span>
                         </div>
                         <div>
-                            <p className="text-white/80 text-sm">Welcome back,</p>
-                            <h1 className="text-xl sm:text-2xl font-bold">{user?.name}</h1>
+                            <p className="text-purple-600 text-sm font-medium">Welcome back,</p>
+                            <h1 className="text-xl sm:text-2xl font-bold text-purple-900">{user?.name}</h1>
                         </div>
                     </div>
-                    <div className="flex items-center gap-2 text-white/90 text-sm mt-4">
+                    <div className="flex items-center gap-2 text-purple-700/80 text-sm mt-4 font-medium">
                         <Calendar size={14} />
                         {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                     </div>
@@ -76,16 +79,16 @@ const Dashboard = () => {
 
                 {/* Quick Actions - Mobile First */}
                 <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                    <Link to="/asset/products" className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 hover:border-purple-200 hover:shadow-md transition-all group">
-                        <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center mb-3 group-hover:bg-purple-600 transition-colors">
-                            <Package size={24} className="text-purple-600 group-hover:text-white transition-colors" />
+                    <Link to="/asset/products" className="bg-white p-4 rounded-xl shadow-sm border border-purple-100 hover:border-purple-200 hover:shadow-md transition-all group">
+                        <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center mb-3 group-hover:bg-[#d8b4fe] transition-colors">
+                            <Package size={24} className="text-purple-600 group-hover:text-purple-900 transition-colors" />
                         </div>
                         <h4 className="font-semibold text-slate-900 mb-1">Add Product</h4>
                         <p className="text-xs text-slate-500">Add new inventory</p>
                     </Link>
-                    <Link to="/asset/products" className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 hover:border-blue-200 hover:shadow-md transition-all group">
-                        <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center mb-3 group-hover:bg-purple-500 transition-colors">
-                            <QrCode size={24} className="text-purple-600 group-hover:text-white transition-colors" />
+                    <Link to="/asset/products" className="bg-white p-4 rounded-xl shadow-sm border border-purple-100 hover:border-purple-200 hover:shadow-md transition-all group">
+                        <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center mb-3 group-hover:bg-[#d8b4fe] transition-colors">
+                            <QrCode size={24} className="text-purple-600 group-hover:text-purple-900 transition-colors" />
                         </div>
                         <h4 className="font-semibold text-slate-900 mb-1">Scan QR</h4>
                         <p className="text-xs text-slate-500">View product details</p>

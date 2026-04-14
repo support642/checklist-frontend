@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { CheckCircle2, Upload, X, Search, History, ArrowLeft, Plus, Bell } from "lucide-react"
 import AdminLayout from "../../components/layout/AdminLayout"
 import { useDispatch, useSelector } from "react-redux"
-import { checklistData, checklistHistoryData, updateChecklist } from "../../redux/slice/checklistSlice"
+import { checklistData, checklistHistoryData, updateChecklist, checklistMetadata } from "../../redux/slice/checklistSlice"
 import { maintenanceData, updateMaintenance } from "../../redux/slice/maintenanceSlice"
 import { postChecklistAdminDoneAPI, sendEmailNotificationAPI } from "../../redux/api/checkListApi"
 import { sendMaintenanceNotificationAPI } from "../../redux/api/maintenanceApi"
@@ -63,7 +63,7 @@ function AccountDataPage() {
   const [isMobile, setIsMobile] = useState(false);
   const [activeView, setActiveView] = useState('checklist');
 
-  const { checklist, loading, history, hasMore, currentPage } = useSelector((state) => state.checkList);
+  const { checklist, loading, history, hasMore, currentPage, uniqueDivisions, uniqueDepartments } = useSelector((state) => state.checkList);
   const { maintenance, loading: maintLoading, hasMore: maintHasMore, currentPage: maintCurrentPage } = useSelector((state) => state.maintenance);
 
   const dispatch = useDispatch();
@@ -101,6 +101,7 @@ function AccountDataPage() {
   // Initial data load - Reset all
   useEffect(() => {
     dispatch(uniqueDoerNameData());
+    dispatch(checklistMetadata());
 
     const view = searchParams.get('view');
     if (view === 'maintenance') {
@@ -495,20 +496,7 @@ function AccountDataPage() {
     return maintenance || [];
   }, [maintenance]);
 
-  // Compute unique divisions and departments from checklist + maintenance data
-  const uniqueDivisions = useMemo(() => {
-    const divs = new Set();
-    if (Array.isArray(checklist)) checklist.forEach(item => item.division && divs.add(item.division));
-    if (Array.isArray(maintenance)) maintenance.forEach(item => item.division && divs.add(item.division));
-    return [...divs].sort();
-  }, [checklist, maintenance]);
-
-  const uniqueDepartments = useMemo(() => {
-    const depts = new Set();
-    if (Array.isArray(checklist)) checklist.forEach(item => item.department && depts.add(item.department));
-    if (Array.isArray(maintenance)) maintenance.forEach(item => item.department && depts.add(item.department));
-    return [...depts].sort();
-  }, [checklist, maintenance]);
+  // Filter options are now fetched from the backend on mount and stored in Redux
 
   // Helper function to determine task status (Today, Upcoming, Overdue)
   const getTaskStatus = (taskStartDate) => {
@@ -626,7 +614,7 @@ function AccountDataPage() {
     if ((userRole === "admin" || userRole === "div_admin")) {
       return doerName
     } else {
-      return doerName.filter((member) => member.toLowerCase() === username.toLowerCase())
+      return doerName.filter((member) => (member?.user_name || member).toLowerCase() === username.toLowerCase())
     }
   }
 
@@ -1094,9 +1082,22 @@ const handleSubmit = async () => {
                     </div>
                     <div className="max-h-48 overflow-y-auto">
                       <button type="button" onClick={() => { setNameFilter('all'); setNameDropdownOpen(false); setNameSearchTerm(''); }} className={`w-full text-left px-3 py-2 text-sm hover:bg-purple-50 transition-colors ${nameFilter === 'all' ? 'bg-purple-100 text-purple-700 font-medium' : 'text-gray-700'}`}>All Names</button>
-                      {doerName && doerName.filter(name => name.toLowerCase().includes(nameSearchTerm.toLowerCase())).map((name, index) => (
-                        <button type="button" key={index} onClick={() => { setNameFilter(name); setNameDropdownOpen(false); setNameSearchTerm(''); }} className={`w-full text-left px-3 py-2 text-sm hover:bg-purple-50 transition-colors ${nameFilter === name ? 'bg-purple-100 text-purple-700 font-medium' : 'text-gray-700'}`}>{name}</button>
-                      ))}
+                      {doerName && doerName
+                        .filter(name => (name?.user_name || name).toLowerCase().includes(nameSearchTerm.toLowerCase()))
+                        .map((name, index) => {
+                          const displayName = name?.user_name || name;
+                          return (
+                            <button 
+                              type="button" 
+                              key={index} 
+                              onClick={() => { setNameFilter(displayName); setNameDropdownOpen(false); setNameSearchTerm(''); }} 
+                              className={`w-full text-left px-3 py-2 text-sm hover:bg-purple-50 transition-colors ${nameFilter === displayName ? 'bg-purple-100 text-purple-700 font-medium' : 'text-gray-700'}`}
+                            >
+                              {displayName}
+                            </button>
+                          );
+                        })
+                      }
                     </div>
                   </div>
                 )}

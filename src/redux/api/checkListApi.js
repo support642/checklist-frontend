@@ -143,3 +143,15 @@ export const sendEmailNotificationAPI = async (items) => {
     throw error;
   }
 };
+// =======================================================
+// 6️⃣ Fetch Checklist Metadata (Divisions & Departments)
+// =======================================================
+export const fetchChecklistMetadata = async () => {
+  const response = await authFetch(`${BASE_URL}/metadata`);
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch checklist metadata");
+  }
+
+  return await response.json();
+};

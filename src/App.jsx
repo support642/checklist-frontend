@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom"
 import { useState } from "react"
+import { Toaster } from "react-hot-toast"
 import { useSelector } from "react-redux"
 import LoginPage from "./pages/LoginPage"
 import AdminDashboard from "./pages/admin/Dashboard"
@@ -13,6 +14,7 @@ import AdminDelegationTask from "./pages/delegation-data"
 import "./index.css"
 import Demo from "./pages/user/Demo"
 import Setting from "./pages/Setting"
+import WorkingDate from "./pages/WorkingDate"
 import MisReport from "./pages/MisReport"
 import HistoryPage from "./pages/admin/HistoryPage"
 import TrainingVideoPage from "./pages/admin/TrainingVideoPage"
@@ -126,6 +128,9 @@ const AssignTaskRouter = () => {
 function App() {
   return (
     <Router>
+      {/* ✅ Add Toaster for global notifications */}
+      <Toaster position="top-center" reverseOrder={false} />
+      
       {/* ✅ Realtime listener inside Router so useNavigate works */}
       <RealtimeLogoutListener />
 
@@ -411,6 +416,14 @@ function App() {
           element={
             <ProtectedRoute page="quick_task">
               <QuickTask />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/working-date"
+          element={
+            <ProtectedRoute page="working_date">
+              <WorkingDate />
             </ProtectedRoute>
           }
         />

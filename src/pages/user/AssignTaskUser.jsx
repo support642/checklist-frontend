@@ -209,7 +209,7 @@ export default function AssignTaskUser() {
   const filteredDoerNames = canAssignToOthers
     ? doerName
     : doerName.filter(
-        (doer) => doer?.trim().toLowerCase() === username?.trim().toLowerCase()
+        (doer) => (doer?.user_name || doer)?.trim().toLowerCase() === username?.trim().toLowerCase()
       );
 
   const dispatch = useDispatch();
@@ -511,6 +511,8 @@ useEffect(() => {
     const selectedDate = new Date(date);
     const tasks = [];
 
+    const selectedDoerObj = doerName.find(d => (d.user_name || d) === formData.doer);
+
     // For one-time tasks
     if (formData.frequency === "one-time") {
       const taskDateStr = findNextWorkingDay(selectedDate);
@@ -555,6 +557,8 @@ useEffect(() => {
       const maxTasks = 365; // Safety limit
 
       while (currentDate <= endDate && taskCount < maxTasks) {
+        // Day-off skipping removed
+
         let taskDate;
 
         switch (formData.frequency) {
@@ -706,6 +710,8 @@ useEffect(() => {
       const selectedDate = new Date(date);
       const tasks = [];
 
+      const selectedDoerObj = doerName.find(d => (d.user_name || d) === formData.doer);
+
       // For one-time tasks
       if (formData.frequency === "one-time") {
         const taskDateStr = findNextWorkingDay(selectedDate);
@@ -751,6 +757,8 @@ useEffect(() => {
         const maxTasks = 365; // Safety limit
 
         while (currentDate <= endDate && taskCount < maxTasks) {
+          // Day-off skipping removed
+
           let taskDate;
 
           switch (formData.frequency) {
@@ -1143,9 +1151,9 @@ useEffect(() => {
                       className="w-full rounded-md border border-purple-200 p-2 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
                     >
                       <option value="">Select Doer</option>
-                      {filteredDoerNames.map((doer, index) => (
-                        <option key={index} value={doer}>
-                          {doer}
+                      {Array.isArray(filteredDoerNames) && filteredDoerNames.map((d, index) => (
+                        <option key={index} value={d?.user_name || d}>
+                          {typeof d === 'object' ? d?.user_name : d}
                         </option>
                       ))}
                     </select>

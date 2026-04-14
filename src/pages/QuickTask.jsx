@@ -1,7 +1,8 @@
 "use client"
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { format } from 'date-fns';
-import { Search, ChevronDown, Filter, Trash2, Edit, Save, X } from "lucide-react";
+import { Search, ChevronDown, Filter, Trash2, Edit, Save, X, ChevronUp } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import AdminLayout from "../components/layout/AdminLayout";
 import { hasPageAccess, canAccessModule, hasModifyAccess } from "../utils/permissionUtils";
 import DelegationPage from "./delegation-data";
@@ -48,6 +49,7 @@ export default function QuickTask() {
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [editFormData, setEditFormData] = useState({});
   const [isSaving, setIsSaving] = useState(false);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   const { 
     quickTask, 
@@ -928,8 +930,7 @@ const filteredMaintenanceTasks = useMemo(() => {
                 </button>
               )}
             </div>
-
-            <div className="relative flex-1 min-w-[200px]">
+                    <div className="relative flex-1 min-w-[200px]">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Search className="text-gray-400" size={18} />
               </div>
@@ -943,311 +944,88 @@ const filteredMaintenanceTasks = useMemo(() => {
               />
             </div>
 
-            <div className="flex gap-2 flex-wrap">
-              <div className="relative">
-                <div className="flex items-center gap-2">
-                  {/* Input with datalist for autocomplete */}
-                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Search className="text-gray-400" size={16} />
-                  </div>
-                  <input
-    type="text"
-    list="nameOptions"
-    placeholder="Type or select name..."
-    value={nameFilter}
-    onChange={(e) => {
-      const typedName = e.target.value;
-      setNameFilter(typedName); // Always update the input value
-      
-      // Only trigger DB fetch if the value is empty or matches a name in the list
-      if (typedName === '') {
-        clearNameFilter();
-      } else if (allNames.includes(typedName)) {
-        handleNameFilterSelect(typedName);
-      }
-    }}
-    onBlur={(e) => {
-      // When input loses focus, if the typed value doesn't match any name, clear it
-      const typedName = e.target.value;
-      if (typedName && !allNames.includes(typedName)) {
-        // Optional: You can either clear it or keep it for manual filtering
-        // setNameFilter('');
-        // clearNameFilter();
-      }
-    }}
-    onKeyDown={(e) => {
-      // Allow pressing Enter to apply the filter even if not exact match
-      if (e.key === 'Enter') {
-        if (nameFilter === '') {
-          clearNameFilter();
-        } else {
-          // Apply the filter with whatever is typed
-          handleNameFilterSelect(nameFilter);
-        }
-      }
-    }}
-    className="w-full sm:w-48 pl-10 pr-8 py-2 border border-purple-200 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
-  />
-  <datalist id="nameOptions">
-    {allNames.map(name => (
-      <option key={name} value={name} />
-    ))}
-  </datalist>
-
-  {/* Clear button for input */}
-  {nameFilter && (
-    <div className="absolute inset-y-0 right-0 pr-2 flex items-center">
-      <button
-        onClick={() => {
-          setNameFilter('');
-          clearNameFilter();
-        }}
-        className="text-gray-400 hover:text-gray-600"
-      >
-        <X size={16} />
-      </button>
-    </div>
-  )}
-</div>
-
-                  {/* Dropdown button */}
-                  <button
-                    onClick={() => toggleDropdown('name')}
-                    className="flex items-center gap-1 px-3 py-2 border border-purple-200 rounded-md bg-white text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    <ChevronDown size={16} className={`transition-transform ${dropdownOpen.name ? 'rotate-180' : ''}`} />
-                  </button>
-                </div>
-
-                {/* Dropdown menu */}
-                {dropdownOpen.name && (
-                  <div className="absolute z-50 mt-1 w-56 rounded-md bg-white shadow-lg border border-gray-200 max-h-60 overflow-auto top-full right-0">
-                    <div className="py-1">
-                      <button
-                        onClick={clearNameFilter}
-                        className={`block w-full text-left px-4 py-2 text-sm ${!nameFilter ? 'bg-purple-100 text-purple-900' : 'text-gray-700 hover:bg-gray-100'}`}
-                      >
-                        All Names
-                      </button>
-                      {allNames.map(name => (
-                        <button
-                          key={name}
-                          onClick={() => {
-                            handleNameFilterSelect(name);
-                            setDropdownOpen({ ...dropdownOpen, name: false });
-                          }}
-                          className={`block w-full text-left px-4 py-2 text-sm ${nameFilter === name ? 'bg-purple-100 text-purple-900' : 'text-gray-700 hover:bg-gray-100'}`}
-                        >
-                          {name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
+            {/* Mobile Filter Toggle */}
+            <button 
+              onClick={() => setShowMobileFilters(!showMobileFilters)}
+              className="sm:hidden flex items-center justify-between w-full px-4 py-2.5 bg-purple-50 text-purple-700 rounded-xl border border-purple-100 font-bold shadow-sm transition-all active:scale-95"
+            >
+              <div className="flex items-center gap-2">
+                <Filter size={16} className="text-purple-500" />
+                <span className="text-xs uppercase tracking-wider">
+                  {showMobileFilters ? 'Hide Filter Options' : 'Show Filter Options'}
+                </span>
               </div>
+              {showMobileFilters ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            </button>
 
-              {/* Department Filter */}
-              <div className="relative">
-                <div className="flex items-center gap-2">
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Search className="text-gray-400" size={16} />
-                    </div>
-                    <input
-                      type="text"
-                      list="deptOptions"
-                      placeholder="Type or select department..."
-                      value={deptFilter}
-                      onChange={(e) => {
-                        const typedDept = e.target.value;
-                        setDeptFilter(typedDept);
-                        if (typedDept === '') clearDeptFilter();
-                        else if (allDepartments.includes(typedDept)) handleDeptFilterSelect(typedDept);
-                      }}
-                      onBlur={(e) => {
-                        const typedDept = e.target.value;
-                        if (typedDept && !allDepartments.includes(typedDept)) {}
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          if (deptFilter === '') clearDeptFilter();
-                          else handleDeptFilterSelect(deptFilter);
-                        }
-                      }}
-                      className="w-full sm:w-48 pl-10 pr-8 py-2 border border-purple-200 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
-                    />
-                    <datalist id="deptOptions">
-                      {allDepartments.map(dept => (
-                        <option key={dept} value={dept} />
-                      ))}
-                    </datalist>
-                    {deptFilter && (
-                      <div className="absolute inset-y-0 right-0 pr-2 flex items-center">
-                        <button
-                          onClick={() => {
-                            setDeptFilter('');
-                            clearDeptFilter();
-                          }}
-                          className="text-gray-400 hover:text-gray-600"
-                        >
-                          <X size={16} />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => toggleDropdown('department')}
-                    className="flex items-center gap-1 px-3 py-2 border border-purple-200 rounded-md bg-white text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    <ChevronDown size={16} className={`transition-transform ${dropdownOpen.department ? 'rotate-180' : ''}`} />
-                  </button>
-                </div>
-                {dropdownOpen.department && (
-                  <div className="absolute z-50 mt-1 w-56 rounded-md bg-white shadow-lg border border-gray-200 max-h-60 overflow-auto top-full right-0">
-                    <div className="py-1">
-                      <button
-                        onClick={clearDeptFilter}
-                        className={`block w-full text-left px-4 py-2 text-sm ${!deptFilter ? 'bg-purple-100 text-purple-900' : 'text-gray-700 hover:bg-gray-100'}`}
-                      >
-                        All Departments
-                      </button>
-                      {allDepartments.map(dept => (
-                        <button
-                          key={dept}
-                          onClick={() => {
-                            handleDeptFilterSelect(dept);
-                            setDropdownOpen({ ...dropdownOpen, department: false });
-                          }}
-                          className={`block w-full text-left px-4 py-2 text-sm ${deptFilter === dept ? 'bg-purple-100 text-purple-900' : 'text-gray-700 hover:bg-gray-100'}`}
-                        >
-                          {dept}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Division Filter */}
-              <div className="relative">
-                <div className="flex items-center gap-2">
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Search className="text-gray-400" size={16} />
-                    </div>
-                    <input
-                      type="text"
-                      list="divOptions"
-                      placeholder="Type or select division..."
-                      value={divFilter}
-                      onChange={(e) => {
-                        const typedDiv = e.target.value;
-                        setDivFilter(typedDiv);
-                        if (typedDiv === '') clearDivFilter();
-                        else if (allDivisions.includes(typedDiv)) handleDivFilterSelect(typedDiv);
-                      }}
-                      onBlur={(e) => {
-                        const typedDiv = e.target.value;
-                        if (typedDiv && !allDivisions.includes(typedDiv)) {}
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          if (divFilter === '') clearDivFilter();
-                          else handleDivFilterSelect(divFilter);
-                        }
-                      }}
-                      className="w-full sm:w-48 pl-10 pr-8 py-2 border border-purple-200 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
-                    />
-                    <datalist id="divOptions">
-                      {allDivisions.map(div => (
-                        <option key={div} value={div} />
-                      ))}
-                    </datalist>
-                    {divFilter && (
-                      <div className="absolute inset-y-0 right-0 pr-2 flex items-center">
-                        <button
-                          onClick={() => {
-                            setDivFilter('');
-                            clearDivFilter();
-                          }}
-                          className="text-gray-400 hover:text-gray-600"
-                        >
-                          <X size={16} />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => toggleDropdown('division')}
-                    className="flex items-center gap-1 px-3 py-2 border border-purple-200 rounded-md bg-white text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    <ChevronDown size={16} className={`transition-transform ${dropdownOpen.division ? 'rotate-180' : ''}`} />
-                  </button>
-                </div>
-                {dropdownOpen.division && (
-                  <div className="absolute z-50 mt-1 w-56 rounded-md bg-white shadow-lg border border-gray-200 max-h-60 overflow-auto top-full right-0">
-                    <div className="py-1">
-                      <button
-                        onClick={clearDivFilter}
-                        className={`block w-full text-left px-4 py-2 text-sm ${!divFilter ? 'bg-purple-100 text-purple-900' : 'text-gray-700 hover:bg-gray-100'}`}
-                      >
-                        All Divisions
-                      </button>
-                      {allDivisions.map(div => (
-                        <button
-                          key={div}
-                          onClick={() => {
-                            handleDivFilterSelect(div);
-                            setDropdownOpen({ ...dropdownOpen, division: false });
-                          }}
-                          className={`block w-full text-left px-4 py-2 text-sm ${divFilter === div ? 'bg-purple-100 text-purple-900' : 'text-gray-700 hover:bg-gray-100'}`}
-                        >
-                          {div}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="relative">
-                <button
-                  onClick={() => toggleDropdown('frequency')}
-                  className="flex items-center gap-2 px-3 py-2 border border-purple-200 rounded-md bg-white text-sm text-gray-700 hover:bg-gray-50"
+            <AnimatePresence>
+              {(showMobileFilters) && (
+                <motion.div 
+                  initial={{ height: 0, opacity: 0, marginTop: 0 }}
+                  animate={{ height: 'auto', opacity: 1, marginTop: 8 }}
+                  exit={{ height: 0, opacity: 0, marginTop: 0 }}
+                  className="sm:hidden flex flex-col gap-3 w-full overflow-hidden"
                 >
-                  <Filter className="h-4 w-4 flex-shrink-0" />
-                  <span className="truncate max-w-[120px] sm:max-w-none">{freqFilter || 'Frequency'}</span>
-                  <ChevronDown size={16} className={`transition-transform flex-shrink-0 ${dropdownOpen.frequency ? 'rotate-180' : ''}`} />
-                </button>
-                {dropdownOpen.frequency && (
-                  <div className="absolute z-50 mt-1 w-56 rounded-md bg-white shadow-lg border border-gray-200 max-h-60 overflow-auto">
-                    <div className="py-1">
-                      <button
-                        onClick={clearFrequencyFilter}
-                        className={`block w-full text-left px-4 py-2 text-sm ${!freqFilter ? 'bg-purple-100 text-purple-900' : 'text-gray-700 hover:bg-gray-100'}`}
-                      >
-                        All Frequencies
-                      </button>
-                      {allFrequencies.map(freq => (
-                        <button
-                          key={freq}
-                          onClick={() => handleFrequencyFilterSelect(freq)}
-                          className={`block w-full text-left px-4 py-2 text-sm ${freqFilter === freq ? 'bg-purple-100 text-purple-900' : 'text-gray-700 hover:bg-gray-100'}`}
-                        >
-                          {freq}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
+                  {/* Reuse the filter content for mobile */}
+                  <FilterContent 
+                    nameFilter={nameFilter}
+                    setNameFilter={setNameFilter}
+                    clearNameFilter={clearNameFilter}
+                    handleNameFilterSelect={handleNameFilterSelect}
+                    allNames={allNames}
+                    dropdownOpen={dropdownOpen}
+                    toggleDropdown={toggleDropdown}
+                    setDropdownOpen={setDropdownOpen}
+                    deptFilter={deptFilter}
+                    setDeptFilter={setDeptFilter}
+                    clearDeptFilter={clearDeptFilter}
+                    handleDeptFilterSelect={handleDeptFilterSelect}
+                    allDepartments={allDepartments}
+                    divFilter={divFilter}
+                    setDivFilter={setDivFilter}
+                    clearDivFilter={clearDivFilter}
+                    handleDivFilterSelect={handleDivFilterSelect}
+                    allDivisions={allDivisions}
+                    freqFilter={freqFilter}
+                    handleFrequencyFilterSelect={handleFrequencyFilterSelect}
+                    clearFrequencyFilter={clearFrequencyFilter}
+                    allFrequencies={allFrequencies}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <div className="hidden sm:flex gap-2 flex-wrap">
+              <FilterContent 
+                nameFilter={nameFilter}
+                setNameFilter={setNameFilter}
+                clearNameFilter={clearNameFilter}
+                handleNameFilterSelect={handleNameFilterSelect}
+                allNames={allNames}
+                dropdownOpen={dropdownOpen}
+                toggleDropdown={toggleDropdown}
+                setDropdownOpen={setDropdownOpen}
+                deptFilter={deptFilter}
+                setDeptFilter={setDeptFilter}
+                clearDeptFilter={clearDeptFilter}
+                handleDeptFilterSelect={handleDeptFilterSelect}
+                allDepartments={allDepartments}
+                divFilter={divFilter}
+                setDivFilter={setDivFilter}
+                clearDivFilter={clearDivFilter}
+                handleDivFilterSelect={handleDivFilterSelect}
+                allDivisions={allDivisions}
+                freqFilter={freqFilter}
+                handleFrequencyFilterSelect={handleFrequencyFilterSelect}
+                clearFrequencyFilter={clearFrequencyFilter}
+                allFrequencies={allFrequencies}
+              />
             </div>
             {selectedTasks.length > 0 && activeTab === 'checklist' && canModifyTasks && (
               <button
                 onClick={handleDeleteSelected}
                 disabled={isDeleting}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 mt-2 sm:mt-0"
               >
                 <Trash2 size={16} />
                 {isDeleting ? 'Deleting...' : `Delete (${selectedTasks.length})`}
@@ -1825,5 +1603,270 @@ const filteredMaintenanceTasks = useMemo(() => {
         </>
       )}
     </AdminLayout>
+  );
+}
+
+/**
+ * Sub-component for filters to avoid duplication between mobile collapse and desktop
+ */
+function FilterContent({ 
+  nameFilter, setNameFilter, clearNameFilter, handleNameFilterSelect, allNames, dropdownOpen, toggleDropdown, setDropdownOpen,
+  deptFilter, setDeptFilter, clearDeptFilter, handleDeptFilterSelect, allDepartments,
+  divFilter, setDivFilter, clearDivFilter, handleDivFilterSelect, allDivisions,
+  freqFilter, handleFrequencyFilterSelect, clearFrequencyFilter, allFrequencies
+}) {
+  return (
+    <>
+      {/* Name Filter */}
+      <div className="relative w-full sm:w-auto">
+        <div className="flex items-center gap-2 w-full">
+          <div className="relative flex-1 sm:flex-none">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="text-gray-400" size={16} />
+            </div>
+            <input
+              type="text"
+              list="nameOptions"
+              placeholder="Type or select name..."
+              value={nameFilter}
+              onChange={(e) => {
+                const typedName = e.target.value;
+                setNameFilter(typedName);
+                if (typedName === '') clearNameFilter();
+                else if (allNames.includes(typedName)) handleNameFilterSelect(typedName);
+              }}
+              className="w-full sm:w-48 pl-10 pr-8 py-2 border border-purple-200 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+            />
+            <datalist id="nameOptions">
+              {allNames.map(name => (
+                <option key={name} value={name} />
+              ))}
+            </datalist>
+            {nameFilter && (
+              <div className="absolute inset-y-0 right-0 pr-2 flex items-center">
+                <button
+                  onClick={() => {
+                    setNameFilter('');
+                    clearNameFilter();
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            )}
+          </div>
+          <button
+            onClick={() => toggleDropdown('name')}
+            className="flex items-center gap-1 px-3 py-2 border border-purple-200 rounded-md bg-white text-sm text-gray-700 hover:bg-gray-50"
+          >
+            <ChevronDown size={16} className={`transition-transform ${dropdownOpen.name ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+        {dropdownOpen.name && (
+          <div className="absolute z-50 mt-1 w-56 rounded-md bg-white shadow-lg border border-gray-200 max-h-60 overflow-auto top-full right-0">
+            <div className="py-1">
+              <button
+                onClick={clearNameFilter}
+                className={`block w-full text-left px-4 py-2 text-sm ${!nameFilter ? 'bg-purple-100 text-purple-900' : 'text-gray-700 hover:bg-gray-100'}`}
+              >
+                All Names
+              </button>
+              {allNames.map(name => (
+                <button
+                  key={name}
+                  onClick={() => {
+                    handleNameFilterSelect(name);
+                    setDropdownOpen({ ...dropdownOpen, name: false });
+                  }}
+                  className={`block w-full text-left px-4 py-2 text-sm ${nameFilter === name ? 'bg-purple-100 text-purple-900' : 'text-gray-700 hover:bg-gray-100'}`}
+                >
+                  {name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Department Filter */}
+      <div className="relative w-full sm:w-auto">
+        <div className="flex items-center gap-2 w-full">
+          <div className="relative flex-1 sm:flex-none">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="text-gray-400" size={16} />
+            </div>
+            <input
+              type="text"
+              list="deptOptions"
+              placeholder="Type or select department..."
+              value={deptFilter}
+              onChange={(e) => {
+                const typedDept = e.target.value;
+                setDeptFilter(typedDept);
+                if (typedDept === '') clearDeptFilter();
+                else if (allDepartments.includes(typedDept)) handleDeptFilterSelect(typedDept);
+              }}
+              className="w-full sm:w-48 pl-10 pr-8 py-2 border border-purple-200 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+            />
+            <datalist id="deptOptions">
+              {allDepartments.map(dept => (
+                <option key={dept} value={dept} />
+              ))}
+            </datalist>
+            {deptFilter && (
+              <div className="absolute inset-y-0 right-0 pr-2 flex items-center">
+                <button
+                  onClick={() => {
+                    setDeptFilter('');
+                    clearDeptFilter();
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            )}
+          </div>
+          <button
+            onClick={() => toggleDropdown('department')}
+            className="flex items-center gap-1 px-3 py-2 border border-purple-200 rounded-md bg-white text-sm text-gray-700 hover:bg-gray-50"
+          >
+            <ChevronDown size={16} className={`transition-transform ${dropdownOpen.department ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+        {dropdownOpen.department && (
+          <div className="absolute z-50 mt-1 w-56 rounded-md bg-white shadow-lg border border-gray-200 max-h-60 overflow-auto top-full right-0">
+            <div className="py-1">
+              <button
+                onClick={clearDeptFilter}
+                className={`block w-full text-left px-4 py-2 text-sm ${!deptFilter ? 'bg-purple-100 text-purple-900' : 'text-gray-700 hover:bg-gray-100'}`}
+              >
+                All Departments
+              </button>
+              {allDepartments.map(dept => (
+                <button
+                  key={dept}
+                  onClick={() => {
+                    handleDeptFilterSelect(dept);
+                    setDropdownOpen({ ...dropdownOpen, department: false });
+                  }}
+                  className={`block w-full text-left px-4 py-2 text-sm ${deptFilter === dept ? 'bg-purple-100 text-purple-900' : 'text-gray-700 hover:bg-gray-100'}`}
+                >
+                  {dept}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Division Filter */}
+      <div className="relative w-full sm:w-auto">
+        <div className="flex items-center gap-2 w-full">
+          <div className="relative flex-1 sm:flex-none">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="text-gray-400" size={16} />
+            </div>
+            <input
+              type="text"
+              list="divOptions"
+              placeholder="Type or select division..."
+              value={divFilter}
+              onChange={(e) => {
+                const typedDiv = e.target.value;
+                setDivFilter(typedDiv);
+                if (typedDiv === '') clearDivFilter();
+                else if (allDivisions.includes(typedDiv)) handleDivFilterSelect(typedDiv);
+              }}
+              className="w-full sm:w-48 pl-10 pr-8 py-2 border border-purple-200 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+            />
+            <datalist id="divOptions">
+              {allDivisions.map(div => (
+                <option key={div} value={div} />
+              ))}
+            </datalist>
+            {divFilter && (
+              <div className="absolute inset-y-0 right-0 pr-2 flex items-center">
+                <button
+                  onClick={() => {
+                    setDivFilter('');
+                    clearDivFilter();
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            )}
+          </div>
+          <button
+            onClick={() => toggleDropdown('division')}
+            className="flex items-center gap-1 px-3 py-2 border border-purple-200 rounded-md bg-white text-sm text-gray-700 hover:bg-gray-50"
+          >
+            <ChevronDown size={16} className={`transition-transform ${dropdownOpen.division ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+        {dropdownOpen.division && (
+          <div className="absolute z-50 mt-1 w-56 rounded-md bg-white shadow-lg border border-gray-200 max-h-60 overflow-auto top-full right-0">
+            <div className="py-1">
+              <button
+                onClick={clearDivFilter}
+                className={`block w-full text-left px-4 py-2 text-sm ${!divFilter ? 'bg-purple-100 text-purple-900' : 'text-gray-700 hover:bg-gray-100'}`}
+              >
+                All Divisions
+              </button>
+              {allDivisions.map(div => (
+                <button
+                  key={div}
+                  onClick={() => {
+                    handleDivFilterSelect(div);
+                    setDropdownOpen({ ...dropdownOpen, division: false });
+                  }}
+                  className={`block w-full text-left px-4 py-2 text-sm ${divFilter === div ? 'bg-purple-100 text-purple-900' : 'text-gray-700 hover:bg-gray-100'}`}
+                >
+                  {div}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Frequency Filter */}
+      <div className="relative w-full sm:w-auto">
+        <button
+          onClick={() => toggleDropdown('frequency')}
+          className="flex items-center justify-between w-full sm:w-auto gap-2 px-3 py-2 border border-purple-200 rounded-md bg-white text-sm text-gray-700 hover:bg-gray-50"
+        >
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 flex-shrink-0" />
+            <span className="truncate max-w-[120px] sm:max-w-none">{freqFilter || 'Frequency'}</span>
+          </div>
+          <ChevronDown size={16} className={`transition-transform flex-shrink-0 ${dropdownOpen.frequency ? 'rotate-180' : ''}`} />
+        </button>
+        {dropdownOpen.frequency && (
+          <div className="absolute z-50 mt-1 w-full sm:w-56 rounded-md bg-white shadow-lg border border-gray-200 max-h-60 overflow-auto bottom-full sm:bottom-auto mb-1 sm:mb-0">
+            <div className="py-1">
+              <button
+                onClick={clearFrequencyFilter}
+                className={`block w-full text-left px-4 py-2 text-sm ${!freqFilter ? 'bg-purple-100 text-purple-900' : 'text-gray-700 hover:bg-gray-100'}`}
+              >
+                All Frequencies
+              </button>
+              {allFrequencies.map(freq => (
+                <button
+                  key={freq}
+                  onClick={() => handleFrequencyFilterSelect(freq)}
+                  className={`block w-full text-left px-4 py-2 text-sm ${freqFilter === freq ? 'bg-purple-100 text-purple-900' : 'text-gray-700 hover:bg-gray-100'}`}
+                >
+                  {freq}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </>
   );
 }

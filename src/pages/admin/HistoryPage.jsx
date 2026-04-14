@@ -439,9 +439,11 @@ function HistoryPage() {
 
   const getFilteredMembersList = () => {
     if (userRole === "admin" || userRole === "div_admin") {
-      return doerName
+      return doerName.map(member => member?.user_name || member)
     } else {
-      return doerName.filter((member) => member.toLowerCase() === username.toLowerCase())
+      return doerName
+        .map(member => member?.user_name || member)
+        .filter((member) => member.toLowerCase() === username.toLowerCase())
     }
   }
 

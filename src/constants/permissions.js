@@ -32,7 +32,10 @@ export const PAGE_PERMISSIONS = [
   "repair_request_form",
   "repair_pending_request",
   "repair_request_approval",
-  "repair_setting"
+  "repair_setting",
+  "working_date",
+  "loan_foreclosure",
+  "loan_noc"
 ];
 
 // Used by the manual View/Modify permission UI (super_admin only)
@@ -58,6 +61,9 @@ export const PAGE_PERMISSION_GROUPS = [
   { key: "repair_request_form", label: "Repair Request Form" },
   { key: "repair_pending_request", label: "Repair Pending Request" },
   { key: "repair_request_approval", label: "Repair Request Approval" },
+  { key: "working_date", label: "Working Date" },
+  { key: "loan_foreclosure", label: "Loan Foreclosure" },
+  { key: "loan_noc", label: "Loan NOC" },
 ];
 
 // Maps UI modules (checklist, maintenance, etc.) to system_access features
@@ -90,7 +96,8 @@ export const PAGE_SYSTEM_MAP = {
   "repair_request_form": ["repair"],
   "repair_pending_request": ["repair"],
   "repair_request_approval": ["repair"],
-  "repair_setting": ["repair"]
+  "repair_setting": ["repair"],
+  "working_date": ["checklist"]
 };
 
 export const DOC_SYSTEMS = [

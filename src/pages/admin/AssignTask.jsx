@@ -274,7 +274,7 @@ export default function AssignTask() {
     
     return canAssignToOthers
       ? doerName
-      : doerName.filter(doer => doer?.trim().toLowerCase() === username?.trim().toLowerCase());
+      : doerName.filter(doer => doer?.user_name?.trim().toLowerCase() === username?.trim().toLowerCase());
   }, [doerName, username, formData.department, userRole]);
 
   // Cascading dropdown data
@@ -532,6 +532,8 @@ useEffect(() => {
     const selectedDate = new Date(date);
     const tasks = [];
 
+    const selectedDoerObj = doerName.find(d => d.user_name === formData.doer);
+
     // For one-time tasks
     if (formData.frequency === "one-time") {
       const taskDateStr = findNextWorkingDay(selectedDate);
@@ -576,6 +578,8 @@ useEffect(() => {
       const maxTasks = 365; // Safety limit
 
       while (currentDate <= endDate && taskCount < maxTasks) {
+        // Day-off skipping removed
+
         let taskDate;
 
         switch (formData.frequency) {
@@ -726,6 +730,8 @@ useEffect(() => {
       const selectedDate = new Date(date);
       const tasks = [];
 
+      const selectedDoerObj = doerName.find(d => d.user_name === formData.doer);
+
       // For one-time tasks
       if (formData.frequency === "one-time") {
         const taskDateStr = findNextWorkingDay(selectedDate);
@@ -772,6 +778,8 @@ useEffect(() => {
         const maxTasks = 365;
 
         while (currentDate <= endDate && taskCount < maxTasks) {
+          // Day-off skipping removed
+
           let taskDate;
 
           switch (formData.frequency) {
@@ -895,7 +903,7 @@ useEffect(() => {
       const isAdminRole = userRole === 'super_admin' || userRole === 'admin' || userRole === 'div_admin';
       
       if (!isAdminRole) {
-        // Reset form for non-admin users
+        // Reset full form for non-admin users
         setFormData({
           unit: "",
           division: "",
@@ -917,6 +925,12 @@ useEffect(() => {
         setSelectedDate(new Date()); 
         setStartDate(new Date());
         setTime(getCurrentTime());
+      } else {
+        // For admin roles, only reset the description to allow batch assignment
+        setFormData(prev => ({
+          ...prev,
+          description: ""
+        }));
       }
       
       setGeneratedTasks([]);
@@ -1172,8 +1186,8 @@ useEffect(() => {
                     >
                       <option value="">Select Doer</option>
                       {filteredDoerNames.map((doer, index) => (
-                        <option key={index} value={doer}>
-                          {doer}
+                        <option key={index} value={doer.user_name || doer}>
+                          {typeof doer === 'object' ? doer.user_name : doer}
                         </option>
                       ))}
                     </select>
