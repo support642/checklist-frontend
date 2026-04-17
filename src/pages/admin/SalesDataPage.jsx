@@ -1360,23 +1360,23 @@ const handleSubmit = async () => {
                           <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                             Task ID
                           </th>
-                          <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                            Department
+                          <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[150px]">
+                            Task Description
                           </th>
                           <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                            Unit
-                          </th>
-                          <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                            Division
+                            Name
                           </th>
                           <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                             Given By
                           </th>
                           <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                            Name
+                            Department
                           </th>
-                          <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[150px]">
-                            Task Description
+                          <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                            Division
+                          </th>
+                          <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                            Unit
                           </th>
                           {(userRole === "admin" || userRole === "div_admin") && (
                             <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-purple-50 whitespace-nowrap">
@@ -1419,25 +1419,25 @@ const handleSubmit = async () => {
                                   {history.task_id || "—"}
                                 </div>
                               </td>
-                              <td className="px-2 sm:px-3 py-2 sm:py-4">
-                                <div className="text-xs sm:text-sm text-gray-900 break-words">{history.department || "—"}</div>
+                              <td className="px-2 sm:px-3 py-2 sm:py-4 min-w-[150px]">
+                                <div className="text-xs sm:text-sm text-gray-900 break-words" title={history.task_description}>
+                                  {history.task_description || "—"}
+                                </div>
                               </td>
                               <td className="px-2 sm:px-3 py-2 sm:py-4">
-                                <div className="text-xs sm:text-sm text-gray-900 break-words">{history.unit || "—"}</div>
-                              </td>
-                              <td className="px-2 sm:px-3 py-2 sm:py-4">
-                                <div className="text-xs sm:text-sm text-gray-900 break-words">{history.division || "—"}</div>
+                                <div className="text-xs sm:text-sm text-gray-900 break-words">{history.name || "—"}</div>
                               </td>
                               <td className="px-2 sm:px-3 py-2 sm:py-4">
                                 <div className="text-xs sm:text-sm text-gray-900 break-words">{history.given_by || "—"}</div>
                               </td>
                               <td className="px-2 sm:px-3 py-2 sm:py-4">
-                                <div className="text-xs sm:text-sm text-gray-900 break-words">{history.name || "—"}</div>
+                                <div className="text-xs sm:text-sm text-gray-900 break-words">{history.department || "—"}</div>
                               </td>
-                              <td className="px-2 sm:px-3 py-2 sm:py-4 min-w-[150px]">
-                                <div className="text-xs sm:text-sm text-gray-900 break-words" title={history.task_description}>
-                                  {history.task_description || "—"}
-                                </div>
+                              <td className="px-2 sm:px-3 py-2 sm:py-4">
+                                <div className="text-xs sm:text-sm text-gray-900 break-words">{history.division || "—"}</div>
+                              </td>
+                              <td className="px-2 sm:px-3 py-2 sm:py-4">
+                                <div className="text-xs sm:text-sm text-gray-900 break-words">{history.unit || "—"}</div>
                               </td>
                               {(userRole === "admin" || userRole === "div_admin") && (
                                 <td className="px-2 sm:px-3 py-2 sm:py-4 bg-purple-50">
@@ -1629,9 +1629,10 @@ const handleSubmit = async () => {
                         <p className="text-sm font-medium text-gray-900 mb-2">{item.task_description || "—"}</p>
                         <div className="grid grid-cols-2 gap-2 text-xs mb-2">
                           <div><span className="text-gray-500">Name:</span> <span className="font-medium">{item.name || "—"}</span></div>
+                          <div><span className="text-gray-500">Given By:</span> <span className="font-medium">{item.given_by || "—"}</span></div>
                           <div><span className="text-gray-500">Dept:</span> <span className="font-medium">{item.department || "—"}</span></div>
-                          <div><span className="text-gray-500">Unit:</span> <span className="font-medium">{item.unit || "—"}</span></div>
                           <div><span className="text-gray-500">Division:</span> <span className="font-medium">{item.division || "—"}</span></div>
+                          <div><span className="text-gray-500">Unit:</span> <span className="font-medium">{item.unit || "—"}</span></div>
                           <div><span className="text-gray-500">M-Dept:</span> <span className="font-medium">{item.machine_department || "—"}</span></div>
                           <div><span className="text-gray-500">M-Div:</span> <span className="font-medium">{item.machine_division || "—"}</span></div>
                           <div><span className="text-gray-500">Machine:</span> <span className="font-medium">{item.machine_name || "—"}</span></div>
@@ -1660,7 +1661,6 @@ const handleSubmit = async () => {
                             })()}
                           </div>
                           <div><span className="text-gray-500">Area:</span> <span className="font-medium">{item.part_area || "—"}</span></div>
-                          <div><span className="text-gray-500">Given By:</span> <span className="font-medium">{item.given_by || "—"}</span></div>
                           <div><span className="text-gray-500">Planned Date:</span> <span className="font-medium">{item.planned_date || "—"}</span></div>
                           <div><span className="text-gray-500">Frequency:</span> <span className="font-medium">{item.frequency || "—"}</span></div>
                         </div>
@@ -1798,14 +1798,14 @@ const handleSubmit = async () => {
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[200px] border-b">Task Description</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[180px] border-b">Name</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[180px] border-b">Given By</th>
+                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap border-b">Dept</th>
+                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap border-b">Division</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[150px] border-b bg-orange-50">Remark</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap border-b bg-yellow-50">Planned</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap border-b bg-yellow-50">Status</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap border-b">ID</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap border-b bg-green-50">File</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap border-b">Unit</th>
-                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap border-b">Division</th>
-                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap border-b">Dept</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap border-b">M-Dept</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap border-b">M-Div</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap border-b">Machine</th>
@@ -1862,6 +1862,8 @@ const handleSubmit = async () => {
                           <td className="px-2 sm:px-3 py-2 sm:py-4 min-w-[180px] border-b">
                             <div className="text-xs sm:text-sm text-gray-900 break-words">{item.given_by || "—"}</div>
                           </td>
+                          <td className="px-2 sm:px-3 py-2 sm:py-4 border-b whitespace-nowrap"><div className="text-xs sm:text-sm text-gray-900">{item.department || "—"}</div></td>
+                          <td className="px-2 sm:px-3 py-2 sm:py-4 border-b whitespace-nowrap"><div className="text-xs sm:text-sm text-gray-900">{item.division || "—"}</div></td>
                           <td className="px-2 sm:px-3 py-2 sm:py-4 bg-orange-50 min-w-[150px] border-b">
                             <input
                               type="text"
@@ -1946,8 +1948,6 @@ const handleSubmit = async () => {
                             )}
                           </td>
                           <td className="px-2 sm:px-3 py-2 sm:py-4 border-b whitespace-nowrap"><div className="text-xs sm:text-sm text-gray-900">{item.unit || "—"}</div></td>
-                          <td className="px-2 sm:px-3 py-2 sm:py-4 border-b whitespace-nowrap"><div className="text-xs sm:text-sm text-gray-900">{item.division || "—"}</div></td>
-                          <td className="px-2 sm:px-3 py-2 sm:py-4 border-b whitespace-nowrap"><div className="text-xs sm:text-sm text-gray-900">{item.department || "—"}</div></td>
                           <td className="px-2 sm:px-3 py-2 sm:py-4 border-b whitespace-nowrap"><div className="text-xs sm:text-sm text-gray-900">{item.machine_department || "—"}</div></td>
                           <td className="px-2 sm:px-3 py-2 sm:py-4 border-b whitespace-nowrap"><div className="text-xs sm:text-sm text-gray-900">{item.machine_division || "—"}</div></td>
                           <td className="px-2 sm:px-3 py-2 sm:py-4 border-b whitespace-nowrap"><div className="text-xs sm:text-sm text-gray-900">{item.machine_name || "—"}</div></td>
@@ -2071,10 +2071,10 @@ const handleSubmit = async () => {
                         <p className="text-sm font-medium text-gray-900 mb-2">{account.task_description || "—"}</p>
                         <div className="grid grid-cols-2 gap-2 text-xs mb-2">
                           <div><span className="text-gray-500">Name:</span> <span className="font-medium">{account.name || "—"}</span></div>
-                          <div><span className="text-gray-500">Dept:</span> <span className="font-medium">{account.department || "—"}</span></div>
-                          <div><span className="text-gray-500">Unit:</span> <span className="font-medium">{account.unit || "—"}</span></div>
-                          <div><span className="text-gray-500">Division:</span> <span className="font-medium">{account.division || "—"}</span></div>
                           <div><span className="text-gray-500">Given By:</span> <span className="font-medium">{account.given_by || "—"}</span></div>
+                          <div><span className="text-gray-500">Dept:</span> <span className="font-medium">{account.department || "—"}</span></div>
+                          <div><span className="text-gray-500">Division:</span> <span className="font-medium">{account.division || "—"}</span></div>
+                          <div><span className="text-gray-500">Unit:</span> <span className="font-medium">{account.unit || "—"}</span></div>
                           <div><span className="text-gray-500">Frequency:</span> <span className="font-medium">{account.frequency || "—"}</span></div>
                           <div><span className="text-gray-500">Date:</span> <span className="font-medium">{account.task_start_date || "—"}</span></div>
                         </div>
@@ -2222,6 +2222,12 @@ const handleSubmit = async () => {
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[180px]">
                       Given By
                     </th>
+                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                      Department
+                    </th>
+                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                      Division
+                    </th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[150px] bg-orange-50">
                       Remark
                     </th>
@@ -2238,13 +2244,7 @@ const handleSubmit = async () => {
                       Task ID
                     </th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                      Department
-                    </th>
-                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                       Unit
-                    </th>
-                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                      Division
                     </th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                       Freq
@@ -2306,6 +2306,12 @@ const handleSubmit = async () => {
                           </td>
                           <td className="px-2 sm:px-3 py-2 sm:py-4 min-w-[180px]">
                             <div className="text-xs sm:text-sm text-gray-900 break-words">{account.given_by || "—"}</div>
+                          </td>
+                          <td className="px-2 sm:px-3 py-2 sm:py-4">
+                            <div className="text-xs sm:text-sm text-gray-900 break-words">{account.department || "—"}</div>
+                          </td>
+                          <td className="px-2 sm:px-3 py-2 sm:py-4">
+                            <div className="text-xs sm:text-sm text-gray-900 break-words">{account.division || "—"}</div>
                           </td>
                           <td className="px-2 sm:px-3 py-2 sm:py-4 bg-orange-50 min-w-[150px]">
                             <input
@@ -2405,13 +2411,7 @@ const handleSubmit = async () => {
                             <div className="text-xs sm:text-sm text-gray-900 break-words">{account.task_id || "—"}</div>
                           </td>
                           <td className="px-2 sm:px-3 py-2 sm:py-4">
-                            <div className="text-xs sm:text-sm text-gray-900 break-words">{account.department || "—"}</div>
-                          </td>
-                          <td className="px-2 sm:px-3 py-2 sm:py-4">
                             <div className="text-xs sm:text-sm text-gray-900 break-words">{account.unit || "—"}</div>
-                          </td>
-                          <td className="px-2 sm:px-3 py-2 sm:py-4">
-                            <div className="text-xs sm:text-sm text-gray-900 break-words">{account.division || "—"}</div>
                           </td>
                           <td className="px-2 sm:px-3 py-2 sm:py-4">
                             <div className="text-xs sm:text-sm text-gray-900 break-words">{account.frequency || "—"}</div>
