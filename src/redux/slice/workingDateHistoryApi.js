@@ -60,8 +60,27 @@ export const workingDateHistoryApi = createApi({
 
         // Get specific employee history (Super Admin use)
         getEmployeeHistoryDetail: builder.query({
-            query: (username) => ({ url: `/working-date-history/detail/${username}`, method: 'GET' }),
-            providesTags: (result, error, username) => [{ type: 'WorkingHistory', id: username }],
+            query: ({ targetUsername, page = 1, limit = 10 }) => ({ 
+                url: `/working-date-history/detail/${targetUsername}`, 
+                method: 'GET',
+                params: { page, limit }
+            }),
+            serializeQueryArgs: ({ endpointName, queryArgs }) => {
+                return `${endpointName}-${queryArgs.targetUsername}`;
+            },
+            merge: (currentCache, newItems) => {
+                if (newItems.page === 1) {
+                    return newItems;
+                }
+                return {
+                    ...newItems,
+                    data: [...currentCache.data, ...newItems.data]
+                };
+            },
+            forceRefetch({ currentArg, previousArg }) {
+                return currentArg?.page !== previousArg?.page || currentArg?.targetUsername !== previousArg?.targetUsername;
+            },
+            providesTags: (result, error, { targetUsername }) => [{ type: 'WorkingHistory', id: targetUsername }],
         }),
 
         // Submit new work history

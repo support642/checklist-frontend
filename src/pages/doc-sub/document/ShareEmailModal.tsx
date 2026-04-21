@@ -27,26 +27,26 @@ const ShareEmailModal: React.FC<ShareEmailModalProps> = ({ isOpen, onClose, onSe
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
-        <div className="relative p-6 border-b border-slate-100 dark:border-slate-800">
-          <h3 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div className="relative p-6 border-b border-slate-100">
+          <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
             <Mail className="w-6 h-6 text-indigo-500" />
             Share Document
           </h3>
           <button 
             onClick={onClose}
-            className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+            className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 transition-colors"
           >
             <X className="w-6 h-6" />
           </button>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Sharing: <span className="font-semibold text-slate-700 dark:text-slate-300">{documentName}</span>
+          <p className="mt-1 text-sm text-slate-500">
+            Sharing: <span className="font-semibold text-slate-700">{documentName}</span>
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
+            <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
               <User className="w-4 h-4" />
               Recipient Name
             </label>
@@ -55,7 +55,7 @@ const ShareEmailModal: React.FC<ShareEmailModalProps> = ({ isOpen, onClose, onSe
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all dark:text-white"
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all text-slate-800"
               placeholder="Enter recipient name"
             />
           </div>
@@ -70,7 +70,7 @@ const ShareEmailModal: React.FC<ShareEmailModalProps> = ({ isOpen, onClose, onSe
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all dark:text-white"
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all text-slate-800"
               placeholder="Enter email address"
             />
           </div>
@@ -85,7 +85,7 @@ const ShareEmailModal: React.FC<ShareEmailModalProps> = ({ isOpen, onClose, onSe
               required
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all dark:text-white"
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all text-slate-800"
               placeholder="Enter phone number (e.g. 919876543210)"
             />
           </div>
@@ -99,7 +99,7 @@ const ShareEmailModal: React.FC<ShareEmailModalProps> = ({ isOpen, onClose, onSe
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               rows={4}
-              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all resize-none dark:text-white"
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all resize-none text-slate-800"
               placeholder="Add a message..."
             />
           </div>
@@ -108,7 +108,7 @@ const ShareEmailModal: React.FC<ShareEmailModalProps> = ({ isOpen, onClose, onSe
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 dark:shadow-none flex items-center justify-center gap-2 transition-all transform active:scale-[0.98]"
+              className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-bold rounded-xl shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 transition-all transform active:scale-[0.98]"
             >
               {loading ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

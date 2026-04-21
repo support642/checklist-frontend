@@ -46,7 +46,7 @@ function HistoryPage() {
   const [divisionFilter, setDivisionFilter] = useState("all")
   const [departmentFilter, setDepartmentFilter] = useState("all")
   const [nameFilter, setNameFilter] = useState("all")
-  const [approvalStatusFilter, setApprovalStatusFilter] = useState("pending") // 'all', 'pending', 'completed'
+  const [approvalStatusFilter, setApprovalStatusFilter] = useState("pending") // 'all', 'pending', 'approved'
   const ITEMS_PER_PAGE = 50
 
   // Admin approval states
@@ -192,7 +192,7 @@ function HistoryPage() {
     setSelectedMembers([])
     setStartDate("")
     setEndDate("")
-    setApprovalStatusFilter("pending") // Reset to pending
+    setApprovalStatusFilter("all") // Reset to all
     setDivisionFilter("all")
     setDepartmentFilter("all")
     setNameFilter("all")
@@ -749,7 +749,7 @@ function HistoryPage() {
                 >
                   <option value="all">All</option>
                   <option value="pending">Pending</option>
-                  <option value="completed">Approved</option>
+                  <option value="approved">Approved</option>
                 </select>
               </div>
 

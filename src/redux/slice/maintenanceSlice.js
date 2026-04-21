@@ -16,26 +16,26 @@ import {
 // ============================================================
 export const maintenanceData = createAsyncThunk(
     "fetch/maintenance",
-    async ({ 
-        page = 1, 
-        search = '', 
-        startDate = "", 
-        endDate = "", 
-        status = 'all', 
-        frequency = 'all', 
-        name = 'all', 
-        division = 'all', 
-        departmentFilter = 'all' 
+    async ({
+        page = 1,
+        search = '',
+        startDate = "",
+        endDate = "",
+        status = 'all',
+        frequency = 'all',
+        name = 'all',
+        division = 'all',
+        departmentFilter = 'all'
     } = {}) => {
         const response = await fetchMaintenanceDataSortByDate(
-            page, 
-            search, 
-            startDate, 
-            endDate, 
-            status, 
-            frequency, 
-            name, 
-            division, 
+            page,
+            search,
+            startDate,
+            endDate,
+            status,
+            frequency,
+            name,
+            division,
             departmentFilter
         );
         return { ...response, page, search, startDate, endDate, status, frequency, name, division, departmentFilter };

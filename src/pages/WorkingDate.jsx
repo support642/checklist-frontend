@@ -95,7 +95,6 @@ const TableSearchableSelect = ({ value, onChange, options, placeholder }) => {
 };
 
 const WorkingDate = () => {
-  const [activeTab, setActiveTab] = useState('working');
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -115,8 +114,7 @@ const WorkingDate = () => {
 
   // API Hooks
   const { data: historyRes, isFetching: isHistoryFetching, isLoading: isHistoryLoading, refetch: refetchHistory } = useGetWorkingHistoryQuery(
-    { search: debouncedSearch, page, limit: 10 },
-    { skip: activeTab !== 'history' }
+    { search: debouncedSearch, page, limit: 10 }
   );
   const [submitWorkMutation, { isLoading: isSubmitting }] = useSubmitWorkingDateMutation();
 
@@ -132,15 +130,24 @@ const WorkingDate = () => {
   // Modal State for Super Admin Detail View
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [modalPage, setModalPage] = useState(1);
+  const modalLoaderRef = useRef(null);
 
   // Detail Query for specific employee history
   const { 
-    data: employeeHistory = [], 
-    isLoading: isDetailLoading 
-  } = useGetEmployeeHistoryDetailQuery(selectedEmployee?.userName, {
+    currentData: employeeHistoryRes, 
+    isFetching: isDetailLoading 
+  } = useGetEmployeeHistoryDetailQuery({ 
+      targetUsername: selectedEmployee?.userName, 
+      page: modalPage, 
+      limit: 10 
+  }, {
     skip: !isModalOpen || !selectedEmployee?.userName,
     refetchOnMountOrArgChange: true // Ensure fresh data when modal opens
   });
+
+  const employeeHistory = employeeHistoryRes?.data || [];
+  const hasMoreModal = employeeHistoryRes?.hasMore || false;
 
   // Helper to get formatted current time
   const getFormattedTime = () => {
@@ -187,17 +194,14 @@ const WorkingDate = () => {
     toast.success("CSV Exported successfully");
   };
 
-  const [rows, setRows] = useState(
-    Array(3).fill(null).map((_, i) => ({
-      id: `initial-${Date.now()}-${i}-${Math.random()}`,
-      date: new Date(selectedDate).toLocaleDateString('en-GB'),
-      time: getFormattedTime(),
-      workDetail: "",
-      assignBy: "",
-      image: null,
-      imagePreview: null
-    }))
-  );
+  const [entry, setEntry] = useState({
+    date: new Date(selectedDate).toLocaleDateString('en-GB'),
+    time: (manualTime || getFormattedTime()),
+    workDetail: "",
+    assignBy: "",
+    image: null,
+    imagePreview: null
+  });
 
 
   // Live Clock Effect
@@ -206,16 +210,14 @@ const WorkingDate = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Automatic Refresh when History tab is opened
+  // Automatic Refresh on mount
   useEffect(() => {
-    if (activeTab === 'history') {
-      refetchHistory();
-    }
-  }, [activeTab, refetchHistory]);
+    refetchHistory();
+  }, [refetchHistory]);
 
-  // Infinite Scroll Observer
+  // Infinite Scroll Observer for Main Table
   useEffect(() => {
-    if (activeTab !== 'history' || !hasMore || isHistoryFetching) return;
+    if (!hasMore || isHistoryFetching) return;
 
     const observer = new IntersectionObserver((entries) => {
       if (entries[0].isIntersecting) {
@@ -228,7 +230,24 @@ const WorkingDate = () => {
     }
 
     return () => observer.disconnect();
-  }, [hasMore, isHistoryFetching, activeTab]);
+  }, [hasMore, isHistoryFetching]);
+
+  // Infinite Scroll Observer for Modal
+  useEffect(() => {
+    if (!hasMoreModal || isDetailLoading) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        setModalPage(prev => prev + 1);
+      }
+    }, { threshold: 0.1 });
+
+    if (modalLoaderRef.current) {
+      observer.observe(modalLoaderRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [hasMoreModal, isDetailLoading]);
 
 
   // Fetch Users for "Assign By"
@@ -248,92 +267,57 @@ const WorkingDate = () => {
     fetchUsers();
   }, []);
 
-  const handleAddRow = () => {
-    setRows([...rows, {
-      id: `row-${Date.now()}-${Math.random()}`,
-      date: new Date(selectedDate).toLocaleDateString('en-GB'),
-      time: getFormattedTime(),
-      workDetail: "",
-      assignBy: "",
-      image: null,
-      imagePreview: null
-    }]);
+  const handleUpdateEntry = (field, value) => {
+    setEntry(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleRemoveRow = (id) => {
-    if (rows.length <= 1) return;
-    setRows(rows.filter(row => row.id !== id));
-  };
-
-  const handleUpdateRow = (id, field, value) => {
-    setRows(prevRows => prevRows.map(row => 
-      row.id === id ? { ...row, [field]: value } : row
-    ));
-  };
-
-  const handleImageChange = (id, file) => {
+  const handleImageChange = (file) => {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        // Single atomic update for both fields to prevent state overwrites
-        setRows(prevRows => prevRows.map(row => 
-          row.id === id ? { ...row, imagePreview: reader.result, image: file } : row
-        ));
+        setEntry(prev => ({ ...prev, imagePreview: reader.result, image: file }));
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleClearAll = () => {
-    if (window.confirm("Are you sure you want to clear all rows?")) {
-      const currentTimeStr = getFormattedTime();
-      setRows(Array(3).fill(null).map((_, i) => ({
-        id: `clear-${Date.now()}-${i}-${Math.random()}`,
-        date: new Date(selectedDate).toLocaleDateString('en-GB'),
-        time: currentTimeStr,
-        workDetail: "",
-        assignBy: "",
-        image: null,
-        imagePreview: null
-      })));
-    }
+  const handleClearEntry = () => {
+    setEntry({
+      date: new Date(selectedDate).toLocaleDateString('en-GB'),
+      time: (manualTime || getFormattedTime()),
+      workDetail: "",
+      assignBy: "",
+      image: null,
+      imagePreview: null
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const filledRows = rows.filter(r => r.workDetail.trim() !== "");
-    if (filledRows.length === 0) {
-      toast.error("Please add at least one work detail");
+    if (!entry.workDetail.trim()) {
+      toast.error("Please add work detail");
       return;
     }
 
     try {
       const payload = {
         selectedDate,
-        entries: filledRows.map(r => ({
-          time: r.time,
-          workDetail: r.workDetail,
-          assignBy: r.assignBy,
-          image_base64: r.imagePreview // The controller handles S3 upload
-        }))
+        entries: [{
+          time: entry.time,
+          workDetail: entry.workDetail,
+          assignBy: entry.assignBy,
+          image_base64: entry.imagePreview
+        }]
       };
 
       const res = await submitWorkMutation(payload).unwrap();
       
-      toast.success(res.message || `Successfully submitted ${filledRows.length} entries`);
+      toast.success(res.message || "Successfully submitted working detail");
       
-      // Clear rows after success
-      const currentTimeStr = getFormattedTime();
-      const newDateFormatted = new Date(selectedDate).toLocaleDateString('en-GB');
-      setRows(Array(3).fill(null).map((_, i) => ({
-        id: `submit-${Date.now()}-${i}-${Math.random()}`,
-        date: newDateFormatted,
-        time: currentTimeStr,
-        workDetail: "",
-        assignBy: "",
-        image: null,
-        imagePreview: null
-      })));
+      // Clear entry after success
+      handleClearEntry();
+      // Manual refetch for better UX
+      refetchHistory();
       
     } catch (err) {
       toast.error(err?.data?.error || "Failed to submit work details");
@@ -359,390 +343,227 @@ const WorkingDate = () => {
               <p className="text-slate-500 text-sm font-medium">Daily Task Submission & Tracking</p>
             </div>
           </div>
-          
-          <div className="flex bg-white p-1 rounded-xl shadow-sm border border-slate-200 w-full lg:w-auto overflow-hidden">
-            <button 
-              onClick={() => setActiveTab('working')}
-              className={`flex-1 lg:flex-none px-4 md:px-6 py-2.5 rounded-lg text-xs md:text-sm font-semibold transition-all flex items-center justify-center gap-2 ${activeTab === 'working' ? 'text-purple-900 shadow-lg shadow-purple-100 border border-purple-200' : 'text-slate-500 hover:bg-slate-50'}`}
-              style={activeTab === 'working' ? { background: 'linear-gradient(135deg, #f3e8ff, #d8b4fe)' } : {}}
-            >
-              <Calendar size={18} className={activeTab === 'working' ? 'text-purple-700' : ''} />
-              <span className="truncate">Working Date</span>
-            </button>
-            <button 
-              onClick={() => setActiveTab('history')}
-              className={`flex-1 lg:flex-none px-4 md:px-6 py-2.5 rounded-lg text-xs md:text-sm font-semibold transition-all flex items-center justify-center gap-2 ${activeTab === 'history' ? 'text-purple-900 shadow-lg shadow-purple-100 border border-purple-200' : 'text-slate-500 hover:bg-slate-50'}`}
-              style={activeTab === 'history' ? { background: 'linear-gradient(135deg, #f3e8ff, #d8b4fe)' } : {}}
-            >
-              <motion.div
-                whileHover={{ rotate: 180 }}
-                transition={{ type: "spring", stiffness: 200 }}
-              >
-                <RefreshCw size={18} className={activeTab === 'history' ? 'text-purple-700' : ''} />
-              </motion.div>
-              <span className="truncate">History</span>
-            </button>
-          </div>
         </div>
 
-        {/* --- Working Tab Content --- */}
-        {activeTab === 'working' && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              
-              {/* Live Clock Card */}
-              <div className="lg:col-span-4 xl:col-span-3">
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  style={{ background: 'linear-gradient(135deg, #f3e8ff, #d8b4fe)' }}
-                  className="p-6 rounded-3xl shadow-xl shadow-purple-100/50 relative overflow-hidden group h-full border border-purple-200"
-                >
-                  <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:rotate-12 transition-transform duration-500 text-purple-950">
-                    <Clock size={120} />
-                  </div>
-                  
-                  <div className="relative z-10 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 bg-purple-500/10 px-3 py-1 rounded-full backdrop-blur-sm border border-purple-500/10">
-                        <Calendar size={14} className="text-purple-700" />
-                        <span className="text-purple-700 text-[10px] font-semibold uppercase tracking-wider">Current Time</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
-                        <span className="text-purple-700/80 text-[10px] font-semibold uppercase tracking-wider">Live</span>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h2 className="text-purple-900 text-lg font-bold tracking-tight">
-                        {currentTime.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-                      </h2>
-                      <div className="flex items-baseline gap-2 mt-2">
-                        <span className="text-purple-950 text-5xl font-bold tracking-tighter drop-shadow-sm">
-                          {currentTime.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }).split(' ')[0]}
-                        </span>
-                        <span className="text-purple-800 text-xl font-semibold uppercase tracking-widest">
-                          {currentTime.toLocaleTimeString('en-GB', { hour12: true }).split(' ')[1]}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              </div>
-
-              {/* Date Selection Card */}
-              <div className="lg:col-span-8 xl:col-span-9">
-                <div className="bg-[#f8fafc] p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col md:flex-row items-center gap-8 h-full relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full -mr-16 -mt-16 blur-3xl"></div>
-                  
-                  <div className="flex-1 space-y-4 w-full relative z-10">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.15em] flex items-center gap-2">
-                        <Database size={14} className="text-purple-500" />
-                        Date Details
-                      </h3>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-md font-bold uppercase border border-amber-200 shadow-sm">Editable</span>
-                      </div>
+            {/* Quick Task Submission Section */}
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                {/* Live Clock Card */}
+                <div className="lg:col-span-4 xl:col-span-3">
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    style={{ background: 'linear-gradient(135deg, #f3e8ff, #d8b4fe)' }}
+                    className="p-6 rounded-3xl shadow-xl shadow-purple-100/50 relative overflow-hidden group h-full border border-purple-200"
+                  >
+                    <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:rotate-12 transition-transform duration-500 text-purple-950">
+                      <Clock size={120} />
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <label className="text-[11px] font-semibold text-slate-400 uppercase ml-1 flex items-center gap-1.5">
-                          Date
-                        </label>
-                        <div className="relative group">
-                          <Calendar className="absolute left-4 top-[65%] -translate-y-1/2 text-slate-400 group-focus-within:text-purple-500 transition-colors" size={18} />
-                          <input 
-                            type="date"
-                            value={selectedDate}
-                            onChange={(e) => {
-                              setSelectedDate(e.target.value);
-                              const newDateFormatted = new Date(e.target.value).toLocaleDateString('en-GB');
-                              setRows(rows.map(r => ({...r, date: newDateFormatted})));
-                            }}
-                            className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-purple-100 focus:border-purple-500 transition-all font-semibold text-slate-700 shadow-sm"
-                          />
+                    <div className="relative z-10 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 bg-purple-500/10 px-3 py-1 rounded-full backdrop-blur-sm border border-purple-500/10">
+                          <Calendar size={14} className="text-purple-700" />
+                          <span className="text-purple-700 text-[10px] font-semibold uppercase tracking-wider">Current Time</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
+                          <span className="text-purple-700/80 text-[10px] font-semibold uppercase tracking-wider">Live</span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h2 className="text-purple-900 text-lg font-bold tracking-tight">
+                          {currentTime.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                        </h2>
+                        <div className="flex items-baseline gap-2 mt-2">
+                          <span className="text-purple-950 text-5xl font-bold tracking-tighter drop-shadow-sm">
+                            {currentTime.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }).split(' ')[0]}
+                          </span>
+                          <span className="text-purple-800 text-xl font-semibold uppercase tracking-widest">
+                            {currentTime.toLocaleTimeString('en-GB', { hour12: true }).split(' ')[1]}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                </div>
+
+                {/* Date Selection Card */}
+                <div className="lg:col-span-8 xl:col-span-9">
+                  <div className="bg-[#f8fafc] p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col md:flex-row items-center gap-8 h-full relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full -mr-16 -mt-16 blur-3xl"></div>
+                    
+                    <div className="flex-1 space-y-4 w-full relative z-10">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.15em] flex items-center gap-2">
+                          <Database size={14} className="text-purple-500" />
+                          Date Details
+                        </h3>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-md font-bold uppercase border border-amber-200 shadow-sm">Editable</span>
                         </div>
                       </div>
                       
-                      <div className="space-y-2">
-                        <label className="text-[11px] font-semibold text-slate-400 uppercase ml-1 flex items-center gap-1.5">
-                          Time
-                        </label>
-                        <div className="relative group">
-                          <Clock className="absolute left-4 top-[65%] -translate-y-1/2 text-slate-400 group-focus-within:text-purple-500 transition-colors" size={18} />
-                          <input 
-                            type="text"
-                            placeholder="e.g. 09:00 AM"
-                            value={manualTime || currentTime.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true })}
-                            onChange={(e) => {
-                              const newTime = e.target.value;
-                              setManualTime(newTime);
-                              setRows(rows.map(r => ({ ...r, time: newTime })));
-                            }}
-                            className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-purple-100 focus:border-purple-500 transition-all font-semibold text-slate-700 shadow-sm" 
-                          />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <label className="text-[11px] font-semibold text-slate-400 uppercase ml-1 flex items-center gap-1.5">
+                            Date
+                          </label>
+                          <div className="relative group">
+                            <Calendar className="absolute left-4 top-[65%] -translate-y-1/2 text-slate-400 group-focus-within:text-purple-500 transition-colors" size={18} />
+                            <input 
+                              type="date"
+                              value={selectedDate}
+                              onChange={(e) => {
+                                setSelectedDate(e.target.value);
+                                const newDateFormatted = new Date(e.target.value).toLocaleDateString('en-GB');
+                                handleUpdateEntry('date', newDateFormatted);
+                              }}
+                              className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-purple-100 focus:border-purple-500 transition-all font-semibold text-slate-700 shadow-sm"
+                            />
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <label className="text-[11px] font-semibold text-slate-400 uppercase ml-1 flex items-center gap-1.5">
+                            Time
+                          </label>
+                          <div className="relative group">
+                            <Clock className="absolute left-4 top-[65%] -translate-y-1/2 text-slate-400 group-focus-within:text-purple-500 transition-colors" size={18} />
+                            <input 
+                              type="text"
+                              placeholder="e.g. 09:00 AM"
+                              value={manualTime || currentTime.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                              onChange={(e) => {
+                                const newTime = e.target.value;
+                                setManualTime(newTime);
+                                handleUpdateEntry('time', newTime);
+                              }}
+                              className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-purple-100 focus:border-purple-500 transition-all font-semibold text-slate-700 shadow-sm" 
+                            />
+                          </div>
                         </div>
                       </div>
+                      
+                      <p className="text-slate-400 text-[11px] font-medium italic mt-2 ml-1">
+                        Select the date and time for your working details submission
+                      </p>
                     </div>
-                    
-                    <p className="text-slate-400 text-[11px] font-medium italic mt-2 ml-1">
-                      Select the date and time for your working details submission
-                    </p>
                   </div>
                 </div>
               </div>
+
+              {/* Task Entry Builder (Single Row) */}
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 relative z-20"
+              >
+                <div className="p-6 border-b border-slate-50 flex items-center justify-between bg-slate-50/30 rounded-t-[2rem]">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-purple-50 text-purple-600 rounded-xl">
+                      <Plus size={20} />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Quick Task Submission</h3>
+                    </div>
+                  </div>
+                  
+                  <button 
+                    onClick={handleClearEntry}
+                    className="text-xs font-semibold text-slate-400 hover:text-rose-500 flex items-center gap-2 px-4 py-2 hover:bg-rose-50 rounded-lg transition-all"
+                  >
+                    <RefreshCw size={14} />
+                    Reset Form
+                  </button>
+                </div>
+
+                <div className="p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
+                    {/* Work Detail */}
+                    <div className="md:col-span-5 space-y-2">
+                      <label className="text-[11px] font-bold text-slate-400 uppercase ml-1">Work Detail</label>
+                      <textarea 
+                        placeholder="Describe the work done..."
+                        className="w-full p-3 text-sm bg-slate-50/50 border border-slate-100 rounded-xl focus:bg-white focus:outline-none focus:ring-1 focus:ring-purple-500 transition-all font-medium text-slate-600 resize-none min-h-[50px]"
+                        value={entry.workDetail}
+                        onChange={(e) => handleUpdateEntry('workDetail', e.target.value)}
+                      />
+                    </div>
+
+                    {/* Assign By */}
+                    <div className="md:col-span-3 space-y-2">
+                      <label className="text-[11px] font-bold text-slate-400 uppercase ml-1">Assign By</label>
+                      <TableSearchableSelect 
+                        value={entry.assignBy}
+                        onChange={(val) => handleUpdateEntry('assignBy', val)}
+                        options={users}
+                        placeholder="Search person..."
+                      />
+                    </div>
+
+                    {/* Image Proof */}
+                    <div className="md:col-span-2 space-y-2">
+                      <label className="text-[11px] font-bold text-slate-400 uppercase ml-1">Proof Image</label>
+                      <div className="relative group/img">
+                        <label className="cursor-pointer block">
+                          <input 
+                            type="file" 
+                            className="hidden" 
+                            accept="image/*"
+                            onChange={(e) => handleImageChange(e.target.files[0])}
+                          />
+                          {entry.imagePreview ? (
+                            <div className="h-10 w-full rounded-lg overflow-hidden border-2 border-indigo-100 ring-2 ring-white">
+                              <img src={entry.imagePreview} className="w-full h-full object-cover" alt="Preview" />
+                            </div>
+                          ) : (
+                            <div className="h-10 w-full flex items-center justify-center bg-slate-50 text-slate-400 rounded-lg border border-dashed border-slate-300 hover:border-purple-400 hover:bg-slate-50 transition-all">
+                              <ImageIcon size={18} />
+                              <span className="ml-2 text-[10px] font-bold uppercase">Upload</span>
+                            </div>
+                          )}
+                        </label>
+                        {entry.imagePreview && (
+                          <button 
+                            onClick={() => {
+                              handleUpdateEntry('image', null);
+                              handleUpdateEntry('imagePreview', null);
+                            }}
+                            className="absolute -top-2 -right-2 bg-rose-500 text-white p-1 rounded-full shadow-lg"
+                          >
+                            <X size={10} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Submit Button */}
+                    <div className="md:col-span-2">
+                      <button 
+                        onClick={handleSubmit}
+                        disabled={isSubmitting}
+                        className={`w-full flex items-center justify-center gap-3 px-6 py-3 text-purple-900 font-bold rounded-xl transition-all shadow-lg border border-purple-200 transform ${isSubmitting ? 'opacity-70 cursor-not-allowed' : 'hover:shadow-2xl active:scale-95'}`}
+                        style={{ background: 'linear-gradient(135deg, #f3e8ff, #d8b4fe)' }}
+                      >
+                        <Save size={18} className={`text-purple-700 ${isSubmitting ? 'animate-pulse' : ''}`} />
+                        <span className="truncate">{isSubmitting ? 'Submitting...' : 'Submit'}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
             </div>
 
-            {/* Builder Table */}
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden"
-            >
-              <div className="p-6 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-purple-50 text-purple-600 rounded-xl">
-                    <Plus size={20} />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Work Detail Builder</h3>
-                  </div>
-                </div>
-                
-                <button 
-                  onClick={handleClearAll}
-                  className="text-xs font-semibold text-slate-400 hover:text-rose-500 flex items-center gap-2 px-4 py-2 hover:bg-rose-50 rounded-lg transition-all"
-                >
-                  <Trash2 size={14} />
-                  Clear All
-                </button>
-              </div>
-
-              <div className="min-h-[400px]">
-                {/* Mobile Builder List (Shown on Mobile) */}
-                <div className="md:hidden divide-y divide-slate-100">
-                  {rows.map((row, idx) => (
-                    <div key={row.id} className="p-4 space-y-4 bg-white hover:bg-slate-50/50 transition-colors">
-                      <div className="flex items-center justify-between">
-                        <span className="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded">ENTRY {idx + 1}</span>
-                        <button 
-                          onClick={() => handleRemoveRow(row.id)}
-                          className="p-1.5 text-rose-500 bg-rose-50 rounded-lg"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <label className="text-[10px] font-semibold text-slate-400 uppercase">Date</label>
-                          <div className="text-xs font-semibold text-slate-600 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100 flex items-center gap-2">
-                            <Calendar size={12} className="text-purple-500" />
-                            {row.date}
-                          </div>
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-[10px] font-semibold text-slate-400 uppercase">Time</label>
-                          <div className="relative">
-                            <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-300" size={12} />
-                            <input 
-                              type="text" 
-                              className="w-full pl-8 pr-2 py-2 text-xs bg-white border border-slate-200 rounded-lg font-semibold text-slate-700 focus:ring-1 focus:ring-purple-500 outline-none"
-                              value={row.time}
-                              onChange={(e) => handleUpdateRow(row.id, 'time', e.target.value)}
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-semibold text-slate-400 uppercase">Work Detail</label>
-                        <textarea 
-                          className="w-full p-3 text-xs bg-slate-50 border border-slate-100 rounded-lg font-medium text-slate-600 focus:bg-white outline-none focus:ring-1 focus:ring-purple-500 min-h-[80px]"
-                          placeholder="Describe your work..."
-                          value={row.workDetail}
-                          onChange={(e) => handleUpdateRow(row.id, 'workDetail', e.target.value)}
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-5 gap-3 items-end">
-                        <div className="col-span-3 space-y-1">
-                          <label className="text-[10px] font-semibold text-slate-400 uppercase">Assign By</label>
-                          <TableSearchableSelect 
-                            value={row.assignBy}
-                            onChange={(val) => handleUpdateRow(row.id, 'assignBy', val)}
-                            options={users}
-                            placeholder="Select person..."
-                          />
-                        </div>
-                        <div className="col-span-2 space-y-1">
-                          <label className="text-[10px] font-semibold text-slate-400 uppercase">Image Proof</label>
-                          <label className="cursor-pointer block">
-                            <input 
-                              type="file" 
-                              className="hidden" 
-                              accept="image/*"
-                              onChange={(e) => handleImageChange(row.id, e.target.files[0])}
-                            />
-                            {row.imagePreview ? (
-                              <div className="relative h-10 w-full rounded-lg overflow-hidden border border-purple-200 shadow-sm">
-                                <img src={row.imagePreview} className="w-full h-full object-cover" alt="Preview" />
-                                <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                                  <ImageIcon size={14} className="text-white" />
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="h-10 w-full flex items-center justify-center bg-slate-50 border border-dashed border-slate-300 rounded-lg text-slate-400">
-                                <ImageIcon size={16} />
-                              </div>
-                            )}
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Desktop Builder Table (Hidden on Mobile) */}
-                <table className="hidden md:table w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50/50 text-[10px] uppercase font-bold tracking-[0.2em] text-slate-400">
-                      <th className="px-6 py-4 w-16 text-center">No.</th>
-                      <th className="px-6 py-4 w-48">Date & Time</th>
-                      <th className="px-6 py-4 min-w-[300px]">Work Detail</th>
-                      <th className="px-6 py-4 w-64">Assign By</th>
-                      <th className="px-6 py-4 w-24 text-center">Image</th>
-                      <th className="px-6 py-4 w-16 text-center">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {rows.map((row, idx) => (
-                      <tr key={row.id} className="group hover:bg-slate-50/50 transition-colors">
-                        <td className="px-6 py-5 text-center">
-                          <span className="text-slate-400 font-semibold text-xs">{idx + 1}</span>
-                        </td>
-                        
-                        <td className="px-6 py-5">
-                          <div className="flex flex-col gap-1.5 min-w-[140px]">
-                            <div className="flex items-center gap-2 text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded w-fit">
-                              <Calendar size={10} />
-                              {row.date}
-                            </div>
-                            <div className="relative">
-                              <Clock className="absolute left-3 top-[68%] -translate-y-1/2 text-slate-400" size={14} />
-                              <input 
-                                type="text" 
-                                placeholder="09:00 AM"
-                                className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-500 font-semibold text-slate-700"
-                                value={row.time}
-                                onChange={(e) => handleUpdateRow(row.id, 'time', e.target.value)}
-                              />
-                            </div>
-                          </div>
-                        </td>
-                        
-                        <td className="px-6 py-5">
-                          <textarea 
-                            rows={1}
-                            placeholder="Describe the work done..."
-                            className="w-full p-3 text-sm bg-slate-50/50 border border-slate-100 rounded-xl focus:bg-white focus:outline-none focus:ring-1 focus:ring-purple-500 transition-all font-medium text-slate-600 resize-none min-h-[50px]"
-                            value={row.workDetail}
-                            onChange={(e) => handleUpdateRow(row.id, 'workDetail', e.target.value)}
-                          />
-                        </td>
-                        
-                        <td className="px-6 py-5">
-                          <TableSearchableSelect 
-                            value={row.assignBy}
-                            onChange={(val) => handleUpdateRow(row.id, 'assignBy', val)}
-                            options={users}
-                            placeholder="Search person..."
-                          />
-                        </td>
-                        
-                        <td className="px-6 py-5 text-center">
-                          <div className="relative inline-block group/img">
-                            <label className="cursor-pointer">
-                              <input 
-                                type="file" 
-                                className="hidden" 
-                                accept="image/*"
-                                onChange={(e) => handleImageChange(row.id, e.target.files[0])}
-                              />
-                              {row.imagePreview ? (
-                                <img 
-                                  src={row.imagePreview} 
-                                  alt="Preview" 
-                                  className="h-10 w-10 object-cover rounded-lg border-2 border-indigo-100 ring-2 ring-white" 
-                                />
-                              ) : (
-                                <div className="h-10 w-10 flex items-center justify-center bg-slate-100 text-slate-400 rounded-lg border border-dashed border-slate-300 hover:border-purple-400 hover:bg-slate-50 transition-all">
-                                  <ImageIcon size={18} />
-                                </div>
-                              )}
-                            </label>
-                            {row.imagePreview && (
-                              <button 
-                                onClick={() => {
-                                  handleUpdateRow(row.id, 'image', null);
-                                  handleUpdateRow(row.id, 'imagePreview', null);
-                                }}
-                                className="absolute -top-2 -right-2 bg-rose-500 text-white p-0.5 rounded-full shadow-lg opacity-0 group-hover/img:opacity-100 transition-opacity"
-                              >
-                                <X size={10} />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                        
-                        <td className="px-6 py-5 text-center">
-                          <button 
-                            onClick={() => handleRemoveRow(row.id)}
-                            className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              
-              <div className="p-6 border-t border-slate-50 flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-50/10">
-                <button 
-                  onClick={handleAddRow}
-                  className="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-white border border-slate-200 text-slate-600 font-semibold rounded-xl hover:bg-slate-50 transition-all shadow-sm"
-                >
-                  <Plus size={18} className="text-purple-500" />
-                  Add New Row
-                </button>
-                
-                <button 
-                  onClick={handleSubmit}
-                  disabled={isSubmitting}
-                  className={`w-full md:w-auto flex items-center justify-center gap-3 px-10 py-3 text-purple-550 font-bold rounded-xl transition-all shadow-xl border border-purple-200 transform ${isSubmitting ? 'opacity-70 cursor-not-allowed' : 'hover:shadow-2xl active:scale-95'}`}
-                  style={{ background: 'linear-gradient(135deg, #f3e8ff, #d8b4fe)' }}
-                >
-                  <Save size={18} className={`text-purple-700 ${isSubmitting ? 'animate-pulse' : ''}`} />
-                  {isSubmitting ? 'Submitting...' : 'Submit Working Details'}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-
-        {/* --- History Tab Content --- */}
-        {activeTab === 'history' && (
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="space-y-6"
-          >
-            <div className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+        {/* History Section */}
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="space-y-6 relative z-10"
+        >
+            <div className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-visible">
               {/* History Header */}
               <div className="p-6 md:p-8 border-b border-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white">
                 <div>
@@ -835,6 +656,7 @@ const WorkingDate = () => {
                               onClick={() => {
                                 setSelectedEmployee(emp);
                                 setIsModalOpen(true);
+                                setModalPage(1); // Reset modal pagination
                               }}
                               className="px-4 py-2 bg-purple-50 text-purple-600 rounded-xl text-[11px] font-bold uppercase border border-purple-100 active:scale-95 transition-all"
                             >
@@ -1037,10 +859,11 @@ const WorkingDate = () => {
               </div>
             </div>
           </motion.div>
-        )}
+        
 
         </div>
       </div>
+      
 
       {/* --- Super Admin Employee Detail Modal --- */}
       <AnimatePresence>
@@ -1191,14 +1014,24 @@ const WorkingDate = () => {
                     </div>
                   )}
 
-                  {isDetailLoading && (
-                    <div className="py-20 text-center">
-                      <div className="animate-spin-slow text-purple-500 mx-auto mb-4">
-                        <RefreshCw size={32} />
+
+                  {/* Modal Infinite Scroll Sentinel */}
+                  <div ref={modalLoaderRef} className="py-8 flex flex-col items-center justify-center gap-4 bg-slate-50/10">
+                    {(isDetailLoading) ? (
+                      <>
+                        <div className="animate-spin text-purple-500">
+                          <RefreshCw size={24} />
+                        </div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Loading more records...</p>
+                      </>
+                    ) : !hasMoreModal && employeeHistory.length > 0 ? (
+                      <div className="p-6 text-center">
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                          End of employee records
+                        </p>
                       </div>
-                      <p className="text-slate-500 font-bold italic">Loading records...</p>
-                    </div>
-                  )}
+                    ) : null}
+                  </div>
                 </div>
               </div>
 

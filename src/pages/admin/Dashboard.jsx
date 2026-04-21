@@ -194,7 +194,6 @@ useEffect(() => {
     setHasMoreData(true);
   };
 
-  // Handle date range change from DashboardHeader
   const handleDateRangeChange = (startDate, endDate) => {
     if (startDate && endDate) {
       setDateRange({
@@ -209,6 +208,70 @@ useEffect(() => {
         filtered: false
       });
     }
+  };
+
+  // CSV Export Logic
+  const handleExportCSV = () => {
+    const tasks = departmentData.allTasks;
+    if (!tasks || tasks.length === 0) {
+      alert("No data available to export.");
+      return;
+    }
+
+    // CSV Headers
+    const headers = [
+      "Task ID",
+      "Task Description",
+      "Assigned To",
+      "Planned Date",
+      "Status",
+      "Submission Date",
+      "Frequency"
+    ];
+
+    // Helper to escape CSV fields (handle commas and quotes)
+    const escapeCSV = (val) => {
+      if (val === null || val === undefined) return "";
+      const str = String(val);
+      if (str.includes(",") || str.includes("\"") || str.includes("\n")) {
+        return `"${str.replace(/"/g, "\"\"")}"`;
+      }
+      return str;
+    };
+
+    // Generate CSV Rows
+    const csvRows = tasks.map(task => [
+      escapeCSV(task.id),
+      escapeCSV(task.title),
+      escapeCSV(task.assignedTo),
+      escapeCSV(task.taskStartDate),
+      escapeCSV(task.status?.toUpperCase()),
+      escapeCSV(task.submission_date ? formatDateToDDMMYYYY(new Date(task.submission_date)) : "N/A"),
+      escapeCSV(task.frequency)
+    ]);
+
+    // Combine into final string
+    const csvString = [
+      headers.join(","),
+      ...csvRows.map(row => row.join(","))
+    ].join("\n");
+
+    // Trigger Download
+    const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    
+    // Create meaningful filename
+    const dateStr = new Date().toISOString().split('T')[0];
+    const moduleStr = dashboardType.charAt(0).toUpperCase() + dashboardType.slice(1);
+    const filterStr = dashboardStaffFilter !== "all" ? `_${dashboardStaffFilter}` : "";
+    
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Task_History_${moduleStr}${filterStr}_${dateStr}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
 
@@ -1342,6 +1405,7 @@ useEffect(() => {
               endDate={dateRange.endDate}
               onDateRangeChange={handleDateRangeChange}
               onResetFilters={resetAllFilters}
+              onExportCSV={handleExportCSV}
             />
 
             <StatisticsCards

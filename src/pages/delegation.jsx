@@ -535,13 +535,14 @@ function DelegationDataPage() {
                         checked={unifiedData.length > 0 && unifiedData.every(item => isRowSelected(item))}
                       />
                     </th>
-                    <th className="w-32 px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="w-64 px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Remark/Action</th>
                     <th className="w-80 px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider min-w-[250px]">Description</th>
                     <th className="w-40 px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Name</th>
-                    <th className="w-32 px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Given</th>
-                    <th className="w-32 px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Unit</th>
+                    <th className="w-32 px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Dept</th>
                     <th className="w-32 px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Division</th>
+                    <th className="w-32 px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Given By</th>
+                    <th className="w-32 px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="w-64 px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Remark/Action</th>
+                    <th className="w-32 px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Unit</th>
                     <th className="w-44 px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Target Date</th>
                     <th className="w-44 px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Submit Date</th>
                     <th className="w-24 px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Task ID</th>
@@ -563,6 +564,15 @@ function DelegationDataPage() {
                               onChange={(e) => toggleRowSelection(item, e.target.checked)}
                             />
                           </td>
+                          <td className="px-3 py-4 text-xs text-gray-700">
+                             <div className="break-words line-clamp-4 font-medium" title={item.task_description}>
+                               {item.task_description}
+                             </div>
+                          </td>
+                          <td className="px-3 py-4 text-xs text-gray-700 font-medium">{item.name}</td>
+                          <td className="px-3 py-4 text-xs text-gray-600">{item.department || "—"}</td>
+                          <td className="px-3 py-4 text-xs text-gray-600">{item.division || "—"}</td>
+                          <td className="px-3 py-4 text-xs text-gray-600 font-medium">{item.given_by || "—"}</td>
                           <td className="px-3 py-4">
                             <StatusBadge status={item.status || "pending"} />
                           </td>
@@ -598,15 +608,7 @@ function DelegationDataPage() {
                               </div>
                             )}
                           </td>
-                          <td className="px-3 py-4 text-xs text-gray-700">
-                             <div className="break-words line-clamp-4 font-medium" title={item.task_description}>
-                               {item.task_description}
-                             </div>
-                          </td>
-                          <td className="px-3 py-4 text-xs text-gray-700 font-medium">{item.name}</td>
-                          <td className="px-3 py-4 text-xs text-gray-600">{item.given_by || "—"}</td>
                           <td className="px-3 py-4 text-xs text-gray-600">{item.unit || "—"}</td>
-                          <td className="px-3 py-4 text-xs text-gray-600">{item.division || "—"}</td>
                           <td className="px-3 py-4 text-xs text-gray-600 whitespace-nowrap bg-purple-50/30">{formatDateTimeForDisplay(item.planned_date)}</td>
                           <td className="px-3 py-4 text-xs text-gray-600 whitespace-nowrap">{formatDateTimeForDisplay(item.submission_date)}</td>
                           <td className="px-3 py-4 text-xs font-bold text-purple-700">{item.task_id}</td>
@@ -677,13 +679,21 @@ function DelegationDataPage() {
                              <span className="text-gray-700 font-medium truncate" title={item.name}>{item.name || "—"}</span>
                           </div>
                           <div className="flex flex-col">
+                             <span className="font-bold text-gray-400 uppercase tracking-tighter text-[9px]">Dept</span>
+                             <span className="text-gray-700 font-medium truncate" title={item.department}>{item.department || "—"}</span>
+                          </div>
+                          <div className="flex flex-col">
+                             <span className="font-bold text-gray-400 uppercase tracking-tighter text-[9px]">Division</span>
+                             <span className="text-gray-700 font-medium truncate" title={item.division}>{item.division || "—"}</span>
+                          </div>
+                          <div className="flex flex-col">
                              <span className="font-bold text-gray-400 uppercase tracking-tighter text-[9px]">Target Date</span>
                              <span className="text-gray-700 font-medium">{formatDateTimeForDisplay(item.planned_date)}</span>
                           </div>
                           <div className="flex flex-col">
                              <span className="font-bold text-gray-400 uppercase tracking-tighter text-[9px]">Details</span>
                              <div className="text-gray-600 line-clamp-1">
-                                <span className="font-semibold">ID:</span> {item.task_id} | {item.unit || "—"} | {item.division || "—"}
+                                <span className="font-semibold">ID:</span> {item.task_id} | {item.unit || "—"}
                              </div>
                           </div>
                        </div>
