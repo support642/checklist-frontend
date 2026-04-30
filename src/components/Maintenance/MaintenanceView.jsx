@@ -211,9 +211,9 @@ const MaintenanceView = ({ startDate = "", endDate = "" }) => {
       const adminDone = task.admin_done === 'true' || task.admin_done === 'Done' || task.admin_done === true;
       const isSubmitted = !!(task.submission_date || task.status === 'yes' || task.status === 'no');
 
-      if (adminDone) return 'completed';
-      if (isSubmitted) return 'pending_approval';
-
+      // 🔥 If submitted OR approved, it's considered "Complete" for the stats
+      if (adminDone || isSubmitted) return 'completed';
+      
       // Unsubmitted - check for overdue
       const dStr = task.planned_date || task.dueDate || task.task_start_date;
       const taskDate = parseDate(dStr);
@@ -259,9 +259,10 @@ const MaintenanceView = ({ startDate = "", endDate = "" }) => {
     return {
       totalMachines: filteredMachines.length || 0,
       totalTasks: totalTasks,
-      completedTasks: completedCount,
-      pendingTasks: pendingTodayCount + pendingApprovalCount, 
-      overdueTasks: overdueCount
+      // 🔥 Use global counts from backend for accuracy
+      completedTasks: historyTotalCount || 0,
+      pendingTasks: pendingTotalCount || 0, 
+      overdueTasks: overdueCount // This remains a local count of loaded tasks for now
     };
   }, [allMaintenanceTasks, filteredMachines, pendingTotalCount, historyTotalCount]);
 

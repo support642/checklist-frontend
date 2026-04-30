@@ -198,8 +198,8 @@ const MaintenanceTable = ({
     }
     if (isSubmitted) {
       return (
-        <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-          <Clock className="h-3 w-3" /> Pending Approval
+        <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-cyan-100 text-cyan-800">
+          <CheckCircle2 className="h-3 w-3" /> Completed
         </span>
       );
     }
