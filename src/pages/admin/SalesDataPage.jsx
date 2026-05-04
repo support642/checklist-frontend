@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { CheckCircle2, Upload, X, Search, History, ArrowLeft, Plus, Bell } from "lucide-react"
+import { toast } from "react-hot-toast"
 import AdminLayout from "../../components/layout/AdminLayout"
 import { useDispatch, useSelector } from "react-redux"
-import { checklistData, checklistHistoryData, updateChecklist, checklistMetadata } from "../../redux/slice/checklistSlice"
-import { maintenanceData, updateMaintenance } from "../../redux/slice/maintenanceSlice"
+import { checklistData, checklistHistoryData, updateChecklist, checklistMetadata, bulkDeleteChecklist, bulkLeaveChecklist } from "../../redux/slice/checklistSlice"
+import { maintenanceData, updateMaintenance, bulkDeleteMaintenance, bulkLeaveMaintenance } from "../../redux/slice/maintenanceSlice"
 import { postChecklistAdminDoneAPI, sendEmailNotificationAPI } from "../../redux/api/checkListApi"
 import { sendMaintenanceNotificationAPI } from "../../redux/api/maintenanceApi"
 import { uniqueDoerNameData } from "../../redux/slice/assignTaskSlice";
@@ -32,7 +33,6 @@ function AccountDataPage() {
   const [accountData, setAccountData] = useState([])
   const [selectedItems, setSelectedItems] = useState(new Set())
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [successMessage, setSuccessMessage] = useState("")
   const [additionalData, setAdditionalData] = useState({})
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all") // Filter for Today/Overdue/Upcoming
@@ -136,7 +136,7 @@ function AccountDataPage() {
     const observer = new IntersectionObserver((entries) => {
       const target = entries[0];
       if (target.isIntersecting) {
-        if (activeView === 'checklist' && hasMore && !loading) {
+        if (activeView === 'checklist' && hasMore && !loading && !error) {
           dispatch(checklistData({
             page: currentPage + 1,
             search: debouncedSearch,
@@ -146,7 +146,7 @@ function AccountDataPage() {
             division: divisionFilter,
             departmentFilter: departmentFilter
           }));
-        } else if (activeView === 'maintenance' && maintHasMore && !maintLoading) {
+        } else if (activeView === 'maintenance' && maintHasMore && !maintLoading && !maintError) {
           dispatch(maintenanceData({
             page: maintCurrentPage + 1,
             search: debouncedSearch,
@@ -455,12 +455,10 @@ function AccountDataPage() {
       // Refresh data
       dispatch(checklistHistoryData());
 
-      setSuccessMessage(
-        `Successfully marked ${selectedHistoryItems.length} items as admin processed!`
-      );
+      toast.success(`Successfully marked ${selectedHistoryItems.length} items as admin processed!`);
     } catch (error) {
       console.error("Error marking tasks as done:", error);
-      setSuccessMessage(`Failed to mark tasks as done: ${error.message}`);
+      toast.error(`Failed to mark tasks as done: ${error.message}`);
     } finally {
       setMarkingAsDone(false);
     }
@@ -478,7 +476,7 @@ function AccountDataPage() {
         throw new Error(error.message || "Failed to send email notifications");
       }
       
-      setSuccessMessage(`Successfully sent email notifications to ${selectedHistoryItems.length} users!`);
+      toast.success(`Successfully sent email notifications to ${selectedHistoryItems.length} users!`);
     } catch (err) {
       console.error("Error sending email:", err);
       setError(err.message || "Failed to send email notifications");
@@ -499,7 +497,16 @@ function AccountDataPage() {
   // Filter options are now fetched from the backend on mount and stored in Redux
 
   // Helper function to determine task status (Today, Upcoming, Overdue)
-  const getTaskStatus = (taskStartDate) => {
+  // Helper function to determine task status (Today, Upcoming, Overdue, Leave)
+  const getTaskStatus = (item) => {
+    if (!item) return 'unknown';
+    
+    // Check if task is explicitly marked as Leave or Inactive
+    const s = item.status?.toLowerCase();
+    if (s === 'leave') return 'leave';
+    if (s === 'inactive') return 'inactive';
+    
+    const taskStartDate = item.task_start_date || item.planned_date;
     if (!taskStartDate) return 'unknown';
     
     const today = new Date();
@@ -519,9 +526,9 @@ function AccountDataPage() {
   };
 
   // Check if checkbox should be enabled (only for today and overdue tasks)
-  const isCheckboxEnabled = (taskStartDate) => {
-    const status = getTaskStatus(taskStartDate);
-    return status === 'today' || status === 'overdue';
+  const isCheckboxEnabled = (item) => {
+    const status = getTaskStatus(item);
+    return status === 'today' || status === 'overdue' || status === 'inactive';
   };
 
   const filteredHistoryData = useMemo(() => {
@@ -697,7 +704,7 @@ function AccountDataPage() {
       const totalCount = existingFiles.length + newFiles.length;
       
       if (totalCount > 5) {
-        alert("Maximum 5 files allowed per task.");
+        toast.error("Maximum 5 files allowed per task.");
         return prev;
       }
 
@@ -751,7 +758,7 @@ function AccountDataPage() {
       const totalCount = existingFiles.length + newFiles.length;
       
       if (totalCount > 5) {
-        alert("Maximum 5 files allowed per task.");
+        toast.error("Maximum 5 files allowed per task.");
         return prev;
       }
 
@@ -777,6 +784,17 @@ function AccountDataPage() {
   const handleMaintSubmit = async () => {
     const selected = Array.from(maintSelectedItems);
     if (selected.length === 0) return;
+
+    // Check for inactive tasks
+    const inactiveTasks = selected.filter(id => {
+      const item = maintenance.find(m => m.task_id === id);
+      return item && item.status === 'Inactive';
+    });
+
+    if (inactiveTasks.length > 0) {
+      toast.error(`Please reactivate 'Day Off' tasks before submitting.`);
+      return;
+    }
 
     setIsSubmitting(true);
 
@@ -804,7 +822,7 @@ function AccountDataPage() {
 
       await dispatch(updateMaintenance(submissionData));
       
-      setSuccessMessage(`Successfully logged ${selected.length} maintenance task records!`);
+      toast.success(`Successfully logged ${selected.length} maintenance task records!`);
       setMaintSelectedItems(new Set());
       setMaintAdditionalData({});
       setMaintRemarksData({});
@@ -817,7 +835,7 @@ function AccountDataPage() {
 
     } catch (e) {
       console.error(e);
-      alert('Failed to submit maintenance tasks');
+      toast.error('Failed to submit maintenance tasks');
     } finally {
       setIsSubmitting(false);
     }
@@ -836,11 +854,10 @@ function AccountDataPage() {
         throw new Error(error.message || "Failed to send notifications");
       }
       
-      setSuccessMessage(`Successfully sent notifications to ${selected.length} users!`);
-      setTimeout(() => setSuccessMessage(""), 3000);
+      toast.success(`Successfully sent notifications to ${selected.length} users!`);
     } catch (err) {
       console.error("Error sending notification:", err);
-      setSuccessMessage(`Failed to send notifications: ${err.message || 'Unknown error'}`);
+      toast.error(`Failed to send notifications: ${err.message || 'Unknown error'}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -870,12 +887,23 @@ const fileToBase64 = (file) => {
 const handleSubmit = async () => {
   // Permission guard: view-only users cannot submit
   if (!hasModifyAccess('pending_task')) {
-    alert('You have view-only access and cannot submit tasks.');
+    toast.error('You have view-only access and cannot submit tasks.');
     return;
   }
   const selectedItemsArray = Array.from(selectedItems);
   if (selectedItemsArray.length === 0) {
-    alert("Please select at least one item to submit");
+    toast.error("Please select at least one item to submit");
+    return;
+  }
+
+  // Check for inactive tasks
+  const inactiveTasks = selectedItemsArray.filter(id => {
+    const item = checklist.find(acc => acc.task_id === id);
+    return item && item.status === 'Inactive';
+  });
+
+  if (inactiveTasks.length > 0) {
+    toast.error(`Please reactivate 'Day Off' tasks before submitting.`);
     return;
   }
 
@@ -886,7 +914,7 @@ const handleSubmit = async () => {
   });
 
   if (missingStatus.length > 0) {
-    alert(`Please select status (Yes/No) for all selected tasks.`);
+    toast.error(`Please select status (Yes/No) for all selected tasks.`);
     return;
   }
 
@@ -898,7 +926,7 @@ const handleSubmit = async () => {
   });
 
   if (missingRemarks.length > 0) {
-    alert(`Please provide remarks for items marked as "No".`);
+    toast.error(`Please provide remarks for items marked as "No".`);
     return;
   }
 
@@ -913,7 +941,7 @@ const handleSubmit = async () => {
   });
 
   if (missingRequiredImages.length > 0) {
-    alert(`Please upload images for all required attachments.`);
+    toast.error(`Please upload images for all required attachments.`);
     return;
   }
 
@@ -948,9 +976,7 @@ const handleSubmit = async () => {
 
     setTimeout(() => {
       setIsSubmitting(false);
-      setSuccessMessage(
-        `Successfully logged ${selectedItemsArray.length} task records!`
-      );
+      toast.success(`Successfully logged ${selectedItemsArray.length} task records!`);
 
       // Reset
       setSelectedItems(new Set());
@@ -964,9 +990,107 @@ const handleSubmit = async () => {
     }, 1500);
   };
 
+  const handleDayOff = async () => {
+    const selected = activeView === 'checklist' ? Array.from(selectedItems) : Array.from(maintSelectedItems);
+    if (selected.length === 0) return;
+
+    if (!window.confirm(`Are you sure you want to process ${selected.length} items?`)) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      if (activeView === 'checklist') {
+        await dispatch(bulkDeleteChecklist(selected)).unwrap();
+        setSelectedItems(new Set());
+        dispatch(checklistData({
+          page: 1,
+          search: debouncedSearch,
+          status: statusFilter,
+          frequency: frequencyFilter,
+          name: nameFilter,
+          division: divisionFilter,
+          departmentFilter: departmentFilter
+        }));
+      } else {
+        await dispatch(bulkDeleteMaintenance(selected)).unwrap();
+        setMaintSelectedItems(new Set());
+        dispatch(maintenanceData({
+          page: 1,
+          search: debouncedSearch,
+          status: statusFilter,
+          frequency: frequencyFilter,
+          name: nameFilter,
+          division: divisionFilter,
+          departmentFilter: departmentFilter
+        }));
+      }
+      toast.success(`Successfully processed ${selected.length} tasks.`);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to process Day Off");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleLeave = async () => {
+    const selected = activeView === 'checklist' ? Array.from(selectedItems) : Array.from(maintSelectedItems);
+    if (selected.length === 0) return;
+
+    if (!window.confirm(`Are you sure you want to mark ${selected.length} items as Leave?`)) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      if (activeView === 'checklist') {
+        await dispatch(bulkLeaveChecklist(selected)).unwrap();
+        setSelectedItems(new Set());
+        dispatch(checklistData({
+          page: 1,
+          search: debouncedSearch,
+          status: statusFilter,
+          frequency: frequencyFilter,
+          name: nameFilter,
+          division: divisionFilter,
+          departmentFilter: departmentFilter
+        }));
+      } else {
+        await dispatch(bulkLeaveMaintenance(selected)).unwrap();
+        setMaintSelectedItems(new Set());
+        dispatch(maintenanceData({
+          page: 1,
+          search: debouncedSearch,
+          status: statusFilter,
+          frequency: frequencyFilter,
+          name: nameFilter,
+          division: divisionFilter,
+          departmentFilter: departmentFilter
+        }));
+      }
+      toast.success(`Successfully marked ${selected.length} tasks as Leave.`);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to process Leave");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
 
   // Convert Set to Array for display
-  const selectedItemsCount = selectedItems.size
+  const selectedItemsCount = selectedItems.size;
+
+  const isAllSelectedInactive = useMemo(() => {
+    const selected = activeView === 'checklist' ? Array.from(selectedItems) : Array.from(maintSelectedItems);
+    if (selected.length === 0) return false;
+    const list = activeView === 'checklist' ? checklist : maintenance;
+    return selected.every(id => {
+      const item = list.find(i => (i.task_id || i.id) === id);
+      return item && item.status === 'Inactive';
+    });
+  }, [selectedItems, maintSelectedItems, activeView, checklist, maintenance]);
 
   return (
     <AdminLayout>
@@ -1045,18 +1169,34 @@ const handleSubmit = async () => {
                       <span className="sm:hidden">Notify ({maintSelectedItems.size})</span>
                     </button>
                   )}
-                  <button
-                    onClick={activeView === 'checklist' ? handleSubmit : handleMaintSubmit}
-                    disabled={(activeView === 'checklist' ? selectedItemsCount === 0 : maintSelectedItems.size === 0) || isSubmitting}
-                    className="flex-1 sm:flex-none rounded-md gradient-bg py-2 px-3 sm:px-4 text-white hover:from-purple-700 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
-                  >
-                    {isSubmitting ? "Processing..." : (
-                      <>
-                        <span className="hidden sm:inline">Submit Selected ({activeView === 'checklist' ? selectedItemsCount : maintSelectedItems.size})</span>
-                        <span className="sm:hidden">Submit ({activeView === 'checklist' ? selectedItemsCount : maintSelectedItems.size})</span>
-                      </>
-                    )}
-                  </button>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={handleDayOff}
+                      disabled={(activeView === 'checklist' ? selectedItemsCount === 0 : maintSelectedItems.size === 0) || isSubmitting}
+                      className="flex-1 sm:flex-none rounded-md bg-red-600 py-2 px-3 sm:px-4 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base font-medium shadow-sm"
+                    >
+                      {isAllSelectedInactive ? 'Day_on' : 'Day_off'}
+                    </button>
+                    <button
+                      onClick={handleLeave}
+                      disabled={(activeView === 'checklist' ? selectedItemsCount === 0 : maintSelectedItems.size === 0) || isSubmitting}
+                      className="flex-1 sm:flex-none rounded-md bg-yellow-600 py-2 px-3 sm:px-4 text-white hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base font-medium shadow-sm"
+                    >
+                      Leave
+                    </button>
+                    <button
+                      onClick={activeView === 'checklist' ? handleSubmit : handleMaintSubmit}
+                      disabled={(activeView === 'checklist' ? selectedItemsCount === 0 : maintSelectedItems.size === 0) || isSubmitting}
+                      className="flex-1 sm:flex-none rounded-md gradient-bg py-2 px-3 sm:px-4 text-white hover:from-purple-700 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base font-bold shadow-md"
+                    >
+                      {isSubmitting ? "Processing..." : (
+                        <>
+                          <span className="hidden sm:inline">Work Completed ({activeView === 'checklist' ? selectedItemsCount : maintSelectedItems.size})</span>
+                          <span className="sm:hidden">Work Completed ({activeView === 'checklist' ? selectedItemsCount : maintSelectedItems.size})</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -1156,6 +1296,8 @@ const handleSubmit = async () => {
                 <option value="today">Today</option>
                 <option value="overdue">Overdue</option>
                 <option value="upcoming">Upcoming</option>
+                <option value="leave">Leave</option>
+                <option value="inactive">Day off</option>
               </select>
               {/* Frequency filter */}
               <select value={frequencyFilter} onChange={(e) => setFrequencyFilter(e.target.value)} className="col-span-2 sm:col-auto px-3 py-2 border border-purple-200 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm bg-white w-full sm:w-auto shadow-sm">
@@ -1201,17 +1343,7 @@ const handleSubmit = async () => {
             )}
           </div>
 
-        {successMessage && (
-          <div className="bg-green-50 border border-green-200 text-green-700 px-3 sm:px-4 py-3 rounded-md flex items-center justify-between text-sm sm:text-base">
-            <div className="flex items-center">
-              <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-green-500 flex-shrink-0" />
-              <span className="break-words">{successMessage}</span>
-            </div>
-            <button onClick={() => setSuccessMessage("")} className="text-green-500 hover:text-green-700 ml-2 flex-shrink-0">
-              <X className="h-4 w-4 sm:h-5 sm:w-5" />
-            </button>
-          </div>
-        )}
+        {/* Success message handled by toast */}
 
         <div className="rounded-lg border border-purple-200 shadow-md bg-white overflow-hidden">
           <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-100 p-3 sm:p-4">
@@ -1550,10 +1682,8 @@ const handleSubmit = async () => {
                     {hasMoreHistory && (
                       <div ref={loaderRef} className="h-10 flex items-center justify-center bg-gray-50 border-t border-gray-100">
                         {loading && (
-                          <div className="flex items-center gap-2 text-purple-600 animate-pulse">
-                            <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
-                            <div className="w-2 h-2 bg-purple-600 rounded-full animation-delay-200"></div>
-                            <div className="w-2 h-2 bg-purple-600 rounded-full animation-delay-400"></div>
+                          <div className="flex items-center gap-2 text-purple-600">
+                            <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-purple-500"></div>
                             <span className="text-xs font-medium ml-1">Loading more history...</span>
                           </div>
                         )}
@@ -1577,13 +1707,14 @@ const handleSubmit = async () => {
                     <input
                       type="checkbox"
                       className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                      checked={filteredMaintenanceData.length > 0 && filteredMaintenanceData.every(item => maintSelectedItems.has(item.task_id))}
+                      checked={filteredMaintenanceData.filter(item => isCheckboxEnabled(item)).length > 0 && filteredMaintenanceData.filter(item => isCheckboxEnabled(item)).every(item => maintSelectedItems.has(item.task_id))}
                       onChange={(e) => {
                         if (e.target.checked) {
-                          setMaintSelectedItems(new Set(filteredMaintenanceData.map(item => item.task_id)));
+                          const enabledItems = filteredMaintenanceData.filter(item => isCheckboxEnabled(item));
+                          setMaintSelectedItems(new Set(enabledItems.map(item => item.task_id)));
                           setMaintAdditionalData(prev => {
                             const updated = { ...prev };
-                            filteredMaintenanceData.forEach(item => { updated[item.task_id] = "Yes" });
+                            enabledItems.forEach(item => { updated[item.task_id] = "Yes" });
                             return updated;
                           });
                         } else {
@@ -1593,7 +1724,7 @@ const handleSubmit = async () => {
                         }
                       }}
                     />
-                    <span className="text-xs font-medium text-purple-700">Select All ({filteredMaintenanceData.length})</span>
+                    <span className="text-xs font-medium text-purple-700">Select All ({filteredMaintenanceData.filter(item => isCheckboxEnabled(item)).length})</span>
                   </div>
                 )}
                 {filteredMaintenanceData.length > 0 ? (
@@ -1602,9 +1733,9 @@ const handleSubmit = async () => {
                     if (!item.task_description && !item.task_id) return null;
 
                     const isSelected = maintSelectedItems.has(item.task_id);
-                    const taskStatus = getTaskStatus(item.task_start_date || item.planned_date);
+                    const taskStatus = getTaskStatus(item);
                     return (
-                      <div key={index} className={`bg-white border rounded-lg p-3 shadow-sm ${taskStatus === 'upcoming' ? "border-blue-300 bg-blue-50" : taskStatus === 'overdue' ? "border-red-300 bg-red-50" : "border-gray-200"}`}>
+                      <div key={index} className={`bg-white border rounded-lg p-3 shadow-sm ${taskStatus === 'upcoming' ? "border-blue-300 bg-blue-50" : taskStatus === 'overdue' ? "border-red-300 bg-red-50" : taskStatus === 'leave' ? "border-orange-300 bg-orange-50" : "border-gray-200"}`}>
                         <div className="flex justify-between items-start mb-2">
                           <div className="flex items-center gap-2">
                             {(userRole === "user" || (userRole === "admin" || userRole === "div_admin") || userRole === "super_admin") && (
@@ -1612,16 +1743,20 @@ const handleSubmit = async () => {
                                 type="checkbox"
                                 className={`h-4 w-4 rounded border-gray-300 text-purple-600`}
                                 checked={isSelected}
+                                disabled={!isCheckboxEnabled(item)}
                                 onChange={(e) => handleMaintCheckboxClick(e, item.task_id)}
+                                title={!isCheckboxEnabled(item) ? (getTaskStatus(item) === 'leave' ? 'Task is on Leave' : 'Cannot select upcoming tasks') : ''}
                               />
                             )}
                             <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
                               taskStatus === 'today' ? "bg-green-100 text-green-800" 
                               : taskStatus === 'upcoming' ? "bg-blue-100 text-blue-800" 
                               : taskStatus === 'overdue' ? "bg-red-100 text-red-800"
+                              : taskStatus === 'leave' ? "bg-orange-100 text-orange-800"
+                              : taskStatus === 'inactive' ? "bg-gray-200 text-gray-700"
                               : "bg-gray-100 text-gray-800"
                             }`}>
-                              {taskStatus === 'today' ? 'Today' : taskStatus === 'upcoming' ? 'Upcoming' : 'Overdue'}
+                              {taskStatus === 'today' ? 'Today' : taskStatus === 'upcoming' ? 'Upcoming' : taskStatus === 'overdue' ? 'Overdue' : taskStatus === 'leave' ? 'Leave' : taskStatus === 'inactive' ? 'Day Off' : '—'}
                             </span>
                           </div>
                           <span className="text-xs text-gray-500">#{item.task_id}</span>
@@ -1664,7 +1799,7 @@ const handleSubmit = async () => {
                           <div><span className="text-gray-500">Planned Date:</span> <span className="font-medium">{item.planned_date || "—"}</span></div>
                           <div><span className="text-gray-500">Frequency:</span> <span className="font-medium">{item.frequency || "—"}</span></div>
                         </div>
-                        {(userRole === "user" || (userRole === "admin" || userRole === "div_admin") || userRole === "super_admin") && isSelected && (
+                        {(userRole === "user" || (userRole === "admin" || userRole === "div_admin") || userRole === "super_admin") && isSelected && taskStatus !== 'inactive' && (
                           <div className="border-t pt-2 mt-2 space-y-2">
                             <select
                               value={maintAdditionalData[item.task_id] || ""}
@@ -1777,13 +1912,14 @@ const handleSubmit = async () => {
                         <input
                           type="checkbox"
                           className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                          checked={filteredMaintenanceData.length > 0 && filteredMaintenanceData.every(item => maintSelectedItems.has(item.task_id))}
+                          checked={filteredMaintenanceData.filter(item => isCheckboxEnabled(item)).length > 0 && filteredMaintenanceData.filter(item => isCheckboxEnabled(item)).every(item => maintSelectedItems.has(item.task_id))}
                           onChange={(e) => {
                             if (e.target.checked) {
-                              setMaintSelectedItems(new Set(filteredMaintenanceData.map(item => item.task_id)));
+                              const enabledItems = filteredMaintenanceData.filter(item => isCheckboxEnabled(item));
+                              setMaintSelectedItems(new Set(enabledItems.map(item => item.task_id)));
                               setMaintAdditionalData(prev => {
                                 const updated = { ...prev };
-                                filteredMaintenanceData.forEach(item => { updated[item.task_id] = "Yes" });
+                                enabledItems.forEach(item => { updated[item.task_id] = "Yes" });
                                 return updated;
                               });
                             } else {
@@ -1820,9 +1956,9 @@ const handleSubmit = async () => {
                   {filteredMaintenanceData.length > 0 ? (
                     filteredMaintenanceData.map((item, index) => {
                       const isSelected = maintSelectedItems.has(item.task_id);
-                      const taskStatus = getTaskStatus(item.task_start_date || item.planned_date);
+                      const taskStatus = getTaskStatus(item);
                       return (
-                        <tr key={index} className={`${isSelected ? "bg-purple-50" : taskStatus === 'upcoming' ? "bg-blue-50" : taskStatus === 'overdue' ? "bg-red-50" : ""} hover:bg-gray-50`}>
+                        <tr key={index} className={`${isSelected ? "bg-purple-50" : taskStatus === 'upcoming' ? "bg-blue-50" : taskStatus === 'overdue' ? "bg-red-50" : taskStatus === 'leave' ? "bg-orange-50" : ""} hover:bg-gray-50`}>
                           <td className="px-2 sm:px-3 py-2 sm:py-4 border-b whitespace-nowrap">
                             <div className="text-xs sm:text-sm font-medium text-gray-900 text-center">
                               {index + 1}
@@ -1836,9 +1972,11 @@ const handleSubmit = async () => {
                                   ? "bg-blue-100 text-blue-800" 
                                   : taskStatus === 'overdue'
                                     ? "bg-red-100 text-red-800"
-                                    : "bg-gray-100 text-gray-800"
+                                    : taskStatus === 'leave'
+                                      ? "bg-orange-100 text-orange-800"
+                                      : "bg-gray-100 text-gray-800"
                             }`}>
-                              {taskStatus === 'today' ? 'Today' : taskStatus === 'upcoming' ? 'Upcoming' : taskStatus === 'overdue' ? 'Overdue' : '—'}
+                              {taskStatus === 'today' ? 'Today' : taskStatus === 'upcoming' ? 'Upcoming' : taskStatus === 'overdue' ? 'Overdue' : taskStatus === 'leave' ? 'Leave' : taskStatus === 'inactive' ? 'Day Off' : '—'}
                             </span>
                           </td>
                           {(userRole === "user" || (userRole === "admin" || userRole === "div_admin") || userRole === "super_admin") && (
@@ -1847,7 +1985,9 @@ const handleSubmit = async () => {
                                 type="checkbox"
                                 className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                                 checked={isSelected}
+                                disabled={!isCheckboxEnabled(item)}
                                 onChange={(e) => handleMaintCheckboxClick(e, item.task_id)}
+                                title={!isCheckboxEnabled(item) ? (getTaskStatus(item) === 'leave' ? 'Task is on Leave' : 'Cannot select upcoming tasks') : ''}
                               />
                             </td>
                           )}
@@ -1868,7 +2008,7 @@ const handleSubmit = async () => {
                             <input
                               type="text"
                               placeholder="Enter remarks"
-                              disabled={!isSelected || !maintAdditionalData[item.task_id]}
+                              disabled={!isSelected || !maintAdditionalData[item.task_id] || getTaskStatus(item) === 'inactive'}
                               value={maintRemarksData[item.task_id] || ""}
                               onChange={(e) => setMaintRemarksData((prev) => ({ ...prev, [item.task_id]: e.target.value }))}
                               className="border rounded-md px-2 py-1 w-full min-w-32 border-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed text-xs sm:text-sm"
@@ -1881,7 +2021,7 @@ const handleSubmit = async () => {
                           </td>
                           <td className="px-2 sm:px-3 py-2 sm:py-4 bg-yellow-50 border-b">
                             <select
-                              disabled={!isSelected}
+                              disabled={!isSelected || getTaskStatus(item) === 'inactive'}
                               value={maintAdditionalData[item.task_id] || ""}
                               onChange={(e) => {
                                 setMaintAdditionalData((prev) => ({ ...prev, [item.task_id]: e.target.value }));
@@ -1992,10 +2132,8 @@ const handleSubmit = async () => {
 
               <div ref={loaderRef} className="h-10 flex items-center justify-center bg-gray-50 border-t border-gray-100">
                 {maintLoading && (
-                  <div className="flex items-center gap-2 text-purple-600 animate-pulse">
-                    <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
-                    <div className="w-2 h-2 bg-purple-600 rounded-full animation-delay-200"></div>
-                    <div className="w-2 h-2 bg-purple-600 rounded-full animation-delay-400"></div>
+                  <div className="flex items-center gap-2 text-purple-600">
+                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-purple-500"></div>
                     <span className="text-xs font-medium ml-1">Loading more maintenance...</span>
                   </div>
                 )}
@@ -2016,10 +2154,10 @@ const handleSubmit = async () => {
                     <input
                       type="checkbox"
                       className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                      checked={filteredAccountData.filter(item => isCheckboxEnabled(item.task_start_date)).length > 0 && filteredAccountData.filter(item => isCheckboxEnabled(item.task_start_date)).every(item => selectedItems.has(item.task_id))}
+                      checked={filteredAccountData.filter(item => isCheckboxEnabled(item)).length > 0 && filteredAccountData.filter(item => isCheckboxEnabled(item)).every(item => selectedItems.has(item.task_id))}
                       onChange={(e) => {
                         if (e.target.checked) {
-                          const enabledItems = filteredAccountData.filter(item => isCheckboxEnabled(item.task_start_date));
+                          const enabledItems = filteredAccountData.filter(item => isCheckboxEnabled(item));
                           setSelectedItems(new Set(enabledItems.map(item => item.task_id)));
                           setAdditionalData((prev) => {
                             const updated = { ...prev };
@@ -2033,7 +2171,7 @@ const handleSubmit = async () => {
                         }
                       }}
                     />
-                    <span className="text-xs font-medium text-purple-700">Select All ({filteredAccountData.filter(item => isCheckboxEnabled(item.task_start_date)).length})</span>
+                    <span className="text-xs font-medium text-purple-700">Select All ({filteredAccountData.filter(item => isCheckboxEnabled(item)).length})</span>
                   </div>
                 )}
                 {filteredAccountData.length > 0 ? (
@@ -2042,10 +2180,10 @@ const handleSubmit = async () => {
                     if (!account.task_description && !account.task_id) return null;
                     
                     const isSelected = selectedItems.has(account.task_id);
-                    const taskStatus = getTaskStatus(account.task_start_date);
-                    const checkboxEnabled = isCheckboxEnabled(account.task_start_date);
+                    const taskStatus = getTaskStatus(account);
+                    const checkboxEnabled = isCheckboxEnabled(account);
                     return (
-                      <div key={index} className={`bg-white border rounded-lg p-3 shadow-sm ${taskStatus === 'upcoming' ? "border-blue-300 bg-blue-50" : taskStatus === 'overdue' ? "border-red-300 bg-red-50" : "border-gray-200"}`}>
+                      <div key={index} className={`bg-white border rounded-lg p-3 shadow-sm ${taskStatus === 'upcoming' ? "border-blue-300 bg-blue-50" : taskStatus === 'overdue' ? "border-red-300 bg-red-50" : taskStatus === 'leave' ? "border-orange-300 bg-orange-50" : "border-gray-200"}`}>
                         <div className="flex justify-between items-start mb-2">
                           <div className="flex items-center gap-2">
                             {(userRole === "user" || (userRole === "admin" || userRole === "div_admin") || userRole === "super_admin") && (
@@ -2055,15 +2193,18 @@ const handleSubmit = async () => {
                                 checked={isSelected}
                                 disabled={!checkboxEnabled}
                                 onChange={(e) => handleCheckboxClick(e, account.task_id)}
+                                title={!checkboxEnabled ? (taskStatus === 'leave' ? 'Task is on Leave' : 'Cannot select upcoming tasks') : ''}
                               />
                             )}
                             <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
                               taskStatus === 'today' ? "bg-green-100 text-green-800" 
                               : taskStatus === 'upcoming' ? "bg-blue-100 text-blue-800" 
                               : taskStatus === 'overdue' ? "bg-red-100 text-red-800"
+                              : taskStatus === 'leave' ? "bg-orange-100 text-orange-800"
+                              : taskStatus === 'inactive' ? "bg-gray-200 text-gray-700"
                               : "bg-gray-100 text-gray-800"
                             }`}>
-                              {taskStatus === 'today' ? 'Today' : taskStatus === 'upcoming' ? 'Upcoming' : 'Overdue'}
+                              {taskStatus === 'today' ? 'Today' : taskStatus === 'upcoming' ? 'Upcoming' : taskStatus === 'overdue' ? 'Overdue' : taskStatus === 'leave' ? 'Leave' : taskStatus === 'inactive' ? 'Day Off' : '—'}
                             </span>
                           </div>
                           <span className="text-xs text-gray-500">#{account.task_id}</span>
@@ -2078,7 +2219,7 @@ const handleSubmit = async () => {
                           <div><span className="text-gray-500">Frequency:</span> <span className="font-medium">{account.frequency || "—"}</span></div>
                           <div><span className="text-gray-500">Date:</span> <span className="font-medium">{account.task_start_date || "—"}</span></div>
                         </div>
-                        {(userRole === "user" || (userRole === "admin" || userRole === "div_admin") || userRole === "super_admin") && isSelected && (
+                        {(userRole === "user" || (userRole === "admin" || userRole === "div_admin") || userRole === "super_admin") && isSelected && taskStatus !== 'inactive' && (
                           <div className="border-t pt-2 mt-2 space-y-2">
                             <select
                               value={additionalData[account.task_id] || ""}
@@ -2192,11 +2333,11 @@ const handleSubmit = async () => {
                         <input
                           type="checkbox"
                           className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                          checked={filteredAccountData.filter(item => isCheckboxEnabled(item.task_start_date)).length > 0 && filteredAccountData.filter(item => isCheckboxEnabled(item.task_start_date)).every(item => selectedItems.has(item.task_id))}
+                          checked={filteredAccountData.filter(item => isCheckboxEnabled(item)).length > 0 && filteredAccountData.filter(item => isCheckboxEnabled(item)).every(item => selectedItems.has(item.task_id))}
                           onChange={(e) => {
                             if (e.target.checked) {
-                              // Only select items with enabled checkboxes (today and overdue)
-                              const enabledItems = filteredAccountData.filter(item => isCheckboxEnabled(item.task_start_date));
+                              // Only select items with enabled checkboxes (today, overdue, leave)
+                              const enabledItems = filteredAccountData.filter(item => isCheckboxEnabled(item));
                               setSelectedItems(new Set(enabledItems.map(item => item.task_id)));
                               // Auto-set status to "Yes" for all selected items
                               setAdditionalData((prev) => {
@@ -2262,10 +2403,10 @@ const handleSubmit = async () => {
                     filteredAccountData.map((account, index) => {
                       const isSelected = selectedItems.has(account.task_id);
                       const sequenceNumber = index + 1;
-                      const taskStatus = getTaskStatus(account.task_start_date);
-                      const checkboxEnabled = isCheckboxEnabled(account.task_start_date);
+                      const taskStatus = getTaskStatus(account);
+                      const checkboxEnabled = isCheckboxEnabled(account);
                       return (
-                        <tr key={index} className={`${isSelected ? "bg-purple-50" : taskStatus === 'upcoming' ? "bg-blue-50" : taskStatus === 'overdue' ? "bg-red-50" : ""} hover:bg-gray-50`}>
+                        <tr key={index} className={`${isSelected ? "bg-purple-50" : taskStatus === 'upcoming' ? "bg-blue-50" : taskStatus === 'overdue' ? "bg-red-50" : taskStatus === 'leave' ? "bg-orange-50" : ""} hover:bg-gray-50`}>
                           <td className="px-2 sm:px-3 py-2 sm:py-4 w-16">
                             <div className="text-xs sm:text-sm font-medium text-gray-900 text-center">
                               {sequenceNumber}
@@ -2279,9 +2420,11 @@ const handleSubmit = async () => {
                                   ? "bg-blue-100 text-blue-800" 
                                   : taskStatus === 'overdue'
                                     ? "bg-red-100 text-red-800"
-                                    : "bg-gray-100 text-gray-800"
+                                    : taskStatus === 'leave'
+                                      ? "bg-orange-100 text-orange-800"
+                                      : "bg-gray-100 text-gray-800"
                             }`}>
-                              {taskStatus === 'today' ? 'Today' : taskStatus === 'upcoming' ? 'Upcoming' : taskStatus === 'overdue' ? 'Overdue' : '—'}
+                              {taskStatus === 'today' ? 'Today' : taskStatus === 'upcoming' ? 'Upcoming' : taskStatus === 'overdue' ? 'Overdue' : taskStatus === 'leave' ? 'Leave' : taskStatus === 'inactive' ? 'Day Off' : '—'}
                             </span>
                           </td>
                           {(userRole === "user" || (userRole === "admin" || userRole === "div_admin") || userRole === "super_admin") && (
@@ -2292,7 +2435,7 @@ const handleSubmit = async () => {
                                 checked={isSelected}
                                 disabled={!checkboxEnabled}
                                 onChange={(e) => handleCheckboxClick(e, account.task_id)}
-                                title={!checkboxEnabled ? 'Cannot select upcoming tasks' : ''}
+                                title={!checkboxEnabled ? (taskStatus === 'leave' ? 'Task is on Leave' : 'Cannot select upcoming tasks') : ''}
                               />
                             </td>
                           )}
@@ -2317,7 +2460,7 @@ const handleSubmit = async () => {
                             <input
                               type="text"
                               placeholder="Enter remarks"
-                              disabled={!isSelected || !additionalData[account.task_id]}
+                              disabled={!isSelected || !additionalData[account.task_id] || taskStatus === 'inactive'}
                               value={remarksData[account.task_id] || ""}
                               onChange={(e) => setRemarksData((prev) => ({ ...prev, [account.task_id]: e.target.value }))}
                               className="border rounded-md px-2 py-1 w-full border-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed text-xs sm:text-sm break-words"
@@ -2330,7 +2473,7 @@ const handleSubmit = async () => {
                           </td>
                           <td className="px-2 sm:px-3 py-2 sm:py-4 bg-yellow-50">
                             <select
-                              disabled={!isSelected}
+                              disabled={!isSelected || taskStatus === 'inactive'}
                               value={additionalData[account.task_id] || ""}
                               onChange={(e) => {
                                 setAdditionalData((prev) => ({ ...prev, [account.task_id]: e.target.value }));
@@ -2439,10 +2582,8 @@ const handleSubmit = async () => {
 
               <div ref={loaderRef} className="h-10 flex items-center justify-center bg-gray-50 border-t border-gray-100">
                 {loading && (
-                  <div className="flex items-center gap-2 text-purple-600 animate-pulse">
-                    <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
-                    <div className="w-2 h-2 bg-purple-600 rounded-full animation-delay-200"></div>
-                    <div className="w-2 h-2 bg-purple-600 rounded-full animation-delay-400"></div>
+                  <div className="flex items-center gap-2 text-purple-600">
+                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-purple-500"></div>
                     <span className="text-xs font-medium ml-1">Loading more tasks...</span>
                   </div>
                 )}

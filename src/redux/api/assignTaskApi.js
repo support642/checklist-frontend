@@ -16,9 +16,19 @@ export const fetchUniqueGivenByDataApi = async () => {
 
 export const fetchUniqueDoerNameDataApi = async (args = {}) => {
   const { department, unit, division } = args;
+  
   if (!department) {
-    // No department specified — return all active doer names
-    return (await API.get(`/doer-all`)).data;
+    // No department specified — return all active doer names with role-based filtering
+    const role = localStorage.getItem("role");
+    const divisionLocal = localStorage.getItem("division");
+    const departmentLocal = localStorage.getItem("department");
+    
+    const params = {};
+    if (role) params.role = role;
+    if (divisionLocal) params.division = divisionLocal;
+    if (departmentLocal) params.department = departmentLocal;
+    
+    return (await API.get(`/doer-all`, { params })).data;
   }
   const params = {};
   if (unit) params.unit = unit;

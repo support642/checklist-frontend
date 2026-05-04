@@ -4,7 +4,9 @@ import {
   fetchChechListDataSortByDate,
   postChecklistAdminDoneAPI,
   updateChecklistData,
-  fetchChecklistMetadata
+  fetchChecklistMetadata,
+  bulkDeleteChecklistAPI,
+  bulkLeaveChecklistAPI
 } from "../api/checkListApi";
 
 
@@ -62,6 +64,20 @@ export const checklistMetadata = createAsyncThunk(
   "fetch/metadata",
   async () => {
     return await fetchChecklistMetadata();
+  }
+);
+
+export const bulkDeleteChecklist = createAsyncThunk(
+  "delete/bulkChecklist",
+  async (taskIds) => {
+    return await bulkDeleteChecklistAPI(taskIds);
+  }
+);
+
+export const bulkLeaveChecklist = createAsyncThunk(
+  "leave/bulkChecklist",
+  async (taskIds) => {
+    return await bulkLeaveChecklistAPI(taskIds);
   }
 );
 
@@ -184,6 +200,48 @@ const checkListSlice = createSlice({
       .addCase(checklistMetadata.fulfilled, (state, action) => {
         state.uniqueDivisions = action.payload.divisions || [];
         state.uniqueDepartments = action.payload.departments || [];
+      })
+      
+      // -----------------------------
+      // BULK DELETE
+      // -----------------------------
+      .addCase(bulkDeleteChecklist.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(bulkDeleteChecklist.fulfilled, (state, action) => {
+        state.loading = false;
+        const taskIds = action.meta.arg;
+        state.checklist = state.checklist.map(task => {
+          if (taskIds.includes(task.task_id)) {
+            return { ...task, status: task.status === 'Inactive' ? null : 'Inactive' };
+          }
+          return task;
+        });
+      })
+      .addCase(bulkDeleteChecklist.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error?.message || "Bulk delete failed";
+      })
+
+      // -----------------------------
+      // BULK LEAVE
+      // -----------------------------
+      .addCase(bulkLeaveChecklist.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(bulkLeaveChecklist.fulfilled, (state, action) => {
+        state.loading = false;
+        const updatedIds = action.meta.arg;
+        state.checklist = state.checklist.map(task => {
+          if (updatedIds.includes(task.task_id)) {
+            return { ...task, status: 'Leave' };
+          }
+          return task;
+        });
+      })
+      .addCase(bulkLeaveChecklist.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error?.message || "Bulk leave update failed";
       });
   },
 });

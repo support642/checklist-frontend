@@ -219,3 +219,46 @@ export const sendMaintenanceNotificationAPI = async (items) => {
         return { error };
     }
 };
+// =======================================================
+// 10️⃣ Bulk Delete Maintenance Tasks (Admin Only)
+// =======================================================
+export const bulkDeleteMaintenanceAPI = async (taskIds) => {
+    try {
+        const response = await authFetch(`${BASE_URL}/bulk-delete`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ taskIds }),
+        });
+
+        if (!response.ok) {
+            throw new Error("Bulk delete failed");
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error("❌ Error Bulk Deleting Maintenance:", error);
+        throw error;
+    }
+};
+
+// =======================================================
+// 11️⃣ Bulk Leave Maintenance Tasks (Admin Only)
+// =======================================================
+export const bulkLeaveMaintenanceAPI = async (taskIds) => {
+    try {
+        const response = await authFetch(`${BASE_URL}/bulk-leave`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ taskIds }),
+        });
+
+        if (!response.ok) {
+            throw new Error("Bulk leave update failed");
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error("❌ Error Bulk Leaving Maintenance:", error);
+        throw error;
+    }
+};

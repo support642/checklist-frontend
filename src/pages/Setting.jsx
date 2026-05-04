@@ -1219,6 +1219,14 @@ const [userForm, setUserForm] = useState({
     return () => clearTimeout(handler);
   }, [usernameFilter, leaveUsernameFilter, extendUsernameFilter, dispatch, activeTab]);
 
+  // Initial data fetch for dropdowns
+  useEffect(() => {
+    if (department.length === 0) dispatch(departmentDetails());
+    if (departmentsOnly.length === 0) dispatch(departmentOnlyDetails());
+    if (givenBy.length === 0) dispatch(givenByDetails());
+    if (machines.length === 0) dispatch(machineDetails());
+  }, [dispatch]);
+
   const handleScroll = (e) => {
     const { scrollTop, scrollHeight, clientHeight } = e.target;
     // Load more if scrolled to 90%
@@ -1466,6 +1474,13 @@ useEffect(() => {
   // };
 const handleEditUser = (userId) => {
   const user = userData.find(u => u.id === userId);
+  if (!user) return;
+
+  // Ensure department data is available for the fallback logic
+  if (!department || department.length === 0) {
+    dispatch(departmentDetails());
+  }
+
   const deptName = (user?.user_access || user?.department)?.split(',')[0]?.trim();
   const deptRecord = department?.find(d => d.department?.toLowerCase() === deptName?.toLowerCase());
   

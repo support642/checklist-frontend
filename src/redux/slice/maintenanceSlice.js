@@ -8,7 +8,9 @@ import {
     deleteUniqueMaintenanceTasksApi,
     updateUniqueMaintenanceTaskApi,
     fetchMachineParts,
-    fetchMaintenanceUniqueCountApi
+    fetchMaintenanceUniqueCountApi,
+    bulkDeleteMaintenanceAPI,
+    bulkLeaveMaintenanceAPI
 } from "../api/maintenanceApi";
 
 // ============================================================
@@ -131,6 +133,20 @@ export const fetchMachinePartsData = createAsyncThunk(
     async () => {
         const data = await fetchMachineParts();
         return data;
+    }
+);
+
+export const bulkDeleteMaintenance = createAsyncThunk(
+    "delete/bulkMaintenance",
+    async (taskIds) => {
+        return await bulkDeleteMaintenanceAPI(taskIds);
+    }
+);
+
+export const bulkLeaveMaintenance = createAsyncThunk(
+    "leave/bulkMaintenance",
+    async (taskIds) => {
+        return await bulkLeaveMaintenanceAPI(taskIds);
     }
 );
 
@@ -348,6 +364,48 @@ const maintenanceSlice = createSlice({
             })
             .addCase(fetchMachinePartsData.rejected, (state, action) => {
                 state.error = action.error?.message || "Failed fetching machine parts";
+            })
+            
+            // -----------------------------
+            // BULK DELETE
+            // -----------------------------
+            .addCase(bulkDeleteMaintenance.pending, (state) => {
+                state.loading = true;
+            })
+            .addCase(bulkDeleteMaintenance.fulfilled, (state, action) => {
+                state.loading = false;
+                const taskIds = action.meta.arg;
+                state.maintenance = state.maintenance.map(task => {
+                    if (taskIds.includes(task.task_id)) {
+                        return { ...task, status: task.status === 'Inactive' ? 'Pending' : 'Inactive' };
+                    }
+                    return task;
+                });
+            })
+            .addCase(bulkDeleteMaintenance.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.error?.message || "Bulk delete failed";
+            })
+
+            // -----------------------------
+            // BULK LEAVE
+            // -----------------------------
+            .addCase(bulkLeaveMaintenance.pending, (state) => {
+                state.loading = true;
+            })
+            .addCase(bulkLeaveMaintenance.fulfilled, (state, action) => {
+                state.loading = false;
+                const updatedIds = action.meta.arg;
+                state.maintenance = state.maintenance.map(task => {
+                    if (updatedIds.includes(task.task_id)) {
+                        return { ...task, status: 'Leave' };
+                    }
+                    return task;
+                });
+            })
+            .addCase(bulkLeaveMaintenance.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.error?.message || "Bulk leave update failed";
             });
     },
 });

@@ -155,3 +155,48 @@ export const fetchChecklistMetadata = async () => {
 
   return await response.json();
 };
+// =======================================================
+// 7️⃣ Bulk Delete Checklist (Admin Only)
+// =======================================================
+export const bulkDeleteChecklistAPI = async (taskIds) => {
+  try {
+    const response = await authFetch(`${BASE_URL}/bulk-delete`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ taskIds }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || "Bulk delete failed");
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("❌ Error Bulk Deleting Checklist:", error);
+    throw error;
+  }
+};
+
+// =======================================================
+// 8️⃣ Bulk Leave Checklist (Admin Only)
+// =======================================================
+export const bulkLeaveChecklistAPI = async (taskIds) => {
+  try {
+    const response = await authFetch(`${BASE_URL}/bulk-leave`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ taskIds }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || "Bulk leave update failed");
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("❌ Error Bulk Leaving Checklist:", error);
+    throw error;
+  }
+};
