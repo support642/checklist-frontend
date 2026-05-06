@@ -3,8 +3,18 @@ import { CheckCircle2, Upload, X, Search, History, ArrowLeft, Plus, Bell } from 
 import { toast } from "react-hot-toast"
 import AdminLayout from "../../components/layout/AdminLayout"
 import { useDispatch, useSelector } from "react-redux"
-import { checklistData, checklistHistoryData, updateChecklist, checklistMetadata, bulkDeleteChecklist, bulkLeaveChecklist } from "../../redux/slice/checklistSlice"
-import { maintenanceData, updateMaintenance, bulkDeleteMaintenance, bulkLeaveMaintenance } from "../../redux/slice/maintenanceSlice"
+import { checklistData, checklistHistoryData, updateChecklist, checklistMetadata, bulkDeleteChecklist, bulkLeaveChecklist, approveActivation as approveActivationChecklist } from "../../redux/slice/checklistSlice"
+import { maintenanceData, updateMaintenance, bulkDeleteMaintenance, bulkLeaveMaintenance, approveActivation as approveActivationMaintenance } from "../../redux/slice/maintenanceSlice"
+import { 
+  totalTaskInTable, 
+  completeTaskInTable, 
+  pendingTaskInTable, 
+  overdueTaskInTable, 
+  notDoneTaskInTable,
+  pendingTodayInTable,
+  pendingUpcomingInTable,
+  pendingOverdueInTable
+} from "../../redux/slice/dashboardSlice"
 import { postChecklistAdminDoneAPI, sendEmailNotificationAPI } from "../../redux/api/checkListApi"
 import { sendMaintenanceNotificationAPI } from "../../redux/api/maintenanceApi"
 import { uniqueDoerNameData } from "../../redux/slice/assignTaskSlice";
@@ -485,26 +495,15 @@ function AccountDataPage() {
     }
   };
 
-  // With backend filtering and infinite scroll, we use Redux data directly
-  const filteredAccountData = useMemo(() => {
-    return checklist || [];
-  }, [checklist]);
-
-  const filteredMaintenanceData = useMemo(() => {
-    return maintenance || [];
-  }, [maintenance]);
-
-  // Filter options are now fetched from the backend on mount and stored in Redux
-
-  // Helper function to determine task status (Today, Upcoming, Overdue)
   // Helper function to determine task status (Today, Upcoming, Overdue, Leave)
   const getTaskStatus = (item) => {
     if (!item) return 'unknown';
     
-    // Check if task is explicitly marked as Leave or Inactive
+    // Check if task is explicitly marked as Leave, Inactive or Activation_Pending
     const s = item.status?.toLowerCase();
     if (s === 'leave') return 'leave';
     if (s === 'inactive') return 'inactive';
+    if (s === 'activation_pending') return 'activation_pending';
     
     const taskStartDate = item.task_start_date || item.planned_date;
     if (!taskStartDate) return 'unknown';
@@ -525,9 +524,37 @@ function AccountDataPage() {
     return 'upcoming';
   };
 
+  // With backend filtering and infinite scroll, we use Redux data directly
+  const filteredAccountData = useMemo(() => {
+    if (!checklist) return [];
+    return checklist.filter(item => {
+      const status = getTaskStatus(item);
+      if (statusFilter === 'all') return status !== 'leave' && status !== 'inactive';
+      return status === statusFilter;
+    });
+  }, [checklist, statusFilter]);
+
+  const filteredMaintenanceData = useMemo(() => {
+    if (!maintenance) return [];
+    return maintenance.filter(item => {
+      const status = getTaskStatus(item);
+      if (statusFilter === 'all') return status !== 'leave' && status !== 'inactive';
+      return status === statusFilter;
+    });
+  }, [maintenance, statusFilter]);
+
+  // Filter options are now fetched from the backend on mount and stored in Redux
+
   // Check if checkbox should be enabled (only for today and overdue tasks)
   const isCheckboxEnabled = (item) => {
     const status = getTaskStatus(item);
+    const role = (userRole || "").toUpperCase();
+    const isAdmin = ["SUPER_ADMIN", "ADMIN", "DIV_ADMIN"].includes(role);
+    
+    if (status === 'activation_pending') {
+      return isAdmin; // Only admins can select pending activation tasks
+    }
+    
     return status === 'today' || status === 'overdue' || status === 'inactive';
   };
 
@@ -1001,7 +1028,7 @@ const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
       if (activeView === 'checklist') {
-        await dispatch(bulkDeleteChecklist(selected)).unwrap();
+        await dispatch(bulkDeleteChecklist({ ids: selected, role: userRole })).unwrap();
         setSelectedItems(new Set());
         dispatch(checklistData({
           page: 1,
@@ -1013,7 +1040,7 @@ const handleSubmit = async () => {
           departmentFilter: departmentFilter
         }));
       } else {
-        await dispatch(bulkDeleteMaintenance(selected)).unwrap();
+        await dispatch(bulkDeleteMaintenance({ ids: selected, role: userRole })).unwrap();
         setMaintSelectedItems(new Set());
         dispatch(maintenanceData({
           page: 1,
@@ -1025,6 +1052,25 @@ const handleSubmit = async () => {
           departmentFilter: departmentFilter
         }));
       }
+      
+      // Refresh Dashboard Stats
+      const refreshParams = {
+        dashboardType: activeView,
+        staffFilter: nameFilter,
+        departmentFilter: departmentFilter,
+        divisionFilter: divisionFilter,
+        startDate: startDate,
+        endDate: endDate
+      };
+      dispatch(totalTaskInTable(refreshParams));
+      dispatch(completeTaskInTable(refreshParams));
+      dispatch(pendingTaskInTable(refreshParams));
+      dispatch(overdueTaskInTable(refreshParams));
+      dispatch(notDoneTaskInTable(refreshParams));
+      dispatch(pendingTodayInTable(refreshParams));
+      dispatch(pendingUpcomingInTable(refreshParams));
+      dispatch(pendingOverdueInTable(refreshParams));
+
       toast.success(`Successfully processed ${selected.length} tasks.`);
     } catch (err) {
       console.error(err);
@@ -1069,10 +1115,74 @@ const handleSubmit = async () => {
           departmentFilter: departmentFilter
         }));
       }
+
+      // Refresh Dashboard Stats
+      const refreshParams = {
+        dashboardType: activeView,
+        staffFilter: nameFilter,
+        departmentFilter: departmentFilter,
+        divisionFilter: divisionFilter,
+        startDate: startDate,
+        endDate: endDate
+      };
+      dispatch(totalTaskInTable(refreshParams));
+      dispatch(completeTaskInTable(refreshParams));
+      dispatch(pendingTaskInTable(refreshParams));
+      dispatch(overdueTaskInTable(refreshParams));
+      dispatch(notDoneTaskInTable(refreshParams));
+      dispatch(pendingTodayInTable(refreshParams));
+      dispatch(pendingUpcomingInTable(refreshParams));
+      dispatch(pendingOverdueInTable(refreshParams));
+
       toast.success(`Successfully marked ${selected.length} tasks as Leave.`);
     } catch (err) {
       console.error(err);
       toast.error("Failed to process Leave");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleApproveActivation = async () => {
+    const selected = activeView === 'checklist' ? Array.from(selectedItems) : Array.from(maintSelectedItems);
+    if (selected.length === 0) return;
+
+    if (!window.confirm(`Are you sure you want to approve activation for ${selected.length} items?`)) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      if (activeView === 'checklist') {
+        await dispatch(approveActivationChecklist(selected)).unwrap();
+        setSelectedItems(new Set());
+        dispatch(checklistData({
+          page: 1,
+          search: debouncedSearch,
+          status: statusFilter,
+          frequency: frequencyFilter,
+          name: nameFilter,
+          division: divisionFilter,
+          departmentFilter: departmentFilter
+        }));
+      } else {
+        await dispatch(approveActivationMaintenance(selected)).unwrap();
+        setMaintSelectedItems(new Set());
+        dispatch(maintenanceData({
+          page: 1,
+          search: debouncedSearch,
+          status: statusFilter,
+          frequency: frequencyFilter,
+          name: nameFilter,
+          division: divisionFilter,
+          departmentFilter: departmentFilter
+        }));
+      }
+      
+      toast.success(`Successfully approved activation for ${selected.length} tasks.`);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to approve activation");
     } finally {
       setIsSubmitting(false);
     }
@@ -1088,7 +1198,7 @@ const handleSubmit = async () => {
     const list = activeView === 'checklist' ? checklist : maintenance;
     return selected.every(id => {
       const item = list.find(i => (i.task_id || i.id) === id);
-      return item && item.status === 'Inactive';
+      return item && (item.status === 'Inactive' || item.status === 'Activation_Pending');
     });
   }, [selectedItems, maintSelectedItems, activeView, checklist, maintenance]);
 
@@ -1170,6 +1280,19 @@ const handleSubmit = async () => {
                     </button>
                   )}
                   <div className="flex flex-wrap gap-2">
+                    {(userRole === "admin" || userRole === "div_admin" || userRole === "super_admin") && (activeView === 'checklist' ? Array.from(selectedItems) : Array.from(maintSelectedItems)).some(id => {
+                      const list = activeView === 'checklist' ? checklist : maintenance;
+                      const item = list.find(i => (i.task_id || i.id) === id);
+                      return item && item.status === 'Activation_Pending';
+                    }) && (
+                      <button
+                        onClick={handleApproveActivation}
+                        disabled={isSubmitting}
+                        className="flex-1 sm:flex-none rounded-md bg-purple-600 py-2 px-3 sm:px-4 text-white hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base font-medium shadow-sm"
+                      >
+                        Approve Activation
+                      </button>
+                    )}
                     <button
                       onClick={handleDayOff}
                       disabled={(activeView === 'checklist' ? selectedItemsCount === 0 : maintSelectedItems.size === 0) || isSubmitting}
@@ -1298,6 +1421,7 @@ const handleSubmit = async () => {
                 <option value="upcoming">Upcoming</option>
                 <option value="leave">Leave</option>
                 <option value="inactive">Day off</option>
+                <option value="activation_pending">Pending Activation</option>
               </select>
               {/* Frequency filter */}
               <select value={frequencyFilter} onChange={(e) => setFrequencyFilter(e.target.value)} className="col-span-2 sm:col-auto px-3 py-2 border border-purple-200 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm bg-white w-full sm:w-auto shadow-sm">
@@ -1754,9 +1878,10 @@ const handleSubmit = async () => {
                               : taskStatus === 'overdue' ? "bg-red-100 text-red-800"
                               : taskStatus === 'leave' ? "bg-orange-100 text-orange-800"
                               : taskStatus === 'inactive' ? "bg-gray-200 text-gray-700"
+                              : taskStatus === 'activation_pending' ? "bg-purple-100 text-purple-800"
                               : "bg-gray-100 text-gray-800"
                             }`}>
-                              {taskStatus === 'today' ? 'Today' : taskStatus === 'upcoming' ? 'Upcoming' : taskStatus === 'overdue' ? 'Overdue' : taskStatus === 'leave' ? 'Leave' : taskStatus === 'inactive' ? 'Day Off' : '—'}
+                              {taskStatus === 'today' ? 'Today' : taskStatus === 'upcoming' ? 'Upcoming' : taskStatus === 'overdue' ? 'Overdue' : taskStatus === 'leave' ? 'Leave' : taskStatus === 'inactive' ? 'Day Off' : taskStatus === 'activation_pending' ? 'Pending Activation' : '—'}
                             </span>
                           </div>
                           <span className="text-xs text-gray-500">#{item.task_id}</span>
@@ -1974,9 +2099,11 @@ const handleSubmit = async () => {
                                     ? "bg-red-100 text-red-800"
                                     : taskStatus === 'leave'
                                       ? "bg-orange-100 text-orange-800"
-                                      : "bg-gray-100 text-gray-800"
+                                      : taskStatus === 'activation_pending'
+                                        ? "bg-purple-100 text-purple-800"
+                                        : "bg-gray-100 text-gray-800"
                             }`}>
-                              {taskStatus === 'today' ? 'Today' : taskStatus === 'upcoming' ? 'Upcoming' : taskStatus === 'overdue' ? 'Overdue' : taskStatus === 'leave' ? 'Leave' : taskStatus === 'inactive' ? 'Day Off' : '—'}
+                              {taskStatus === 'today' ? 'Today' : taskStatus === 'upcoming' ? 'Upcoming' : taskStatus === 'overdue' ? 'Overdue' : taskStatus === 'leave' ? 'Leave' : taskStatus === 'inactive' ? 'Day Off' : taskStatus === 'activation_pending' ? 'Pending Activation' : '—'}
                             </span>
                           </td>
                           {(userRole === "user" || (userRole === "admin" || userRole === "div_admin") || userRole === "super_admin") && (
@@ -2202,9 +2329,10 @@ const handleSubmit = async () => {
                               : taskStatus === 'overdue' ? "bg-red-100 text-red-800"
                               : taskStatus === 'leave' ? "bg-orange-100 text-orange-800"
                               : taskStatus === 'inactive' ? "bg-gray-200 text-gray-700"
+                              : taskStatus === 'activation_pending' ? "bg-purple-100 text-purple-800"
                               : "bg-gray-100 text-gray-800"
                             }`}>
-                              {taskStatus === 'today' ? 'Today' : taskStatus === 'upcoming' ? 'Upcoming' : taskStatus === 'overdue' ? 'Overdue' : taskStatus === 'leave' ? 'Leave' : taskStatus === 'inactive' ? 'Day Off' : '—'}
+                              {taskStatus === 'today' ? 'Today' : taskStatus === 'upcoming' ? 'Upcoming' : taskStatus === 'overdue' ? 'Overdue' : taskStatus === 'leave' ? 'Leave' : taskStatus === 'inactive' ? 'Day Off' : taskStatus === 'activation_pending' ? 'Pending Activation' : '—'}
                             </span>
                           </div>
                           <span className="text-xs text-gray-500">#{account.task_id}</span>
@@ -2422,9 +2550,11 @@ const handleSubmit = async () => {
                                     ? "bg-red-100 text-red-800"
                                     : taskStatus === 'leave'
                                       ? "bg-orange-100 text-orange-800"
-                                      : "bg-gray-100 text-gray-800"
+                                      : taskStatus === 'activation_pending'
+                                        ? "bg-purple-100 text-purple-800"
+                                        : "bg-gray-100 text-gray-800"
                             }`}>
-                              {taskStatus === 'today' ? 'Today' : taskStatus === 'upcoming' ? 'Upcoming' : taskStatus === 'overdue' ? 'Overdue' : taskStatus === 'leave' ? 'Leave' : taskStatus === 'inactive' ? 'Day Off' : '—'}
+                              {taskStatus === 'today' ? 'Today' : taskStatus === 'upcoming' ? 'Upcoming' : taskStatus === 'overdue' ? 'Overdue' : taskStatus === 'leave' ? 'Leave' : taskStatus === 'inactive' ? 'Day Off' : taskStatus === 'activation_pending' ? 'Pending Activation' : '—'}
                             </span>
                           </td>
                           {(userRole === "user" || (userRole === "admin" || userRole === "div_admin") || userRole === "super_admin") && (

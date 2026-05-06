@@ -160,10 +160,11 @@ export const fetchChecklistMetadata = async () => {
 // =======================================================
 export const bulkDeleteChecklistAPI = async (taskIds) => {
   try {
+    const role = localStorage.getItem("role");
     const response = await authFetch(`${BASE_URL}/bulk-delete`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ taskIds }),
+      body: JSON.stringify({ taskIds, role }),
     });
 
     if (!response.ok) {
@@ -174,6 +175,29 @@ export const bulkDeleteChecklistAPI = async (taskIds) => {
     return await response.json();
   } catch (error) {
     console.error("❌ Error Bulk Deleting Checklist:", error);
+    throw error;
+  }
+};
+
+// =======================================================
+// 7.1️⃣ Approve Activation Checklist (Admin Only)
+// =======================================================
+export const approveActivationChecklistAPI = async (taskIds) => {
+  try {
+    const response = await authFetch(`${BASE_URL}/approve-activation`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ taskIds }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || "Approval failed");
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("❌ Error Approving Activation:", error);
     throw error;
   }
 };

@@ -222,21 +222,45 @@ export const sendMaintenanceNotificationAPI = async (items) => {
 // =======================================================
 // 10️⃣ Bulk Delete Maintenance Tasks (Admin Only)
 // =======================================================
-export const bulkDeleteMaintenanceAPI = async (taskIds) => {
+export const bulkDeleteMaintenanceAPI = async (taskIds, role) => {
     try {
         const response = await authFetch(`${BASE_URL}/bulk-delete`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ taskIds, role }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || "Bulk delete failed");
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error("❌ Error Bulk Deleting Maintenance:", error);
+        throw error;
+    }
+};
+
+// =======================================================
+// 10.1️⃣ Approve Activation Maintenance (Admin Only)
+// =======================================================
+export const approveActivationMaintenanceAPI = async (taskIds) => {
+    try {
+        const response = await authFetch(`${BASE_URL}/approve-activation`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ taskIds }),
         });
 
         if (!response.ok) {
-            throw new Error("Bulk delete failed");
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || "Approval failed");
         }
 
         return await response.json();
     } catch (error) {
-        console.error("❌ Error Bulk Deleting Maintenance:", error);
+        console.error("❌ Error Approving Activation Maintenance:", error);
         throw error;
     }
 };

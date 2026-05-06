@@ -6,13 +6,11 @@ import {
   updateChecklistData,
   fetchChecklistMetadata,
   bulkDeleteChecklistAPI,
-  bulkLeaveChecklistAPI
+  bulkLeaveChecklistAPI,
+  approveActivationChecklistAPI
 } from "../api/checkListApi";
 
-
-// ============================================================
-// 1️⃣ FETCH PENDING CHECKLIST
-// ============================================================
+// 1. FETCH PENDING CHECKLIST
 export const checklistData = createAsyncThunk(
   "fetch/checklist",
   async ({ page = 1, search = '', status = 'all', frequency = 'all', name = 'all', division = 'all', departmentFilter = 'all' } = {}) => {
@@ -21,10 +19,7 @@ export const checklistData = createAsyncThunk(
   }
 );
 
-
-// ============================================================
-// 2️⃣ FETCH HISTORY CHECKLIST
-// ============================================================
+// 2. FETCH HISTORY CHECKLIST
 export const checklistHistoryData = createAsyncThunk(
   "fetch/history",
   async ({ page = 1, search = "", startDate = "", endDate = "", name = 'all', division = 'all', departmentFilter = 'all', approvalStatus = 'all' } = {}) => {
@@ -32,22 +27,16 @@ export const checklistHistoryData = createAsyncThunk(
   }
 );
 
-
-// ============================================================
-// 3️⃣ UPDATE CHECKLIST (USER SUBMISSION)
-// ============================================================
+// 3. UPDATE CHECKLIST (USER SUBMISSION)
 export const updateChecklist = createAsyncThunk(
   "update/checklist",
   async (submissionData) => {
     const updated = await updateChecklistData(submissionData);
-    return updated;  // returns only message
+    return updated;
   }
 );
 
-
-// ============================================================
-// 4️⃣ ADMIN DONE
-// ============================================================
+// 4. ADMIN DONE
 export const checklistAdminDone = createAsyncThunk(
   "insert/admin_done",
   async (items) => {
@@ -56,10 +45,7 @@ export const checklistAdminDone = createAsyncThunk(
   }
 );
 
-
-// ============================================================
-// 5️⃣ FETCH METADATA (DIVISIONS & DEPARTMENTS)
-// ============================================================
+// 5. FETCH METADATA
 export const checklistMetadata = createAsyncThunk(
   "fetch/metadata",
   async () => {
@@ -67,24 +53,35 @@ export const checklistMetadata = createAsyncThunk(
   }
 );
 
+// 6. BULK DELETE / DAY OFF
 export const bulkDeleteChecklist = createAsyncThunk(
-  "delete/bulkChecklist",
-  async (taskIds) => {
-    return await bulkDeleteChecklistAPI(taskIds);
+  "checklist/bulkDeleteChecklist",
+  async ({ ids, role }, { rejectWithValue }) => {
+    try {
+      const response = await bulkDeleteChecklistAPI(ids, role);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
   }
 );
 
+// 7. BULK LEAVE
 export const bulkLeaveChecklist = createAsyncThunk(
-  "leave/bulkChecklist",
+  "checklist/bulkLeaveChecklist",
   async (taskIds) => {
     return await bulkLeaveChecklistAPI(taskIds);
   }
 );
 
+// 8. APPROVE ACTIVATION
+export const approveActivation = createAsyncThunk(
+  "checklist/approveActivation",
+  async (taskIds) => {
+    return await approveActivationChecklistAPI(taskIds);
+  }
+);
 
-// ============================================================
-// 6️⃣ SLICE
-// ============================================================
 const checkListSlice = createSlice({
   name: "checklist",
   initialState: {
@@ -101,48 +98,29 @@ const checkListSlice = createSlice({
     uniqueDivisions: [],
     uniqueDepartments: [],
   },
-
   reducers: {},
-
   extraReducers: (builder) => {
     builder
-
-      // -----------------------------
-      // FETCH PENDING CHECKLIST
-      // -----------------------------
       .addCase(checklistData.pending, (state) => {
         state.loading = true;
       })
-
       .addCase(checklistData.fulfilled, (state, action) => {
         state.loading = false;
-
         if (action.payload.page === 1) {
           state.checklist = action.payload.data;
         } else {
           state.checklist = [...state.checklist, ...action.payload.data];
         }
-
         state.currentPage = action.payload.page;
-
-        // Determine pagination
         state.hasMore = state.checklist.length < action.payload.totalCount;
       })
-
       .addCase(checklistData.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error?.message || "Failed fetching checklist";
       })
-
-
-
-      // -----------------------------
-      // FETCH HISTORY
-      // -----------------------------
       .addCase(checklistHistoryData.pending, (state) => {
         state.loading = true;
       })
-
       .addCase(checklistHistoryData.fulfilled, (state, action) => {
         state.loading = false;
         state.history = action.payload.data;
@@ -151,69 +129,49 @@ const checkListSlice = createSlice({
         state.historyPendingCount = parseInt(action.payload.pendingCount) || 0;
         state.historyTotalPages = parseInt(action.payload.totalPages) || 0;
       })
-
       .addCase(checklistHistoryData.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error?.message || "Failed fetching history";
       })
-
-
-
-      // -----------------------------
-      // UPDATE CHECKLIST (USER SUBMIT)
-      // -----------------------------
       .addCase(updateChecklist.pending, (state) => {
         state.loading = true;
       })
-
       .addCase(updateChecklist.fulfilled, (state) => {
         state.loading = false;
-        // No need to update state.checklist – backend already saved
       })
-
       .addCase(updateChecklist.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error?.message || "Failed updating checklist";
+        state.error = action.error?.message || "Update failed";
       })
-
-
-
-      // -----------------------------
-      // ADMIN DONE
-      // -----------------------------
       .addCase(checklistAdminDone.pending, (state) => {
         state.loading = true;
       })
-
       .addCase(checklistAdminDone.fulfilled, (state) => {
         state.loading = false;
       })
-
       .addCase(checklistAdminDone.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error?.message || "Admin update failed";
       })
-
-      // -----------------------------
-      // FETCH METADATA
-      // -----------------------------
       .addCase(checklistMetadata.fulfilled, (state, action) => {
         state.uniqueDivisions = action.payload.divisions || [];
         state.uniqueDepartments = action.payload.departments || [];
       })
-      
-      // -----------------------------
-      // BULK DELETE
-      // -----------------------------
       .addCase(bulkDeleteChecklist.pending, (state) => {
         state.loading = true;
       })
       .addCase(bulkDeleteChecklist.fulfilled, (state, action) => {
         state.loading = false;
-        const taskIds = action.meta.arg;
+        const { ids } = action.meta.arg;
+        const role = localStorage.getItem("role")?.toUpperCase();
+        const isAdmin = ["SUPER_ADMIN", "ADMIN", "DIV_ADMIN"].includes(role);
+
         state.checklist = state.checklist.map(task => {
-          if (taskIds.includes(task.task_id)) {
-            return { ...task, status: task.status === 'Inactive' ? null : 'Inactive' };
+          if (ids.includes(task.task_id)) {
+            if (task.status === 'Inactive' || task.status === 'Activation_Pending') {
+              return { ...task, status: isAdmin ? null : 'Activation_Pending' };
+            }
+            return { ...task, status: 'Inactive' };
           }
           return task;
         });
@@ -222,10 +180,6 @@ const checkListSlice = createSlice({
         state.loading = false;
         state.error = action.error?.message || "Bulk delete failed";
       })
-
-      // -----------------------------
-      // BULK LEAVE
-      // -----------------------------
       .addCase(bulkLeaveChecklist.pending, (state) => {
         state.loading = true;
       })
@@ -242,6 +196,23 @@ const checkListSlice = createSlice({
       .addCase(bulkLeaveChecklist.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error?.message || "Bulk leave update failed";
+      })
+      .addCase(approveActivation.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(approveActivation.fulfilled, (state, action) => {
+        state.loading = false;
+        const approvedIds = action.meta.arg;
+        state.checklist = state.checklist.map(task => {
+          if (approvedIds.includes(task.task_id)) {
+            return { ...task, status: null };
+          }
+          return task;
+        });
+      })
+      .addCase(approveActivation.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error?.message || "Approval failed";
       });
   },
 });

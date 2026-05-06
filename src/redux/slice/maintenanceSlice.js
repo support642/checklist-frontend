@@ -10,12 +10,11 @@ import {
     fetchMachineParts,
     fetchMaintenanceUniqueCountApi,
     bulkDeleteMaintenanceAPI,
-    bulkLeaveMaintenanceAPI
+    bulkLeaveMaintenanceAPI,
+    approveActivationMaintenanceAPI
 } from "../api/maintenanceApi";
 
-// ============================================================
-// 1️⃣ FETCH PENDING MAINTENANCE TASKS
-// ============================================================
+// 1. FETCH PENDING MAINTENANCE TASKS
 export const maintenanceData = createAsyncThunk(
     "fetch/maintenance",
     async ({
@@ -44,9 +43,7 @@ export const maintenanceData = createAsyncThunk(
     }
 );
 
-// ============================================================
-// 2️⃣ FETCH HISTORY MAINTENANCE TASKS
-// ============================================================
+// 2. FETCH HISTORY MAINTENANCE TASKS
 export const maintenanceHistoryData = createAsyncThunk(
     "fetch/maintenanceHistory",
     async ({ page = 1, search = "", startDate = "", endDate = "", name = 'all', division = 'all', departmentFilter = 'all', approvalStatus = 'all' } = {}) => {
@@ -54,9 +51,7 @@ export const maintenanceHistoryData = createAsyncThunk(
     }
 );
 
-// ============================================================
-// 3️⃣ UPDATE MAINTENANCE TASKS (USER SUBMISSION)
-// ============================================================
+// 3. UPDATE MAINTENANCE TASKS (USER SUBMISSION)
 export const updateMaintenance = createAsyncThunk(
     "update/maintenance",
     async (submissionData) => {
@@ -65,9 +60,7 @@ export const updateMaintenance = createAsyncThunk(
     }
 );
 
-// ============================================================
-// 4️⃣ ADMIN DONE
-// ============================================================
+// 4. ADMIN DONE
 export const maintenanceAdminDone = createAsyncThunk(
     "insert/maintenance_admin_done",
     async (items) => {
@@ -76,9 +69,7 @@ export const maintenanceAdminDone = createAsyncThunk(
     }
 );
 
-// ============================================================
-// 5️⃣ FETCH UNIQUE MAINTENANCE TASKS (QUICKTASK)
-// ============================================================
+// 5. FETCH UNIQUE MAINTENANCE TASKS (QUICKTASK)
 export const uniqueMaintenanceTaskData = createAsyncThunk(
     "fetch/uniqueMaintenanceTask",
     async ({ page = 0, pageSize = 50, nameFilter = "", freqFilter = "", append = false, userRole = "", userDept = "", userDiv = "", userName = "", deptFilter = "", divFilter = "" }) => {
@@ -87,15 +78,12 @@ export const uniqueMaintenanceTaskData = createAsyncThunk(
     }
 );
 
-// ============================================================
-// 6️⃣ DELETE UNIQUE MAINTENANCE TASKS (QUICKTASK)
-// ============================================================
+// 6. DELETE UNIQUE MAINTENANCE TASKS (QUICKTASK)
 export const deleteUniqueMaintenanceTask = createAsyncThunk(
     "delete/uniqueMaintenanceTask",
     async (tasks, { rejectWithValue }) => {
         try {
             await deleteUniqueMaintenanceTasksApi(tasks);
-            // We return tasks so we know which ones to filter out of the UI
             return tasks;
         } catch (error) {
             return rejectWithValue(error.message);
@@ -103,9 +91,7 @@ export const deleteUniqueMaintenanceTask = createAsyncThunk(
     }
 );
 
-// ============================================================
-// 7️⃣ UPDATE UNIQUE MAINTENANCE TASKS (QUICKTASK)
-// ============================================================
+// 7. UPDATE UNIQUE MAINTENANCE TASKS (QUICKTASK)
 export const updateUniqueMaintenanceTask = createAsyncThunk(
     "update/uniqueMaintenanceTask",
     async ({ updatedTask, originalTask }, { rejectWithValue }) => {
@@ -125,41 +111,49 @@ export const fetchMaintenanceCounts = createAsyncThunk(
     }
 );
 
-// ============================================================
-// 8️⃣ FETCH MACHINE PARTS (master table)
-// ============================================================
+// 8. FETCH MACHINE PARTS
 export const fetchMachinePartsData = createAsyncThunk(
     "fetch/machineParts",
     async () => {
-        const data = await fetchMachineParts();
-        return data;
+        return await fetchMachineParts();
     }
 );
 
+// 9. BULK DELETE / DAY OFF
 export const bulkDeleteMaintenance = createAsyncThunk(
-    "delete/bulkMaintenance",
-    async (taskIds) => {
-        return await bulkDeleteMaintenanceAPI(taskIds);
+    "maintenance/bulkDeleteMaintenance",
+    async ({ ids, role }, { rejectWithValue }) => {
+        try {
+            return await bulkDeleteMaintenanceAPI(ids, role);
+        } catch (error) {
+            return rejectWithValue(error.response?.data || error.message);
+        }
     }
 );
 
+// 10. BULK LEAVE
 export const bulkLeaveMaintenance = createAsyncThunk(
-    "leave/bulkMaintenance",
+    "maintenance/bulkLeaveMaintenance",
     async (taskIds) => {
         return await bulkLeaveMaintenanceAPI(taskIds);
     }
 );
 
-// ============================================================
-// 8️⃣ SLICE
-// ============================================================
+// 11. APPROVE ACTIVATION
+export const approveActivation = createAsyncThunk(
+    "maintenance/approveActivation",
+    async (taskIds) => {
+        return await approveActivationMaintenanceAPI(taskIds);
+    }
+);
+
 const maintenanceSlice = createSlice({
     name: "maintenance",
     initialState: {
         maintenance: [],
         history: [],
-        uniqueMaintenanceTasks: [], // For QuickTask view
-        machineParts: [],           // Master machine_parts data
+        uniqueMaintenanceTasks: [],
+        machineParts: [],
         loading: false,
         error: null,
         hasMore: true,
@@ -172,11 +166,9 @@ const maintenanceSlice = createSlice({
         historyCurrentPage: 1,
         uniqueMaintenancePage: 0,
         uniqueMaintenanceTotal: 0,
-        // Discrete count for header summary
         discreteMaintenanceTotal: 0,
         uniqueMaintenanceHasMore: true,
     },
-
     reducers: {
         resetUniqueMaintenancePagination: (state) => {
             state.uniqueMaintenanceTasks = [];
@@ -184,45 +176,26 @@ const maintenanceSlice = createSlice({
             state.uniqueMaintenanceHasMore = true;
         }
     },
-
     extraReducers: (builder) => {
         builder
-
-            // -----------------------------
-            // FETCH PENDING MAINTENANCE
-            // -----------------------------
             .addCase(maintenanceData.pending, (state) => {
                 state.loading = true;
             })
-
             .addCase(maintenanceData.fulfilled, (state, action) => {
                 state.loading = false;
-
                 if (action.payload.page === 1) {
                     state.maintenance = action.payload.data;
                 } else {
                     state.maintenance = [...state.maintenance, ...action.payload.data];
                 }
-
                 state.currentPage = action.payload.page;
                 state.pendingTotalCount = parseInt(action.payload.totalCount) || 0;
-
-                // Determine pagination
                 state.hasMore = state.maintenance.length < action.payload.totalCount;
             })
-
             .addCase(maintenanceData.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.error?.message || "Failed fetching maintenance tasks";
             })
-
-            // -----------------------------
-            // FETCH HISTORY
-            // -----------------------------
-            .addCase(maintenanceHistoryData.pending, (state) => {
-                state.loading = true;
-            })
-
             .addCase(maintenanceHistoryData.fulfilled, (state, action) => {
                 state.loading = false;
                 state.history = action.payload.data;
@@ -232,62 +205,16 @@ const maintenanceSlice = createSlice({
                 state.historyTotalPages = parseInt(action.payload.totalPages) || 0;
                 state.historyCurrentPage = parseInt(action.payload.page) || 1;
             })
-
-            .addCase(maintenanceHistoryData.rejected, (state, action) => {
-                state.loading = false;
-                state.error = action.error?.message || "Failed fetching maintenance history";
-            })
-
-            // -----------------------------
-            // UPDATE TASKS (USER SUBMIT)
-            // -----------------------------
-            .addCase(updateMaintenance.pending, (state) => {
-                state.loading = true;
-            })
-
             .addCase(updateMaintenance.fulfilled, (state, action) => {
                 state.loading = false;
-                // action.meta.arg is the submissionData array we sent
                 const submittedIds = action.meta.arg.map(item => item.taskId);
-                state.maintenance = state.maintenance.filter(
-                    task => !submittedIds.includes(task.task_id)
-                );
-            })
-
-            .addCase(updateMaintenance.rejected, (state, action) => {
-                state.loading = false;
-                state.error = action.error?.message || "Failed updating maintenance tasks";
-            })
-
-            // -----------------------------
-            // ADMIN DONE
-            // -----------------------------
-            .addCase(maintenanceAdminDone.pending, (state) => {
-                state.loading = true;
-            })
-            .addCase(maintenanceAdminDone.fulfilled, (state) => {
-                state.loading = false;
-            })
-            .addCase(maintenanceAdminDone.rejected, (state, action) => {
-                state.loading = false;
-                state.error = action.error?.message || "Admin update failed for maintenance";
-            })
-
-            // -----------------------------
-            // FETCH UNIQUE MAINTENANCE
-            // -----------------------------
-            .addCase(uniqueMaintenanceTaskData.pending, (state) => {
-                state.loading = true;
-                state.error = null;
+                state.maintenance = state.maintenance.filter(task => !submittedIds.includes(task.task_id));
             })
             .addCase(uniqueMaintenanceTaskData.fulfilled, (state, action) => {
                 state.loading = false;
-
-                // Fallbacks in case the backend returns an error object without data/total
                 const data = action.payload?.data || [];
                 const total = action.payload?.total || 0;
                 const append = action.payload?.append || false;
-
                 if (append) {
                     state.uniqueMaintenanceTasks = [...state.uniqueMaintenanceTasks, ...data];
                     state.uniqueMaintenancePage += 1;
@@ -295,89 +222,24 @@ const maintenanceSlice = createSlice({
                     state.uniqueMaintenanceTasks = data;
                     state.uniqueMaintenancePage = 1;
                 }
-
                 state.uniqueMaintenanceTotal = total;
                 state.uniqueMaintenanceHasMore = state.uniqueMaintenanceTasks.length < total;
             })
-            .addCase(uniqueMaintenanceTaskData.rejected, (state, action) => {
-                state.loading = false;
-                state.error = action.payload;
-            })
-
-            // -----------------------------
-            // DELETE UNIQUE MAINTENANCE
-            // -----------------------------
-            .addCase(deleteUniqueMaintenanceTask.pending, (state) => {
-                state.loading = true;
-            })
-            .addCase(deleteUniqueMaintenanceTask.fulfilled, (state, action) => {
-                state.loading = false;
-                const tasksToDelete = action.payload;
-                // Filter out tasks that match the deleted name and description
-                state.uniqueMaintenanceTasks = state.uniqueMaintenanceTasks.filter(
-                    task => !tasksToDelete.some(t => t.name === task.name && t.task_description === task.task_description)
-                );
-            })
-            .addCase(deleteUniqueMaintenanceTask.rejected, (state, action) => {
-                state.loading = false;
-                state.error = action.payload;
-            })
-
-            // -----------------------------
-            // UPDATE UNIQUE MAINTENANCE
-            // -----------------------------
-            .addCase(updateUniqueMaintenanceTask.pending, (state) => {
-                state.loading = true;
-            })
-            .addCase(updateUniqueMaintenanceTask.fulfilled, (state, action) => {
-                state.loading = false;
-                const updatedTask = action.payload; // Backend returns the single updated record map
-
-                // If backend returns an object that has task_id
-                if (updatedTask && updatedTask.task_id) {
-                    const index = state.uniqueMaintenanceTasks.findIndex(task => task.task_id === updatedTask.task_id);
-                    if (index !== -1) {
-                        state.uniqueMaintenanceTasks[index] = updatedTask;
-                    }
-                }
-            })
-            .addCase(updateUniqueMaintenanceTask.rejected, (state, action) => {
-                state.loading = false;
-                state.error = action.payload;
-            })
-
-            // -----------------------------
-            // FETCH MAINTENANCE COUNTS
-            // -----------------------------
-            .addCase(fetchMaintenanceCounts.fulfilled, (state, action) => {
-                state.discreteMaintenanceTotal = action.payload.total;
-            })
-
-            // -----------------------------
-            // FETCH MACHINE PARTS
-            // -----------------------------
-            .addCase(fetchMachinePartsData.pending, (state) => {
-                // Don't set loading=true here to avoid interfering with task loading
-            })
-            .addCase(fetchMachinePartsData.fulfilled, (state, action) => {
-                state.machineParts = action.payload || [];
-            })
-            .addCase(fetchMachinePartsData.rejected, (state, action) => {
-                state.error = action.error?.message || "Failed fetching machine parts";
-            })
-            
-            // -----------------------------
-            // BULK DELETE
-            // -----------------------------
             .addCase(bulkDeleteMaintenance.pending, (state) => {
                 state.loading = true;
             })
             .addCase(bulkDeleteMaintenance.fulfilled, (state, action) => {
                 state.loading = false;
-                const taskIds = action.meta.arg;
+                const { ids } = action.meta.arg;
+                const role = localStorage.getItem("role")?.toUpperCase();
+                const isAdmin = ["SUPER_ADMIN", "ADMIN", "DIV_ADMIN"].includes(role);
+
                 state.maintenance = state.maintenance.map(task => {
-                    if (taskIds.includes(task.task_id)) {
-                        return { ...task, status: task.status === 'Inactive' ? 'Pending' : 'Inactive' };
+                    if (ids.includes(task.task_id)) {
+                        if (task.status === 'Inactive' || task.status === 'Activation_Pending') {
+                            return { ...task, status: isAdmin ? 'Pending' : 'Activation_Pending' };
+                        }
+                        return { ...task, status: 'Inactive' };
                     }
                     return task;
                 });
@@ -385,13 +247,6 @@ const maintenanceSlice = createSlice({
             .addCase(bulkDeleteMaintenance.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.error?.message || "Bulk delete failed";
-            })
-
-            // -----------------------------
-            // BULK LEAVE
-            // -----------------------------
-            .addCase(bulkLeaveMaintenance.pending, (state) => {
-                state.loading = true;
             })
             .addCase(bulkLeaveMaintenance.fulfilled, (state, action) => {
                 state.loading = false;
@@ -403,13 +258,36 @@ const maintenanceSlice = createSlice({
                     return task;
                 });
             })
-            .addCase(bulkLeaveMaintenance.rejected, (state, action) => {
+            .addCase(approveActivation.pending, (state) => {
+                state.loading = true;
+            })
+            .addCase(approveActivation.fulfilled, (state, action) => {
                 state.loading = false;
-                state.error = action.error?.message || "Bulk leave update failed";
+                const approvedIds = action.meta.arg;
+                state.maintenance = state.maintenance.map(task => {
+                    if (approvedIds.includes(task.task_id)) {
+                        return { ...task, status: 'Pending' };
+                    }
+                    return task;
+                });
+            })
+            .addCase(approveActivation.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.error?.message || "Approval failed";
+            })
+            .addCase(fetchMachinePartsData.pending, (state) => {
+                state.loading = true;
+            })
+            .addCase(fetchMachinePartsData.fulfilled, (state, action) => {
+                state.loading = false;
+                state.machineParts = action.payload || [];
+            })
+            .addCase(fetchMachinePartsData.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.error?.message || "Failed fetching machine parts";
             });
     },
 });
 
 export const { resetUniqueMaintenancePagination } = maintenanceSlice.actions;
-
 export default maintenanceSlice.reducer;
