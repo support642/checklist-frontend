@@ -41,9 +41,10 @@ function MaintenanceQuickTaskPage({ searchTerm, nameFilter, deptFilter, divFilte
       userRole,
       userDept,
       userDiv,
-      userName
+      userName,
+      search: searchTerm
     }));
-  }, [dispatch, nameFilter, deptFilter, divFilter, freqFilter, userRole, userDept, userDiv, userName]);
+  }, [dispatch, nameFilter, deptFilter, divFilter, freqFilter, userRole, userDept, userDiv, userName, searchTerm]);
 
   useEffect(() => {
     setIsInitialized(true);
@@ -69,11 +70,12 @@ function MaintenanceQuickTaskPage({ searchTerm, nameFilter, deptFilter, divFilte
           userRole,
           userDept,
           userDiv,
-          userName
+          userName,
+          search: searchTerm
         }));
       }
     }
-  }, [loading, uniqueMaintenanceHasMore, uniqueMaintenancePage, nameFilter, deptFilter, divFilter, freqFilter, dispatch, userRole, userDept, userDiv, userName]);
+  }, [loading, uniqueMaintenanceHasMore, uniqueMaintenancePage, nameFilter, deptFilter, divFilter, freqFilter, dispatch, userRole, userDept, userDiv, userName, searchTerm]);
 
   useEffect(() => {
     const container = tableContainerRef.current;
@@ -151,7 +153,8 @@ function MaintenanceQuickTaskPage({ searchTerm, nameFilter, deptFilter, divFilte
         userRole,
         userDept,
         userDiv,
-        userName
+        userName,
+        search: searchTerm
       }));
 
     } catch (error) {
@@ -210,7 +213,8 @@ function MaintenanceQuickTaskPage({ searchTerm, nameFilter, deptFilter, divFilte
         userRole,
         userDept,
         userDiv,
-        userName
+        userName,
+        search: searchTerm
       }));
       
       setTimeout(() => setSuccessMessage(""), 3000);
@@ -246,14 +250,7 @@ function MaintenanceQuickTaskPage({ searchTerm, nameFilter, deptFilter, divFilte
       return true; // super_admin sees all
     });
 
-    // 2. Applied Filters (Search, Name, Dept, etc.)
-    if (searchTerm) {
-        filtered = filtered.filter(task =>
-            task.task_description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            task.machine_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (Array.isArray(task.part_name) ? task.part_name.join(', ') : (task.part_name || '')).toLowerCase().includes(searchTerm.toLowerCase())
-        );
-    }
+    // 2. Applied Filters (Name, Dept, etc. - Search is now handled by backend)
     
     if (deptFilter) {
       filtered = filtered.filter(task => (task.department || task.user_access) === deptFilter);
@@ -268,7 +265,7 @@ function MaintenanceQuickTaskPage({ searchTerm, nameFilter, deptFilter, divFilte
     }
 
     return filtered;
-  }, [uniqueMaintenanceTasks, searchTerm, nameFilter, deptFilter, divFilter, freqFilter, userRole, userName, userDept, userDiv]);
+  }, [uniqueMaintenanceTasks, nameFilter, deptFilter, divFilter, freqFilter, userRole, userName, userDept, userDiv]);
 
   return (
     <>
@@ -286,7 +283,7 @@ function MaintenanceQuickTaskPage({ searchTerm, nameFilter, deptFilter, divFilte
         <div className="mt-4 bg-red-50 p-4 rounded-md text-red-800 text-center">
           {error}{" "}
           <button 
-            onClick={() => dispatch(uniqueMaintenanceTaskData({ page: 0, pageSize: 50, nameFilter, deptFilter, divFilter, freqFilter, append: false, userRole, userDept, userDiv, userName }))} 
+            onClick={() => dispatch(uniqueMaintenanceTaskData({ page: 0, pageSize: 50, nameFilter, deptFilter, divFilter, freqFilter, append: false, userRole, userDept, userDiv, userName, search: searchTerm }))} 
             className="underline ml-2 hover:text-red-600"
           >
             Try again

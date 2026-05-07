@@ -563,14 +563,10 @@ function AccountDataPage() {
 
     const filtered = history
       .filter((item) => {
-        // Search filter
-        const matchesSearch = searchTerm
-          ? Object.entries(item).some(([key, value]) => {
-            if (['image', 'admin_done'].includes(key)) return false
-            return value && value.toString().toLowerCase().includes(searchTerm.toLowerCase())
-          })
-          : true
-
+        // Search and other filters are now handled server-side for the most part,
+        // but we can keep basic member/date range filtering if needed, 
+        // though the backend already supports them.
+        
         // Member filter
         const matchesMember = selectedMembers.length > 0
           ? selectedMembers.includes(item.name)
@@ -602,7 +598,8 @@ function AccountDataPage() {
           // Compare dates
           if (start && itemDateOnly < start) matchesDateRange = false
           if (end && itemDateOnly > end) matchesDateRange = false
-        }        return matchesSearch && matchesMember && matchesDateRange
+        }
+        return matchesMember && matchesDateRange
       })
       .sort((a, b) => {
         const dateA = parseSupabaseDate(a.task_start_date)
@@ -610,8 +607,8 @@ function AccountDataPage() {
         return dateB - dateA // Sort newest first
       });
       
-    return filtered; // Return all data so UI pagination works
-  }, [history, searchTerm, selectedMembers, startDate, endDate, userRole, userDept])
+    return filtered;
+  }, [history, selectedMembers, startDate, endDate])
 
 
   const getTaskStatistics = () => {

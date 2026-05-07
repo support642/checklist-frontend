@@ -173,6 +173,7 @@ const Setting = () => {
   const [tasksToBulkDelete, setTasksToBulkDelete] = useState([]); // For bulk deletion modal
   const [selectedTasksToDelete, setSelectedTasksToDelete] = useState([]); // Checked tasks
   const [isDeletingTask, setIsDeletingTask] = useState(false);
+  const [bulkPopupDoer, setBulkPopupDoer] = useState(''); // Bulk assignment for individual popup
 
   // Machine Management State
   const [showMachineModal, setShowMachineModal] = useState(false);
@@ -862,6 +863,20 @@ const handleConfirmDelegation = async () => {
     }));
   };
 
+  // Handler for bulk assignment within the individual popup
+  const handleBulkPopupAssignment = (doerName) => {
+    setBulkPopupDoer(doerName);
+    if (doerName) {
+      setTaskAssignments(prev => {
+        const newAssignments = { ...prev };
+        userTasks.forEach(task => {
+          newAssignments[task.task_id] = doerName;
+        });
+        return newAssignments;
+      });
+    }
+  };
+
   // Handler for Leave Transfer Popup submission
   const handleLeaveTransferSubmit = async () => {
     if (!popupLeaveStartDate || !popupLeaveEndDate) {
@@ -898,6 +913,8 @@ const handleConfirmDelegation = async () => {
         delegateTo: taskAssignments[task.task_id],
         task_description: task.task_description,
         department: task.department,
+        division: task.division,
+        unit: task.unit,
         given_by: task.given_by,
         frequency: task.frequency,
         task_start_date: task.task_start_date,
@@ -4499,75 +4516,52 @@ const resetUserForm = () => {
                             </div>
                           ) : (
                             <div>
-                              <div className="flex justify-between items-center mb-2">
-                                <h4 className="text-sm font-medium text-gray-900">
+                              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 bg-purple-50 p-3 rounded-lg border border-purple-100">
+                                <h4 className="text-sm font-bold text-purple-800">
                                   Tasks to Assign ({userTasks.length})
                                 </h4>
-                                {selectedTasksToDelete.length > 0 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const tasks = userTasks.filter(t => selectedTasksToDelete.includes(t.task_id));
-                                      setTasksToBulkDelete(tasks);
-                                    }}
-                                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                                  >
-                                    <Trash2 size={14} className="mr-1" />
-                                    Delete Selected ({selectedTasksToDelete.length})
-                                  </button>
-                                )}
+                                
+                                <div className="flex items-center gap-2 w-full sm:w-auto">
+                                  <label className="text-xs font-semibold text-purple-700 whitespace-nowrap">Bulk Assign To:</label>
+                                  <div className="relative flex-1 sm:w-48">
+                                    <input
+                                      type="text"
+                                      list="bulkPopupDoerOptions"
+                                      placeholder="Select doer for all..."
+                                      value={bulkPopupDoer}
+                                      onChange={(e) => handleBulkPopupAssignment(e.target.value)}
+                                      className="w-full text-xs border border-purple-200 rounded-md shadow-sm py-1.5 px-3 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                                    />
+                                    <datalist id="bulkPopupDoerOptions">
+                                      {availableDoersForLeave.map((name, index) => (
+                                        <option key={index} value={name} />
+                                      ))}
+                                    </datalist>
+                                  </div>
+                                </div>
                               </div>
-                              <div className="border border-gray-300 rounded-md overflow-hidden">
-                                <div className="max-h-64 overflow-y-auto">
+                              <div className="border border-gray-300 rounded-md overflow-hidden shadow-sm">
+                                <div className="max-h-64 overflow-y-auto custom-scrollbar">
                                   <table className="min-w-full divide-y divide-gray-200">
-                                    <thead className="bg-gray-50 sticky top-0">
+                                    <thead className="bg-gray-50 sticky top-0 z-10">
                                       <tr>
-                                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-8">
-                                          <input
-                                            type="checkbox"
-                                            className="rounded border-gray-300 text-purple-600 focus:ring-purple-500 h-4 w-4"
-                                            checked={userTasks.length > 0 && selectedTasksToDelete.length === userTasks.length}
-                                            onChange={(e) => {
-                                              if (e.target.checked) {
-                                                setSelectedTasksToDelete(userTasks.map(t => t.task_id));
-                                              } else {
-                                                setSelectedTasksToDelete([]);
-                                              }
-                                            }}
-                                          />
-                                        </th>
-                                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task ID</th>
-                                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assign To <span className="text-red-500">*</span></th>
-                                        <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Task ID</th>
+                                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Description</th>
+                                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Date</th>
+                                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Assign To <span className="text-red-500">*</span></th>
                                       </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-200">
                                       {userTasks.map((task) => (
-                                        <tr key={task.task_id} className="hover:bg-gray-50">
-                                          <td className="px-3 py-2 w-8">
-                                            <input
-                                              type="checkbox"
-                                              className="rounded border-gray-300 text-purple-600 focus:ring-purple-500 h-4 w-4"
-                                              checked={selectedTasksToDelete.includes(task.task_id)}
-                                              onChange={(e) => {
-                                                if (e.target.checked) {
-                                                  setSelectedTasksToDelete(prev => [...prev, task.task_id]);
-                                                } else {
-                                                  setSelectedTasksToDelete(prev => prev.filter(id => id !== task.task_id));
-                                                }
-                                              }}
-                                            />
-                                          </td>
-                                          <td className="px-3 py-2 text-xs text-gray-900">{task.task_id}</td>
-                                          <td className="px-3 py-2 text-xs text-gray-900" title={task.task_description}>
+                                        <tr key={task.task_id} className="hover:bg-gray-50 transition-colors">
+                                          <td className="px-3 py-2.5 text-xs font-medium text-gray-600">{task.task_id}</td>
+                                          <td className="px-3 py-2.5 text-xs text-gray-900" title={task.task_description}>
                                             <div className="max-w-xs truncate">{task.task_description}</div>
                                           </td>
-                                          <td className="px-3 py-2 text-xs text-gray-900">
+                                          <td className="px-3 py-2.5 text-xs text-gray-900">
                                             {task.task_start_date ? new Date(task.task_start_date).toLocaleDateString() : '-'}
                                           </td>
-                                          <td className="px-3 py-2">
+                                          <td className="px-3 py-2.5">
                                             <div className="relative">
                                               <input
                                                 type="text"
@@ -4575,7 +4569,7 @@ const resetUserForm = () => {
                                                 placeholder="Search user..."
                                                 value={taskAssignments[task.task_id] || ''}
                                                 onChange={(e) => handleTaskAssignment(task.task_id, e.target.value)}
-                                                className="w-full text-xs border border-gray-300 rounded-md shadow-sm py-1 px-2 focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                                                className="w-full text-xs border border-gray-300 rounded-md shadow-sm py-1.5 px-3 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500"
                                               />
                                               <datalist id={`doerOptions-${task.task_id}`}>
                                                 {availableDoersForLeave.map((name, index) => (
@@ -4583,22 +4577,6 @@ const resetUserForm = () => {
                                                 ))}
                                               </datalist>
                                             </div>
-                                          </td>
-                                          <td className="px-3 py-2 text-center">
-                                            <button
-                                              type="button"
-                                              onClick={() => {
-                                                // Check if it's already selected
-                                                if (!selectedTasksToDelete.includes(task.task_id)) {
-                                                  setSelectedTasksToDelete(prev => [...prev, task.task_id]);
-                                                }
-                                                setTaskToDelete(task);
-                                              }}
-                                              className="text-red-500 hover:text-red-700 transition-colors p-1"
-                                              title="Permanently Delete Task"
-                                            >
-                                              <Trash2 size={16} />
-                                            </button>
                                           </td>
                                         </tr>
                                       ))}
@@ -4624,9 +4602,9 @@ const resetUserForm = () => {
                           className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
                         />
                       </div>
-                      <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
-                        <p className="text-xs text-blue-800">
-                          <strong>Note:</strong> This will delete {currentLeaveUser.user_name}'s tasks from the checklist for the selected dates and assign them to the chosen doer in the delegation system.
+                      <div className="bg-purple-50 border border-purple-200 rounded-md p-3">
+                        <p className="text-xs text-purple-800">
+                          <strong>Note:</strong> All listed tasks will be transferred to the selected doers in the delegation system for the chosen date range. Unassigned tasks will not be transferred.
                         </p>
                       </div>
                     </div>
@@ -4657,98 +4635,6 @@ const resetUserForm = () => {
           </div>
         )}
 
-        {/* Custom Toast Confirmation for Task Deletion */}
-        {(taskToDelete || tasksToBulkDelete.length > 0) && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 transition-opacity">
-            <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4 transform transition-all">
-              <div className="mb-4 text-center relative">
-                <button
-                  onClick={() => {
-                    setTaskToDelete(null);
-                    setTasksToBulkDelete([]);
-                  }}
-                  className="absolute -top-2 -right-2 text-gray-400 hover:text-gray-500"
-                >
-                  <X size={20} />
-                </button>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  {tasksToBulkDelete.length > 0 ? `Delete ${tasksToBulkDelete.length} Tasks?` : 'Delete Task?'}
-                </h3>
-                <p className="text-sm text-gray-500">
-                  {tasksToBulkDelete.length > 0 ? (
-                    <>Are you sure you want to PERMANENTLY delete <strong>{tasksToBulkDelete.length}</strong> selected tasks from <strong>{currentLeaveUser?.user_name}</strong>'s checklist? This action cannot be undone.</>
-                  ) : (
-                    <>Are you sure you want to PERMANENTLY delete task <strong>{taskToDelete?.task_id}</strong> from <strong>{taskToDelete?.name}</strong>'s checklist? This action cannot be undone.</>
-                  )}
-                </p>
-              </div>
-              <div className="flex justify-center gap-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTaskToDelete(null);
-                    setTasksToBulkDelete([]);
-                  }}
-                  disabled={isDeletingTask}
-                  className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  disabled={isDeletingTask}
-                  onClick={async () => {
-                    setIsDeletingTask(true);
-                    
-                    try {
-                      const isBulk = tasksToBulkDelete.length > 0;
-                      const taskIds = isBulk 
-                        ? tasksToBulkDelete.map(t => t.task_id) 
-                        : [taskToDelete.task_id];
-                      
-                      const endpoint = isBulk 
-                        ? `${import.meta.env.VITE_API_BASE_URL}/leave/bulk-delete-tasks`
-                        : `${import.meta.env.VITE_API_BASE_URL}/leave/delete-task/${taskToDelete.task_id}?category=${popupLeaveCategory}`;
-                        
-                      const options = isBulk ? {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ taskIds, category: popupLeaveCategory })
-                      } : {
-                        method: "DELETE"
-                      };
-
-                      const response = await authFetch(endpoint, options);
-                      const result = await response.json();
-                      
-                      if (response.ok && result.success) {
-                        setUserTasks(prev => prev.filter(t => !taskIds.includes(t.task_id)));
-                        setSelectedTasksToDelete([]);
-                        setTaskAssignments(prev => {
-                          const newState = { ...prev };
-                          taskIds.forEach(id => { delete newState[id]; });
-                          return newState;
-                        });
-                      } else {
-                        alert(result.message || "Failed to delete task(s).");
-                      }
-                    } catch (err) {
-                      console.error("Error deleting task(s):", err);
-                      alert("An error occurred while deleting the task(s).");
-                    } finally {
-                      setIsDeletingTask(false);
-                      setTaskToDelete(null);
-                      setTasksToBulkDelete([]);
-                    }
-                  }}
-                  className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
-                >
-                  {isDeletingTask ? 'Deleting...' : 'Yes, Delete'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
       {toast.show && (
         <Toast

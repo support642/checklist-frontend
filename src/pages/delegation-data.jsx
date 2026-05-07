@@ -40,9 +40,10 @@ useEffect(()=>{
     userRole,
     userDept,
     userDiv,
-    userName
+    userName,
+    search: searchTerm
   }))
-},[dispatch, nameFilter, deptFilter, divFilter, freqFilter, userRole, userDept, userDiv, userName])
+},[dispatch, nameFilter, deptFilter, divFilter, freqFilter, userRole, userDept, userDiv, userName, searchTerm])
 
  // Handle checkbox selection
   const handleCheckboxChange = (taskId) => {
@@ -166,10 +167,11 @@ useEffect(()=>{
        userRole,
        userDept,
        userDiv,
-       userName
+       userName,
+       search: searchTerm
      }))
     }
-  }, [dispatch, isInitialized, nameFilter, deptFilter, divFilter, freqFilter, userRole, userDept, userDiv, userName])
+  }, [dispatch, isInitialized, nameFilter, deptFilter, divFilter, freqFilter, userRole, userDept, userDiv, userName, searchTerm])
 
   const filteredTasks = useMemo(() => {
     let filtered = [...delegationTasks]; // Create a copy to sort
@@ -195,12 +197,7 @@ useEffect(()=>{
       return true; // super_admin sees all
     });
 
-    // 2. Applied Filters (Search, Name, Dept, etc.)
-    if (searchTerm) {
-      filtered = filtered.filter(task =>
-        task.task_description?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
+    // 2. Applied Filters (Name, Dept, etc. - Search is now handled by backend)
 
     if (nameFilter) {
       filtered = filtered.filter(task => task.name === nameFilter)

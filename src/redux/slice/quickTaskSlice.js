@@ -20,16 +20,16 @@ export const fetchUsers = createAsyncThunk(
 
 export const uniqueChecklistTaskData = createAsyncThunk(
   'fetch/checklistTask',
-  async ({ page = 0, pageSize = 50, nameFilter = '', freqFilter = '', append = false, userRole = '', userDept = '', userDiv = '', userName = '', deptFilter = '', divFilter = '' }) => {
-    const result = await fetchChecklistData(page, pageSize, nameFilter, freqFilter, userRole, userDept, userDiv, userName, deptFilter, divFilter);
+  async ({ page = 0, pageSize = 50, nameFilter = '', freqFilter = '', append = false, userRole = '', userDept = '', userDiv = '', userName = '', deptFilter = '', divFilter = '', search = '' }) => {
+    const result = await fetchChecklistData(page, pageSize, nameFilter, freqFilter, userRole, userDept, userDiv, userName, deptFilter, divFilter, search);
     return { ...result, data: result.data || [], append };
   }
 );
 
 export const uniqueDelegationTaskData = createAsyncThunk(
   'fetch/delegationTask',
-  async ({ page = 0, pageSize = 50, nameFilter = '', freqFilter = '', append = false, userRole = '', userDept = '', userDiv = '', userName = '', deptFilter = '', divFilter = '' }) => {
-    const result = await fetchDelegationData(page, pageSize, nameFilter, freqFilter, userRole, userDept, userDiv, userName, deptFilter, divFilter);
+  async ({ page = 0, pageSize = 50, nameFilter = '', freqFilter = '', append = false, userRole = '', userDept = '', userDiv = '', userName = '', deptFilter = '', divFilter = '', search = '' }) => {
+    const result = await fetchDelegationData(page, pageSize, nameFilter, freqFilter, userRole, userDept, userDiv, userName, deptFilter, divFilter, search);
     return { ...result, append };
   }
 );

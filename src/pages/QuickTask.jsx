@@ -26,6 +26,7 @@ export default function QuickTask() {
   const [delegationLoading, setDelegationLoading] = useState(false);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const [activeTab, setActiveTab] = useState(() => {
     if (canAccessModule('checklist')) return 'checklist';
@@ -33,6 +34,13 @@ export default function QuickTask() {
     if (canAccessModule('maintenance')) return 'maintenance';
     return 'checklist';
   });
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
   const [nameFilter, setNameFilter] = useState('');
   const [deptFilter, setDeptFilter] = useState('');
   const [divFilter, setDivFilter] = useState('');
@@ -96,18 +104,28 @@ useEffect(() => {
       userRole,
       userDept,
       userDiv,
-      userName: loginUserData.user_name
+      userName: loginUserData.user_name,
+      search: debouncedSearchTerm,
+      nameFilter,
+      deptFilter,
+      divFilter,
+      freqFilter
     };
     
     // Fetch initial data
     dispatch(resetChecklistPagination());
+    dispatch(resetDelegationPagination());
     dispatch(uniqueChecklistTaskData({ 
       page: 0, 
       pageSize: 50, 
-      nameFilter: '', 
-      deptFilter: '',
-      divFilter: '',
-      freqFilter: '',
+      append: false,
+      ...params
+    }));
+
+    dispatch(uniqueDelegationTaskData({ 
+      page: 0, 
+      pageSize: 50, 
+      append: false,
       ...params
     }));
 
@@ -115,7 +133,7 @@ useEffect(() => {
     dispatch(fetchQuickTaskCounts(params));
     dispatch(fetchMaintenanceCounts(params));
   }
-}, [dispatch, userRole, userDept, userDiv, loginUserData.user_name]);
+}, [dispatch, userRole, userDept, userDiv, loginUserData.user_name, debouncedSearchTerm, nameFilter, deptFilter, divFilter, freqFilter]);
 
 
 // Add this new function
@@ -134,6 +152,7 @@ const handleScroll = useCallback(() => {
         deptFilter,
         divFilter,
         freqFilter,
+        search: debouncedSearchTerm,
         append: true,
         userRole,
         userDept,
@@ -148,6 +167,7 @@ const handleScroll = useCallback(() => {
         deptFilter,
         divFilter,
         freqFilter,
+        search: debouncedSearchTerm,
         append: true,
         userRole,
         userDept,
@@ -156,7 +176,7 @@ const handleScroll = useCallback(() => {
       }));
     }
   }
-}, [loading, activeTab, checklistHasMore, delegationHasMore, checklistPage, delegationPage, nameFilter, deptFilter, divFilter, freqFilter, dispatch, userRole, userDept, userDiv, loginUserData.user_name]);
+}, [loading, activeTab, checklistHasMore, delegationHasMore, checklistPage, delegationPage, nameFilter, deptFilter, divFilter, freqFilter, debouncedSearchTerm, dispatch, userRole, userDept, userDiv, loginUserData.user_name]);
 
 // Add scroll listener
 useEffect(() => {
@@ -669,33 +689,8 @@ const allDivisions = [
 
 
 const filteredChecklistTasks = useMemo(() => {
-  const role = userRole?.toLowerCase();
-  const targetDept = loginUserData?.department?.toLowerCase()?.trim() || loginUserData?.user_access?.toLowerCase()?.trim();
-  const targetDiv = loginUserData?.division?.toLowerCase()?.trim();
-  const targetName = loginUserData?.user_name?.toLowerCase()?.trim();
-
-  let filtered = quickTask.filter(task => {
-    // 1. Role-based restrictions
-    if (role === 'admin') {
-      if (task.division?.toLowerCase()?.trim() !== targetDiv || task.department?.toLowerCase()?.trim() !== targetDept) return false;
-    } else if (role === 'div_admin') {
-      if (task.division?.toLowerCase()?.trim() !== targetDiv) return false;
-    } else if (role === 'user') {
-      if (task.name?.toLowerCase()?.trim() !== targetName) return false;
-    }
-
-    // 2. Search and Frequency filters
-    const freqFilterPass = !freqFilter || task.frequency === freqFilter;
-    const nameFilterPass = !nameFilter || task.name?.toLowerCase() === nameFilter.toLowerCase();
-    const deptFilterPass = !deptFilter || (task.department || task.user_access)?.toLowerCase() === deptFilter.toLowerCase();
-    const divFilterPass = !divFilter || task.division?.toLowerCase() === divFilter.toLowerCase();
-    const searchTermPass = !searchTerm || task.task_description
-      ?.toLowerCase()
-      .includes(searchTerm.toLowerCase());
-      
-    return freqFilterPass && nameFilterPass && deptFilterPass && divFilterPass && searchTermPass;
-  });
-
+  let filtered = [...quickTask];
+  
   // 3. Sorting
   return filtered.sort((a, b) => {
     if (!sortConfig.key) return 0;
@@ -725,26 +720,8 @@ const filteredDelegationTasks = useMemo(() => {
     return true; // super_admin
   });
 
-  // 2. Search, Name, and Frequency filters
-  if (searchTerm) {
-    filtered = filtered.filter(task =>
-      task.task_description?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }
-  if (nameFilter) {
-    filtered = filtered.filter(task => task.name === nameFilter);
-  }
-  if (deptFilter) {
-    filtered = filtered.filter(task => (task.department || task.user_access) === deptFilter);
-  }
-  if (divFilter) {
-    filtered = filtered.filter(task => task.division === divFilter);
-  }
-  if (freqFilter) {
-    filtered = filtered.filter(task => task.frequency === freqFilter);
-  }
   return filtered;
-}, [delegationTasks, userRole, loginUserData, searchTerm, nameFilter, deptFilter, divFilter, freqFilter]);
+}, [delegationTasks, userRole, loginUserData, nameFilter, deptFilter, divFilter, freqFilter]);
 
 const filteredMaintenanceTasks = useMemo(() => {
   const role = userRole?.toLowerCase();
@@ -766,28 +743,8 @@ const filteredMaintenanceTasks = useMemo(() => {
     return true; // super_admin
   });
 
-  // 2. Search, Name, and Frequency filters
-  if (searchTerm) {
-    filtered = filtered.filter(task =>
-      task.task_description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      task.machine_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (Array.isArray(task.part_name) ? task.part_name.join(', ') : (task.part_name || '')).toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }
-  if (nameFilter) {
-    filtered = filtered.filter(task => task.name === nameFilter);
-  }
-  if (deptFilter) {
-    filtered = filtered.filter(task => (task.department || task.user_access) === deptFilter);
-  }
-  if (divFilter) {
-    filtered = filtered.filter(task => task.division === divFilter);
-  }
-  if (freqFilter) {
-    filtered = filtered.filter(task => task.frequency === freqFilter);
-  }
   return filtered;
-}, [uniqueMaintenanceTasks, userRole, loginUserData, searchTerm, nameFilter, deptFilter, divFilter, freqFilter]);
+}, [uniqueMaintenanceTasks, userRole, loginUserData, nameFilter, deptFilter, divFilter, freqFilter]);
 
   function formatTimestampToDDMMYYYY(timestamp) {
     if (!timestamp || timestamp === "" || timestamp === null) {
@@ -1569,7 +1526,7 @@ const filteredMaintenanceTasks = useMemo(() => {
             </div>
           ) : activeTab === 'delegation' ? (
             <DelegationPage
-              searchTerm={searchTerm}
+              searchTerm={debouncedSearchTerm}
               nameFilter={nameFilter}
               deptFilter={deptFilter}
               divFilter={divFilter}
@@ -1585,7 +1542,7 @@ const filteredMaintenanceTasks = useMemo(() => {
             />
           ) : (
             <MaintenanceQuickTaskPage
-              searchTerm={searchTerm}
+              searchTerm={debouncedSearchTerm}
               nameFilter={nameFilter}
               deptFilter={deptFilter}
               divFilter={divFilter}

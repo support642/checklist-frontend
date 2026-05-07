@@ -8,11 +8,11 @@ const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5050/
 // =========================
 // FETCH CHECKLIST (PAGINATED)
 // =========================
-export const fetchChecklistData = async (page = 0, pageSize = 50, nameFilter = "", freqFilter = "", userRole = "", userDept = "", userDiv = "", userName = "", deptFilter = "", divFilter = "") => {
+export const fetchChecklistData = async (page = 0, pageSize = 50, nameFilter = "", freqFilter = "", userRole = "", userDept = "", userDiv = "", userName = "", deptFilter = "", divFilter = "", search = "") => {
   const res = await authFetch(`${API_BASE}/tasks/checklist`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ page, pageSize, nameFilter, freqFilter, userRole, userDept, userDiv, userName, deptFilter, divFilter }),
+    body: JSON.stringify({ page, pageSize, nameFilter, freqFilter, userRole, userDept, userDiv, userName, deptFilter, divFilter, search }),
   });
 
   return res.json();
@@ -21,11 +21,11 @@ export const fetchChecklistData = async (page = 0, pageSize = 50, nameFilter = "
 // =========================
 // FETCH DELEGATION
 // =========================
-export const fetchDelegationData = async (page = 0, pageSize = 50, nameFilter = "", freqFilter = "", userRole = "", userDept = "", userDiv = "", userName = "", deptFilter = "", divFilter = "") => {
+export const fetchDelegationData = async (page = 0, pageSize = 50, nameFilter = "", freqFilter = "", userRole = "", userDept = "", userDiv = "", userName = "", deptFilter = "", divFilter = "", search = "") => {
   const res = await authFetch(`${API_BASE}/tasks/delegation`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ page, pageSize, nameFilter, freqFilter, userRole, userDept, userDiv, userName, deptFilter, divFilter }),
+    body: JSON.stringify({ page, pageSize, nameFilter, freqFilter, userRole, userDept, userDiv, userName, deptFilter, divFilter, search }),
   });
 
   return res.json();

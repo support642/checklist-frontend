@@ -151,11 +151,11 @@ export const fetchMachineParts = async () => {
 // =======================================================
 // 6️⃣ Fetch Unique Maintenance Tasks (QuickTask Dashboard)
 // =======================================================
-export const fetchUniqueMaintenanceData = async (page = 0, pageSize = 50, nameFilter = "", freqFilter = "", userRole = "", userDept = "", userDiv = "", userName = "", deptFilter = "", divFilter = "") => {
+export const fetchUniqueMaintenanceData = async (page = 0, pageSize = 50, nameFilter = "", freqFilter = "", userRole = "", userDept = "", userDiv = "", userName = "", deptFilter = "", divFilter = "", search = "") => {
     const res = await authFetch(`${BASE_URL}/unique`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ page, pageSize, nameFilter, freqFilter, userRole, userDept, userDiv, userName, deptFilter, divFilter }),
+        body: JSON.stringify({ page, pageSize, nameFilter, freqFilter, userRole, userDept, userDiv, userName, deptFilter, divFilter, search }),
     });
     return res.json();
 };

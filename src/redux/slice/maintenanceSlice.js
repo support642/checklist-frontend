@@ -72,8 +72,8 @@ export const maintenanceAdminDone = createAsyncThunk(
 // 5. FETCH UNIQUE MAINTENANCE TASKS (QUICKTASK)
 export const uniqueMaintenanceTaskData = createAsyncThunk(
     "fetch/uniqueMaintenanceTask",
-    async ({ page = 0, pageSize = 50, nameFilter = "", freqFilter = "", append = false, userRole = "", userDept = "", userDiv = "", userName = "", deptFilter = "", divFilter = "" }) => {
-        const result = await fetchUniqueMaintenanceData(page, pageSize, nameFilter, freqFilter, userRole, userDept, userDiv, userName, deptFilter, divFilter);
+    async ({ page = 0, pageSize = 50, nameFilter = "", freqFilter = "", append = false, userRole = "", userDept = "", userDiv = "", userName = "", deptFilter = "", divFilter = "", search = "" }) => {
+        const result = await fetchUniqueMaintenanceData(page, pageSize, nameFilter, freqFilter, userRole, userDept, userDiv, userName, deptFilter, divFilter, search);
         return { ...result, append };
     }
 );
