@@ -7,6 +7,14 @@
   background: linear-gradient(to right, #f10303, #f4cedf);
 }
 
+.gradient-red {
+  background: linear-gradient(to bottom right, #ef4444, #dc2626);
+}
+
+.gradient-amber {
+  background: linear-gradient(to bottom right, #fbbf24, #d97706);
+}
+
 .gradient-bg:hover {
   background: linear-gradient(to right, #7e22ce, #be185d);
 }

@@ -278,8 +278,8 @@ export default function DashboardHeader({
             </div>
           )}
 
-          {/* Unit Filter - Only show for checklist */}
-          {dashboardType === "checklist" && isAdmin && (
+          {/* Unit Filter - Only show for checklist and maintenance */}
+          {(dashboardType === "checklist" || dashboardType === "maintenance") && isAdmin && (
             <select
               value={unitFilter}
               onChange={(e) => setUnitFilter(e.target.value)}
@@ -297,7 +297,7 @@ export default function DashboardHeader({
           )}
 
           {/* Division Filter - Searchable */}
-          {dashboardType === "checklist" && isAdmin && (
+          {(dashboardType === "checklist" || dashboardType === "maintenance") && isAdmin && (
             <SearchableDropdown
               value={divisionFilter}
               onChange={(val) => setDivisionFilter(val)}
@@ -308,7 +308,7 @@ export default function DashboardHeader({
           )}
 
           {/* Department Filter - Searchable */}
-          {dashboardType === "checklist" && isAdmin && (
+          {(dashboardType === "checklist" || dashboardType === "maintenance") && isAdmin && (
             <SearchableDropdown
               value={departmentFilter}
               onChange={(val) => setDepartmentFilter(val)}
@@ -419,8 +419,8 @@ export default function DashboardHeader({
             </div>
           )}
 
-          {/* Unit Filter - Only show for checklist */}
-          {dashboardType === "checklist" && isAdmin && (
+          {/* Unit Filter - Only show for checklist and maintenance */}
+          {(dashboardType === "checklist" || dashboardType === "maintenance") && isAdmin && (
             <select
               value={unitFilter}
               onChange={(e) => setUnitFilter(e.target.value)}
@@ -439,7 +439,7 @@ export default function DashboardHeader({
 
           {/* Row 2 */}
           {/* Division Filter - Searchable */}
-          {dashboardType === "checklist" && isAdmin && (
+          {(dashboardType === "checklist" || dashboardType === "maintenance") && isAdmin && (
             <SearchableDropdown
               value={divisionFilter}
               onChange={(val) => setDivisionFilter(val)}
@@ -450,7 +450,7 @@ export default function DashboardHeader({
           )}
 
           {/* Department Filter - Searchable */}
-          {dashboardType === "checklist" && isAdmin && (
+          {(dashboardType === "checklist" || dashboardType === "maintenance") && isAdmin && (
             <SearchableDropdown
               value={departmentFilter}
               onChange={(val) => setDepartmentFilter(val)}

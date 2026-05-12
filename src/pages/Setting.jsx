@@ -4,7 +4,8 @@ import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { Plus, User, Building, X, Save, Edit, Trash2, Settings, Search, ChevronDown, Calendar, RefreshCw, Eye, EyeOff, Upload, Image as ImageIcon, Copy } from 'lucide-react';
 import AdminLayout from '../components/layout/AdminLayout';
 import { useDispatch, useSelector } from 'react-redux';
-import { createDepartment, createUser, deleteUser, departmentOnlyDetails, givenByDetails, departmentDetails, updateDepartment, updateUser, userDetails, leaveUserDetails, extendUserDetails, machineDetails, createMachineThunk, updateMachineThunk, deleteMachineThunk, resetUserData, resetLeaveUserData, resetExtendUserData } from '../redux/slice/settingSlice';
+import { departmentDetails, departmentOnlyDetails, extendUserDetails, givenByDetails, leaveUserDetails, machineDetails, resetExtendUserData, resetLeaveUserData, resetUserData, userDetails, createDepartment, createUser, deleteUser, updateDepartment, updateUser, createMachineThunk, updateMachineThunk, deleteMachineThunk } from '../redux/slice/settingSlice';
+import { updateLoginUserData } from '../redux/slice/loginSlice';
 import { extendTaskApi } from '../redux/api/settingApi';
 import { uniqueDoerNameData } from '../redux/slice/assignTaskSlice';
 import { hasPageAccess, hasModifyAccess } from '../utils/permissionUtils';
@@ -1320,7 +1321,12 @@ const handleUpdateUser = async (e) => {
   }
 
   try {
-    const result = await dispatch(updateUser({ id: currentUserId, updatedUser })).unwrap();
+    const userId = currentUserId || loggedInUserId || localStorage.getItem('user_id');
+    if (!userId) {
+      setToast({ show: true, message: 'Unable to identify user. Please log out and log back in.', type: 'error' });
+      return;
+    }
+    const result = await dispatch(updateUser({ id: userId, updatedUser })).unwrap();
     
     // If the updated user is the currently logged-in user, refresh localStorage
     const currentLoggedInUsername = localStorage.getItem('user-name');
@@ -1330,7 +1336,21 @@ const handleUpdateUser = async (e) => {
       localStorage.setItem('user_access', result.user_access || "");
       localStorage.setItem('system_access', JSON.stringify(result.system_access || []));
       localStorage.setItem('page_access', JSON.stringify(result.page_access || []));
+      localStorage.setItem('user-name', result.user_name || "");
+      localStorage.setItem('email_id', result.email_id || "");
+      localStorage.setItem('unit', result.unit || "");
+      localStorage.setItem('division', result.division || "");
+      localStorage.setItem('department', result.department || "");
+      
+      // Update Redux state for login user data so the UI doesn't revert
+      dispatch(updateLoginUserData(result));
+      setToast({ show: true, message: 'Profile updated successfully!', type: 'success' });
+    } else {
+      setToast({ show: true, message: 'User updated successfully!', type: 'success' });
     }
+
+    // Force re-fetch user details to ensure paginated lists are up to date
+    dispatch(userDetails({ page: 1, limit: 50 }));
 
     resetUserForm();
     setShowUserModal(false);

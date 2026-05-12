@@ -377,6 +377,15 @@ useEffect(()=>{
                         <span className="text-gray-500">Attachment:</span>{' '}
                         <span className="font-medium">{task.require_attachment || "-"}</span>
                       </div>
+
+                      {/* Transferred Info for Mobile */}
+                      {task.is_transferred && (
+                        <div className="col-span-2 mt-2 p-2 bg-orange-50 border border-orange-100 rounded-md">
+                          <span className="text-orange-700 font-bold uppercase text-[10px] block mb-1">Transferred Task</span>
+                          <span className="text-gray-600">From: </span>
+                          <span className="font-semibold text-gray-900">{task.transferred_from || task.given_by}</span>
+                        </div>
+                      )}
                     </div>
                     
                     {/* Timestamp */}
@@ -447,6 +456,9 @@ useEffect(()=>{
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     REQUIRE ATTACHMENT
                   </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    STATUS
+                  </th>
                 </tr>
               </thead>
 
@@ -509,6 +521,20 @@ useEffect(()=>{
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {task.require_attachment|| "-"}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                         <div className="flex flex-col">
+                            <span className={`px-2 py-1 rounded text-xs font-bold w-fit ${
+                              task.status === "Transferred Pending" ? "bg-orange-100 text-orange-700" : "text-gray-500"
+                            }`}>
+                              {task.status || "—"}
+                            </span>
+                            {task.is_transferred && (
+                              <span className="text-[10px] text-gray-400 mt-1">
+                                From: {task.transferred_from || task.given_by}
+                              </span>
+                            )}
+                         </div>
                       </td>
                     </tr>
                   ))

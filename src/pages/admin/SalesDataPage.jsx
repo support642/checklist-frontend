@@ -504,6 +504,7 @@ function AccountDataPage() {
     if (s === 'leave') return 'leave';
     if (s === 'inactive') return 'inactive';
     if (s === 'activation_pending') return 'activation_pending';
+    if (s === 'transferred pending' && activeView === 'maintenance') return 'transferred_pending';
     
     const taskStartDate = item.task_start_date || item.planned_date;
     if (!taskStartDate) return 'unknown';
@@ -555,7 +556,7 @@ function AccountDataPage() {
       return isAdmin; // Only admins can select pending activation tasks
     }
     
-    return status === 'today' || status === 'overdue' || status === 'inactive';
+    return status === 'today' || status === 'overdue' || status === 'inactive' || status === 'transferred_pending';
   };
 
   const filteredHistoryData = useMemo(() => {
@@ -927,7 +928,7 @@ const handleSubmit = async () => {
   });
 
   if (inactiveTasks.length > 0) {
-    toast.error(`Please reactivate 'Day Off' tasks before submitting.`);
+    toast.error(`Please reactivate 'Week Off' tasks before submitting.`);
     return;
   }
 
@@ -1071,7 +1072,7 @@ const handleSubmit = async () => {
       toast.success(`Successfully processed ${selected.length} tasks.`);
     } catch (err) {
       console.error(err);
-      toast.error("Failed to process Day Off");
+      toast.error("Failed to process Week Off");
     } finally {
       setIsSubmitting(false);
     }
@@ -1237,8 +1238,8 @@ const handleSubmit = async () => {
             </div>
           </div>
           {/* Row 1: Search + Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-            <div className="relative flex-1 min-w-[200px]">
+          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+            <div className="relative flex-1">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Search className="text-gray-400" size={18} />
               </div>
@@ -1247,36 +1248,37 @@ const handleSubmit = async () => {
                 placeholder={showHistory ? "Search history..." : "Search tasks..."}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-purple-200 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm sm:text-base"
+                className="w-full pl-10 pr-4 py-2.5 border border-purple-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm sm:text-base shadow-sm"
               />
             </div>
-            <div className="flex gap-2 flex-shrink-0">
+            
+            <div className="flex flex-col sm:flex-row gap-2 flex-shrink-0 items-stretch sm:items-center">
               {userRole === "super_admin" && (
                 <button
                   onClick={() => navigate('/dashboard/history')}
-                  className="flex-1 sm:flex-none rounded-md gradient-bg py-2 px-3 sm:px-4 text-white hover:from-blue-600 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-sm sm:text-base"
+                  className="w-full sm:w-auto rounded-xl gradient-bg py-2.5 px-4 text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 text-sm sm:text-base shadow-md transition-all active:scale-95 h-full"
                 >
-                  <div className="flex items-center justify-center">
-                    <History className="h-4 w-4 mr-1" />
-                    <span className="hidden sm:inline">View History</span>
-                    <span className="sm:hidden">History</span>
+                  <div className="flex items-center justify-center gap-2 whitespace-nowrap">
+                    <History className="h-4 w-4" />
+                    <span className="font-bold">View History</span>
                   </div>
                 </button>
               )}
+
               {!showHistory && (userRole === "user" || userRole === "admin" || userRole === "div_admin" || userRole === "super_admin") && hasModifyAccess('pending_task') && (
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto items-stretch sm:items-center">
                   {activeView === 'maintenance' && (userRole === "admin" || userRole === "div_admin" || userRole === "super_admin") && maintSelectedItems.size > 0 && (
                     <button
                       onClick={handleSendMaintNotification}
                       disabled={isSubmitting}
-                      className="flex-1 sm:flex-none rounded-md bg-blue-600 py-2 px-3 sm:px-4 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base flex items-center justify-center gap-2 font-bold shadow-md shadow-blue-100 group"
+                      className="w-full sm:w-auto rounded-xl bg-blue-600 py-2.5 px-4 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base flex items-center justify-center gap-2 font-bold shadow-md shadow-blue-100 group transition-all active:scale-95 whitespace-nowrap"
                     >
                       <Bell className={`h-4 w-4 ${isSubmitting ? 'animate-bounce' : 'group-hover:animate-ring'}`} />
-                      <span className="hidden sm:inline">Notify ({maintSelectedItems.size})</span>
-                      <span className="sm:hidden">Notify ({maintSelectedItems.size})</span>
+                      <span>Notify ({maintSelectedItems.size})</span>
                     </button>
                   )}
-                  <div className="flex flex-wrap gap-2">
+
+                  <div className="grid grid-cols-3 sm:flex sm:flex-row gap-2 w-full sm:w-auto items-stretch">
                     {(userRole === "admin" || userRole === "div_admin" || userRole === "super_admin") && (activeView === 'checklist' ? Array.from(selectedItems) : Array.from(maintSelectedItems)).some(id => {
                       const list = activeView === 'checklist' ? checklist : maintenance;
                       const item = list.find(i => (i.task_id || i.id) === id);
@@ -1285,34 +1287,43 @@ const handleSubmit = async () => {
                       <button
                         onClick={handleApproveActivation}
                         disabled={isSubmitting}
-                        className="flex-1 sm:flex-none rounded-md bg-purple-600 py-2 px-3 sm:px-4 text-white hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base font-medium shadow-sm"
+                        className="col-span-3 sm:col-auto rounded-xl bg-purple-600 py-2.5 px-4 text-white hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base font-bold shadow-md transition-all active:scale-95 whitespace-nowrap"
                       >
                         Approve Activation
                       </button>
                     )}
+                    
                     <button
                       onClick={handleDayOff}
                       disabled={(activeView === 'checklist' ? selectedItemsCount === 0 : maintSelectedItems.size === 0) || isSubmitting}
-                      className="flex-1 sm:flex-none rounded-md bg-red-600 py-2 px-3 sm:px-4 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base font-medium shadow-sm"
+                      className="flex flex-col items-center justify-center rounded-xl gradient-red py-3 px-2 text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed text-[10px] sm:text-sm font-bold shadow-md transition-all active:scale-95 min-h-[70px] sm:min-h-0 sm:flex-row sm:gap-2 sm:px-4 sm:py-2.5 whitespace-nowrap"
                     >
-                      {isAllSelectedInactive ? 'Day_on' : 'Day_off'}
+                      <span className="sm:hidden mb-1"><X size={18} /></span>
+                      <span className="text-center leading-tight">{isAllSelectedInactive ? 'Week_on' : 'Week_off'}</span>
                     </button>
+
                     <button
                       onClick={handleLeave}
                       disabled={(activeView === 'checklist' ? selectedItemsCount === 0 : maintSelectedItems.size === 0) || isSubmitting}
-                      className="flex-1 sm:flex-none rounded-md bg-yellow-600 py-2 px-3 sm:px-4 text-white hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base font-medium shadow-sm"
+                      className="flex flex-col items-center justify-center rounded-xl gradient-amber py-3 px-2 text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed text-[10px] sm:text-sm font-bold shadow-md transition-all active:scale-95 min-h-[70px] sm:min-h-0 sm:flex-row sm:gap-2 sm:px-4 sm:py-2.5 whitespace-nowrap"
                     >
-                      Leave
+                      <span className="sm:hidden mb-1"><Plus size={18} /></span>
+                      <span className="text-center leading-tight">Leave</span>
                     </button>
+
                     <button
                       onClick={activeView === 'checklist' ? handleSubmit : handleMaintSubmit}
                       disabled={(activeView === 'checklist' ? selectedItemsCount === 0 : maintSelectedItems.size === 0) || isSubmitting}
-                      className="flex-1 sm:flex-none rounded-md gradient-bg py-2 px-3 sm:px-4 text-white hover:from-purple-700 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base font-bold shadow-md"
+                      className="flex flex-col items-center justify-center rounded-xl gradient-bg py-3 px-2 text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed text-[10px] sm:text-sm font-bold shadow-md transition-all active:scale-95 min-h-[70px] sm:min-h-0 sm:flex-row sm:gap-2 sm:px-4 sm:py-2.5 whitespace-nowrap"
                     >
-                      {isSubmitting ? "Processing..." : (
+                      {isSubmitting ? (
+                        <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                      ) : (
                         <>
-                          <span className="hidden sm:inline">Work Completed ({activeView === 'checklist' ? selectedItemsCount : maintSelectedItems.size})</span>
-                          <span className="sm:hidden">Work Completed ({activeView === 'checklist' ? selectedItemsCount : maintSelectedItems.size})</span>
+                          <span className="sm:hidden mb-1"><CheckCircle2 size={18} /></span>
+                          <span className="text-center leading-tight">
+                            Work Done ({activeView === 'checklist' ? selectedItemsCount : maintSelectedItems.size})
+                          </span>
                         </>
                       )}
                     </button>
@@ -1321,6 +1332,8 @@ const handleSubmit = async () => {
               )}
             </div>
           </div>
+
+
 
           {/* Row 2: All Filter Dropdowns */}
           {!showHistory && (
@@ -1417,7 +1430,7 @@ const handleSubmit = async () => {
                 <option value="overdue">Overdue</option>
                 <option value="upcoming">Upcoming</option>
                 <option value="leave">Leave</option>
-                <option value="inactive">Day off</option>
+                <option value="inactive">Week off</option>
                 <option value="activation_pending">Pending Activation</option>
               </select>
               {/* Frequency filter */}
@@ -1876,13 +1889,20 @@ const handleSubmit = async () => {
                               : taskStatus === 'leave' ? "bg-orange-100 text-orange-800"
                               : taskStatus === 'inactive' ? "bg-gray-200 text-gray-700"
                               : taskStatus === 'activation_pending' ? "bg-purple-100 text-purple-800"
+                              : taskStatus === 'transferred_pending' ? "bg-orange-600 text-white shadow-sm"
                               : "bg-gray-100 text-gray-800"
                             }`}>
-                              {taskStatus === 'today' ? 'Today' : taskStatus === 'upcoming' ? 'Upcoming' : taskStatus === 'overdue' ? 'Overdue' : taskStatus === 'leave' ? 'Leave' : taskStatus === 'inactive' ? 'Day Off' : taskStatus === 'activation_pending' ? 'Pending Activation' : '—'}
+                              {taskStatus === 'today' ? 'Today' : taskStatus === 'upcoming' ? 'Upcoming' : taskStatus === 'overdue' ? 'Overdue' : taskStatus === 'leave' ? 'Leave' : taskStatus === 'inactive' ? 'Day Off' : taskStatus === 'activation_pending' ? 'Pending Activation' : taskStatus === 'transferred_pending' ? 'Transferred Pending' : '—'}
                             </span>
                           </div>
                           <span className="text-xs text-gray-500">#{item.task_id}</span>
                         </div>
+                        {item.is_transferred && (
+                          <div className="mb-2 p-1.5 bg-orange-50 border border-orange-200 rounded text-[10px] text-orange-700 font-bold uppercase flex items-center gap-1">
+                            <span className="flex-shrink-0">Transferred From:</span>
+                            <span className="text-gray-900 font-bold">{item.transferred_from || item.given_by}</span>
+                          </div>
+                        )}
                         <p className="text-sm font-medium text-gray-900 mb-2">{item.task_description || "—"}</p>
                         <div className="grid grid-cols-2 gap-2 text-xs mb-2">
                           <div><span className="text-gray-500">Name:</span> <span className="font-medium">{item.name || "—"}</span></div>
@@ -2098,10 +2118,17 @@ const handleSubmit = async () => {
                                       ? "bg-orange-100 text-orange-800"
                                       : taskStatus === 'activation_pending'
                                         ? "bg-purple-100 text-purple-800"
-                                        : "bg-gray-100 text-gray-800"
+                                        : taskStatus === 'transferred_pending'
+                                          ? "bg-orange-600 text-white shadow-sm"
+                                          : "bg-gray-100 text-gray-800"
                             }`}>
-                              {taskStatus === 'today' ? 'Today' : taskStatus === 'upcoming' ? 'Upcoming' : taskStatus === 'overdue' ? 'Overdue' : taskStatus === 'leave' ? 'Leave' : taskStatus === 'inactive' ? 'Day Off' : taskStatus === 'activation_pending' ? 'Pending Activation' : '—'}
+                              {taskStatus === 'today' ? 'Today' : taskStatus === 'upcoming' ? 'Upcoming' : taskStatus === 'overdue' ? 'Overdue' : taskStatus === 'leave' ? 'Leave' : taskStatus === 'inactive' ? 'Day Off' : taskStatus === 'activation_pending' ? 'Pending Activation' : taskStatus === 'transferred_pending' ? 'Transferred Pending' : '—'}
                             </span>
+                            {item.is_transferred && (
+                              <div className="text-[10px] text-orange-700 font-bold mt-1 uppercase leading-tight">
+                                From: {item.transferred_from || item.given_by}
+                              </div>
+                            )}
                           </td>
                           {(userRole === "user" || (userRole === "admin" || userRole === "div_admin") || userRole === "super_admin") && (
                             <td className="px-2 sm:px-3 py-2 sm:py-4 w-12 border-b">

@@ -943,7 +943,7 @@ useEffect(() => {
   }
 
   const fetchDepartments = async () => {
-    if (dashboardType === 'checklist') {
+    if (dashboardType === 'checklist' || dashboardType === 'maintenance') {
       try {
         const fullDepts = await fetchDepartmentDataApi();
         setRawDepartmentList(fullDepts);
@@ -1050,7 +1050,7 @@ useEffect(() => {
 
   // Reset staff filter when department filter changes
   useEffect(() => {
-    if (dashboardType === 'checklist') {
+    if (dashboardType === 'checklist' || dashboardType === 'maintenance') {
       setDashboardStaffFilter("all");
     }
   }, [departmentFilter, dashboardType]);
@@ -1058,7 +1058,7 @@ useEffect(() => {
   // Update available staff when department filter changes
   useEffect(() => {
     const updateStaffList = async () => {
-      if (dashboardType === 'checklist') {
+      if (dashboardType === 'checklist' || dashboardType === 'maintenance') {
         if (departmentFilter !== 'all' || divisionFilter !== 'all' || unitFilter !== 'all') {
           try {
             const staffNames = await getStaffNamesByDepartmentApi(departmentFilter, unitFilter, divisionFilter);
@@ -1311,6 +1311,8 @@ useEffect(() => {
       setDashboardType("checklist");
     } else if (module === "delegation") {
       setDashboardType("delegation");
+    } else if (module === "maintenance") {
+      setDashboardType("maintenance");
     }
   };
 
@@ -1372,114 +1374,110 @@ useEffect(() => {
           </div>
         )}
 
-        {/* Dashboard Title below switcher - only for Maintenance since Checklist has its own */}
-        {activeModule === "maintenance" && (
-          <div className="mt-4">
-            <h1 className="text-2xl font-black tracking-tight text-purple-600 dark:text-purple-400">
-              Dashboard
-            </h1>
-          </div>
-        )}
 
-        {(activeModule === "checklist" || activeModule === "delegation") ? (
-          <div className="space-y-6 animate-in fade-in duration-500">
-            <DashboardHeader
-              dashboardType={dashboardType}
-              setDashboardType={setDashboardType}
-              dashboardStaffFilter={dashboardStaffFilter}
-              setDashboardStaffFilter={setDashboardStaffFilter}
-              availableStaff={availableStaff}
-              userRole={userRole}
-              username={username}
-              departmentFilter={departmentFilter}
-              setDepartmentFilter={setDepartmentFilter}
-              availableDepartments={availableDepartments}
-              unitFilter={unitFilter}
-              setUnitFilter={setUnitFilter}
-              availableUnits={availableUnits}
-              divisionFilter={divisionFilter}
-              setDivisionFilter={setDivisionFilter}
-              availableDivisions={availableDivisions}
-              isLoadingMore={isLoadingMore}
-              startDate={dateRange.startDate}
-              endDate={dateRange.endDate}
-              onDateRangeChange={handleDateRangeChange}
-              onResetFilters={resetAllFilters}
-              onExportCSV={handleExportCSV}
-            />
+        <div className="space-y-6 animate-in fade-in duration-500">
+          <DashboardHeader
+            dashboardType={dashboardType}
+            setDashboardType={setDashboardType}
+            dashboardStaffFilter={dashboardStaffFilter}
+            setDashboardStaffFilter={setDashboardStaffFilter}
+            availableStaff={availableStaff}
+            userRole={userRole}
+            username={username}
+            departmentFilter={departmentFilter}
+            setDepartmentFilter={setDepartmentFilter}
+            availableDepartments={availableDepartments}
+            unitFilter={unitFilter}
+            setUnitFilter={setUnitFilter}
+            availableUnits={availableUnits}
+            divisionFilter={divisionFilter}
+            setDivisionFilter={setDivisionFilter}
+            availableDivisions={availableDivisions}
+            isLoadingMore={isLoadingMore}
+            startDate={dateRange.startDate}
+            endDate={dateRange.endDate}
+            onDateRangeChange={handleDateRangeChange}
+            onResetFilters={resetAllFilters}
+            onExportCSV={handleExportCSV}
+          />
 
-            <StatisticsCards
-              totalTask={displayStats.totalTasks}
-              completeTask={displayStats.completedTasks}
-              pendingTask={displayStats.pendingTasks}
-              overdueTask={displayStats.overdueTasks}
-              notDoneTask={notDoneTask}
-              dashboardType={dashboardType}
-              dateRange={dateRange.filtered ? dateRange : null}
-              dashboardStaffFilter={dashboardStaffFilter}
-              allStaffTasks={departmentData.allTasks}
-              pendingToday={displayStats.pendingToday}
-              pendingUpcoming={displayStats.pendingUpcoming}
-              pendingOverdue={displayStats.pendingOverdue}
-              completedRatingOne={displayStats.completedRatingOne}
-              completedRatingTwo={displayStats.completedRatingTwo}
-              completedRatingThreePlus={displayStats.completedRatingThreePlus}
-            />
+          {(activeModule === "checklist" || activeModule === "delegation") ? (
+            <>
+              <StatisticsCards
+                totalTask={displayStats.totalTasks}
+                completeTask={displayStats.completedTasks}
+                pendingTask={displayStats.pendingTasks}
+                overdueTask={displayStats.overdueTasks}
+                notDoneTask={notDoneTask}
+                dashboardType={dashboardType}
+                dateRange={dateRange.filtered ? dateRange : null}
+                dashboardStaffFilter={dashboardStaffFilter}
+                allStaffTasks={departmentData.allTasks}
+                pendingToday={displayStats.pendingToday}
+                pendingUpcoming={displayStats.pendingUpcoming}
+                pendingOverdue={displayStats.pendingOverdue}
+                completedRatingOne={displayStats.completedRatingOne}
+                completedRatingTwo={displayStats.completedRatingTwo}
+                completedRatingThreePlus={displayStats.completedRatingThreePlus}
+              />
 
-            <TaskNavigationTabs
-              taskView={taskView}
-              setTaskView={setTaskView}
-              dashboardType={dashboardType}
-              dashboardStaffFilter={dashboardStaffFilter}
-              departmentFilter={departmentFilter}
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              filterStaff={filterStaff}
-              setFilterStaff={setFilterStaff}
-              departmentData={departmentData}
-              getTasksByView={getTasksByView}
-              getFrequencyColor={getFrequencyColor}
-              isLoadingMore={isLoadingMore}
-              hasMoreData={hasMoreData}
-              username={username}
-              userRole={userRole}
-              onTaskComplete={() => {
-                setCurrentPage(1)
-                fetchDepartmentData(1, false)
-              }}
-            />
+              <TaskNavigationTabs
+                taskView={taskView}
+                setTaskView={setTaskView}
+                dashboardType={dashboardType}
+                dashboardStaffFilter={dashboardStaffFilter}
+                departmentFilter={departmentFilter}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                filterStaff={filterStaff}
+                setFilterStaff={setFilterStaff}
+                departmentData={departmentData}
+                getTasksByView={getTasksByView}
+                getFrequencyColor={getFrequencyColor}
+                isLoadingMore={isLoadingMore}
+                hasMoreData={hasMoreData}
+                username={username}
+                userRole={userRole}
+                onTaskComplete={() => {
+                  setCurrentPage(1)
+                  fetchDepartmentData(1, false)
+                }}
+              />
 
-            {activeTab === "overview" && (activeModule === "checklist" || activeModule === "delegation") && (
-              <div className="space-y-4">
-                <div className="rounded-lg border border-purple-200 shadow-md bg-white">
-                  <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-100 p-4">
-                    <h3 className="text-purple-700 font-medium">Staff Task Summary</h3>
-                    <p className="text-purple-600 text-sm">Overview of tasks assigned to each staff member</p>
-                  </div>
-                  <div className="p-4">
-                    <StaffTasksTable
-                      dashboardType={dashboardType}
-                      dashboardStaffFilter={dashboardStaffFilter}
-                      departmentFilter={departmentFilter}
-                      divisionFilter={divisionFilter}
-                      unitFilter={unitFilter}
-                      parseTaskStartDate={parseTaskStartDate}
-                      startDate={dateRange.startDate}
-                      endDate={dateRange.endDate}
-                    />
+              {activeTab === "overview" && (activeModule === "checklist" || activeModule === "delegation") && (
+                <div className="space-y-4">
+                  <div className="rounded-lg border border-purple-200 shadow-md bg-white">
+                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-100 p-4">
+                      <h3 className="text-purple-700 font-medium">Staff Task Summary</h3>
+                      <p className="text-purple-600 text-sm">Overview of tasks assigned to each staff member</p>
+                    </div>
+                    <div className="p-4">
+                      <StaffTasksTable
+                        dashboardType={dashboardType}
+                        dashboardStaffFilter={dashboardStaffFilter}
+                        departmentFilter={departmentFilter}
+                        divisionFilter={divisionFilter}
+                        unitFilter={unitFilter}
+                        parseTaskStartDate={parseTaskStartDate}
+                        startDate={dateRange.startDate}
+                        endDate={dateRange.endDate}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="animate-in fade-in duration-500">
+              )}
+            </>
+          ) : (
             <MaintenanceView 
               startDate={dateRange.startDate} 
-              endDate={dateRange.endDate} 
+              endDate={dateRange.endDate}
+              dashboardStaffFilter={dashboardStaffFilter}
+              departmentFilter={departmentFilter}
+              unitFilter={unitFilter}
+              divisionFilter={divisionFilter}
             />
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </AdminLayout>
   )

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { CheckCircle2, Trash2, X, Edit, Save } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
-import { deleteUniqueMaintenanceTask, uniqueMaintenanceTaskData, updateUniqueMaintenanceTask, resetUniqueMaintenancePagination } from "../redux/slice/maintenanceSlice";
+import { deleteUniqueMaintenanceTask, uniqueMaintenanceTaskData, updateUniqueMaintenanceTask, resetUniqueMaintenancePagination, fetchMaintenanceCounts } from "../redux/slice/maintenanceSlice";
 import { hasModifyAccess } from "../utils/permissionUtils";
 
 const CONFIG = {
@@ -156,6 +156,8 @@ function MaintenanceQuickTaskPage({ searchTerm, nameFilter, deptFilter, divFilte
         userName,
         search: searchTerm
       }));
+      
+      dispatch(fetchMaintenanceCounts({ userRole, userDept, userDiv, userName }));
 
     } catch (error) {
       console.error("Failed to update task:", error);
@@ -216,6 +218,8 @@ function MaintenanceQuickTaskPage({ searchTerm, nameFilter, deptFilter, divFilte
         userName,
         search: searchTerm
       }));
+
+      dispatch(fetchMaintenanceCounts({ userRole, userDept, userDiv, userName }));
       
       setTimeout(() => setSuccessMessage(""), 3000);
     } catch (error) {
@@ -468,8 +472,21 @@ function MaintenanceQuickTaskPage({ searchTerm, nameFilter, deptFilter, divFilte
                       {/* Status */}
                       <div>
                         <span className="text-gray-500">Status:</span>{' '}
-                        <span className="font-medium">{task.status || "—"}</span>
+                        <span className={`font-medium ${
+                          task.status === "Transferred Pending" ? "text-orange-600 bg-orange-50 px-2 py-0.5 rounded border border-orange-200" : ""
+                        }`}>
+                          {task.status || "—"}
+                        </span>
                       </div>
+
+                      {/* Transferred From info for Mobile */}
+                      {task.is_transferred && (
+                        <div className="col-span-2 mt-2 p-2 bg-orange-50 border border-orange-100 rounded-md">
+                          <span className="text-orange-700 font-bold uppercase text-[10px] block mb-1">Transferred Task</span>
+                          <span className="text-gray-600">From: </span>
+                          <span className="font-semibold text-gray-900">{task.transferred_from || task.given_by}</span>
+                        </div>
+                      )}
 
                       {/* Planned Date */}
                       <div>
@@ -701,8 +718,18 @@ function MaintenanceQuickTaskPage({ searchTerm, nameFilter, deptFilter, divFilte
                             <option value="Pending">Pending</option>
                           </select>
                         ) : (
-                          <span className={task.status === "Yes" ? "text-green-600" : task.status === "Pending" ? "text-yellow-600" : "text-red-600"}>
+                          <span className={
+                            task.status === "Yes" ? "text-green-600" : 
+                            task.status === "Pending" ? "text-yellow-600" : 
+                            task.status === "Transferred Pending" ? "text-orange-600 font-bold flex flex-col" : 
+                            "text-red-600"
+                          }>
                             {task.status || "—"}
+                            {task.is_transferred && (
+                              <span className="text-[10px] text-gray-500 font-normal">
+                                (From: {task.transferred_from || task.given_by})
+                              </span>
+                            )}
                           </span>
                         )}
                       </td>

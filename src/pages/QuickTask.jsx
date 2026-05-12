@@ -97,43 +97,55 @@ export default function QuickTask() {
   const userDept = loginUserData?.department || loginUserData?.user_access;
   const userDiv = loginUserData?.division;
 
-useEffect(() => {
-  dispatch(fetchUsers());
-  if (userRole) {
-    const params = {
+  useEffect(() => {
+    dispatch(fetchUsers());
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (userRole) {
+      if (activeTab === 'checklist') {
+        dispatch(resetChecklistPagination());
+        dispatch(uniqueChecklistTaskData({ 
+          page: 0, 
+          pageSize: 50, 
+          nameFilter, 
+          deptFilter,
+          divFilter,
+          freqFilter,
+          userRole,
+          userDept,
+          userDiv,
+          userName: loginUserData.user_name,
+          search: debouncedSearchTerm,
+          append: false
+        }));
+      } else if (activeTab === 'delegation') {
+        dispatch(resetDelegationPagination());
+        dispatch(uniqueDelegationTaskData({ 
+          page: 0, 
+          pageSize: 50, 
+          nameFilter, 
+          deptFilter,
+          divFilter,
+          freqFilter,
+          userRole,
+          userDept,
+          userDiv,
+          userName: loginUserData.user_name,
+          search: debouncedSearchTerm,
+          append: false
+        }));
+      }
+    }
+    const countParams = {
       userRole,
       userDept,
       userDiv,
-      userName: loginUserData.user_name,
-      search: debouncedSearchTerm,
-      nameFilter,
-      deptFilter,
-      divFilter,
-      freqFilter
+      userName: loginUserData.user_name
     };
-    
-    // Fetch initial data
-    dispatch(resetChecklistPagination());
-    dispatch(resetDelegationPagination());
-    dispatch(uniqueChecklistTaskData({ 
-      page: 0, 
-      pageSize: 50, 
-      append: false,
-      ...params
-    }));
-
-    dispatch(uniqueDelegationTaskData({ 
-      page: 0, 
-      pageSize: 50, 
-      append: false,
-      ...params
-    }));
-
-    // Fetch discrete counts for header
-    dispatch(fetchQuickTaskCounts(params));
-    dispatch(fetchMaintenanceCounts(params));
-  }
-}, [dispatch, userRole, userDept, userDiv, loginUserData.user_name, debouncedSearchTerm, nameFilter, deptFilter, divFilter, freqFilter]);
+    dispatch(fetchQuickTaskCounts(countParams));
+    dispatch(fetchMaintenanceCounts(countParams));
+  }, [dispatch, userRole, userDept, userDiv, loginUserData.user_name, debouncedSearchTerm, nameFilter, deptFilter, divFilter, freqFilter, activeTab]);
 
 
 // Add this new function
@@ -897,7 +909,6 @@ const filteredMaintenanceTasks = useMemo(() => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-purple-200 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm sm:text-base"
-                disabled={loading || delegationLoading}
               />
             </div>
 
@@ -1210,6 +1221,28 @@ const filteredMaintenanceTasks = useMemo(() => {
                             <span className="text-gray-500">End:</span>{' '}
                             <span className="font-medium">{formatTimestampToDDMMYYYY(task.planned_date)}</span>
                           </div>
+
+                          {/* Status and Transfer Info for Mobile */}
+                          <div className="col-span-2 mt-2 pt-2 border-t border-gray-100 flex flex-col gap-1">
+                             {task.status && (
+                               <div className="flex justify-between items-center">
+                                 <span className="text-gray-500">Status:</span>
+                                 <span className={`px-2 py-0.5 rounded text-xs font-bold ${
+                                   task.status === "Transferred Pending" ? "bg-orange-100 text-orange-700" : "bg-gray-100 text-gray-700"
+                                 }`}>
+                                   {task.status}
+                                 </span>
+                               </div>
+                             )}
+                             {task.is_transferred && (
+                               <div className="bg-orange-50 p-2 rounded border border-orange-100 mt-1">
+                                 <span className="text-orange-700 font-bold uppercase text-[10px] block">Transferred Task</span>
+                                 <div className="text-[11px] text-gray-600 mt-0.5">
+                                   From: <span className="font-semibold text-gray-900">{task.transferred_from || task.given_by}</span>
+                                 </div>
+                               </div>
+                             )}
+                          </div>
                           
                           {/* Reminder */}
                           <div>
@@ -1284,6 +1317,7 @@ const filteredMaintenanceTasks = useMemo(() => {
                         { key: 'department', label: 'Department' },
                         { key: 'unit', label: 'Unit' },
                         { key: 'division', label: 'Division' },
+                        { key: 'status', label: 'Status' },
                         { key: 'enable_reminder', label: 'Reminders' },
                         { key: 'require_attachment', label: 'Attachment' },
                       ].map((column) => (
@@ -1468,6 +1502,22 @@ const filteredMaintenanceTasks = useMemo(() => {
                             ) : (
                               task.division || "—"
                             )}
+                          </td>
+
+                          {/* Status */}
+                          <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-sm">
+                             <div className="flex flex-col">
+                               <span className={`px-2 py-1 rounded text-xs font-bold w-fit ${
+                                 task.status === "Transferred Pending" ? "bg-orange-100 text-orange-700" : "text-gray-500"
+                               }`}>
+                                 {task.status || "—"}
+                               </span>
+                               {task.is_transferred && (
+                                 <span className="text-[10px] text-gray-400 mt-1">
+                                   From: {task.transferred_from || task.given_by}
+                                 </span>
+                               )}
+                             </div>
                           </td>
 
                           {/* Enable Reminders */}

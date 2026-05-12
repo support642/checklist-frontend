@@ -380,9 +380,22 @@ const settingsSlice = createSlice({
       })
       .addCase(updateUser.fulfilled, (state, action) => {
         state.loading = false;
-        const index = state.userData.findIndex(user => user.id === action.payload.id);
-        if (index !== -1) {
-          state.userData[index] = action.payload;
+        // Update in userData list
+        const userIndex = state.userData.findIndex(user => user.id === action.payload.id);
+        if (userIndex !== -1) {
+          state.userData[userIndex] = action.payload;
+        }
+        
+        // Update in leaveUsers list
+        const leaveIndex = state.leaveUsers.findIndex(user => user.id === action.payload.id);
+        if (leaveIndex !== -1) {
+          state.leaveUsers[leaveIndex] = action.payload;
+        }
+        
+        // Update in extendUsers list
+        const extendIndex = state.extendUsers.findIndex(user => user.id === action.payload.id);
+        if (extendIndex !== -1) {
+          state.extendUsers[extendIndex] = action.payload;
         }
       })
       .addCase(updateUser.rejected, (state, action) => {

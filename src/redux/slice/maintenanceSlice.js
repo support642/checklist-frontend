@@ -26,7 +26,8 @@ export const maintenanceData = createAsyncThunk(
         frequency = 'all',
         name = 'all',
         division = 'all',
-        departmentFilter = 'all'
+        departmentFilter = 'all',
+        unitFilter = 'all'
     } = {}) => {
         const response = await fetchMaintenanceDataSortByDate(
             page,
@@ -37,17 +38,18 @@ export const maintenanceData = createAsyncThunk(
             frequency,
             name,
             division,
-            departmentFilter
+            departmentFilter,
+            unitFilter
         );
-        return { ...response, page, search, startDate, endDate, status, frequency, name, division, departmentFilter };
+        return { ...response, page, search, startDate, endDate, status, frequency, name, division, departmentFilter, unitFilter };
     }
 );
 
 // 2. FETCH HISTORY MAINTENANCE TASKS
 export const maintenanceHistoryData = createAsyncThunk(
     "fetch/maintenanceHistory",
-    async ({ page = 1, search = "", startDate = "", endDate = "", name = 'all', division = 'all', departmentFilter = 'all', approvalStatus = 'all' } = {}) => {
-        return await fetchMaintenanceDataForHistory(page, search, startDate, endDate, name, division, departmentFilter, approvalStatus);
+    async ({ page = 1, search = "", startDate = "", endDate = "", name = 'all', division = 'all', departmentFilter = 'all', approvalStatus = 'all', unitFilter = 'all' } = {}) => {
+        return await fetchMaintenanceDataForHistory(page, search, startDate, endDate, name, division, departmentFilter, approvalStatus, unitFilter);
     }
 );
 
@@ -285,6 +287,9 @@ const maintenanceSlice = createSlice({
             .addCase(fetchMachinePartsData.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.error?.message || "Failed fetching machine parts";
+            })
+            .addCase(fetchMaintenanceCounts.fulfilled, (state, action) => {
+                state.discreteMaintenanceTotal = action.payload.total;
             });
     },
 });

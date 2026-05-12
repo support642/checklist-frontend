@@ -5,7 +5,7 @@ const BASE_URL = `${import.meta.env.VITE_API_BASE_URL}/maintenance`;
 // =======================================================
 // 1️⃣ Fetch Pending Maintenance Tasks
 // =======================================================
-export const fetchMaintenanceDataSortByDate = async (page = 1, search = '', startDate = "", endDate = "", status = 'all', frequency = 'all', name = 'all', division = 'all', departmentFilter = 'all') => {
+export const fetchMaintenanceDataSortByDate = async (page = 1, search = '', startDate = "", endDate = "", status = 'all', frequency = 'all', name = 'all', division = 'all', departmentFilter = 'all', unitFilter = 'all') => {
     const username = localStorage.getItem("user-name");
     const role = localStorage.getItem("role");
     const department = localStorage.getItem("department");
@@ -21,6 +21,7 @@ export const fetchMaintenanceDataSortByDate = async (page = 1, search = '', star
     if (name !== 'all') url += `&name=${encodeURIComponent(name)}`;
     if (division !== 'all') url += `&divisionFilter=${encodeURIComponent(division)}`;
     if (departmentFilter !== 'all') url += `&departmentFilter=${encodeURIComponent(departmentFilter)}`;
+    if (unitFilter !== 'all') url += `&unitFilter=${encodeURIComponent(unitFilter)}`;
 
     const response = await authFetch(url);
 
@@ -45,7 +46,7 @@ export const fetchMaintenanceDataSortByDate = async (page = 1, search = '', star
 // =======================================================
 // 2️⃣ Fetch Maintenance History
 // =======================================================
-export const fetchMaintenanceDataForHistory = async (page = 1, search = "", startDate = "", endDate = "", name = 'all', division = 'all', departmentFilter = 'all', approvalStatus = 'all') => {
+export const fetchMaintenanceDataForHistory = async (page = 1, search = "", startDate = "", endDate = "", name = 'all', division = 'all', departmentFilter = 'all', approvalStatus = 'all', unitFilter = 'all') => {
     const username = localStorage.getItem("user-name");
     const role = localStorage.getItem("role");
     const department = localStorage.getItem("department");
@@ -60,6 +61,7 @@ export const fetchMaintenanceDataForHistory = async (page = 1, search = "", star
     if (name !== 'all') url += `&nameFilter=${encodeURIComponent(name)}`;
     if (division !== 'all') url += `&divisionFilter=${encodeURIComponent(division)}`;
     if (departmentFilter !== 'all') url += `&departmentFilter=${encodeURIComponent(departmentFilter)}`;
+    if (unitFilter !== 'all') url += `&unitFilter=${encodeURIComponent(unitFilter)}`;
     if (approvalStatus !== 'all') url += `&approvalStatus=${approvalStatus}`;
 
     const response = await authFetch(url);

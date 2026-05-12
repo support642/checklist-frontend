@@ -56,6 +56,7 @@ const LoginPage = () => {
       const subscriptionAccess = typeof userData.subscription_access_system === 'string' ? JSON.parse(userData.subscription_access_system || '{}') : (userData.subscription_access_system || {});
       localStorage.setItem('subscription_access_system', JSON.stringify(subscriptionAccess));
       localStorage.setItem('session_id', userData.session_id || "");
+      localStorage.setItem('user_id', userData.id || "");
 
       console.log("Stored email:", userEmail);
       

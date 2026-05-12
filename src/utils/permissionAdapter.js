@@ -49,12 +49,12 @@ export const buildUnifiedPermissions = (user) => {
     Object.entries(docAccess.pages).forEach(([rawPage, action]) => {
       const page = normalizePageKey(rawPage);
       let module = 'documentation';
-      
+
       if (page.startsWith('subscription') || page.includes('subscription')) module = 'subscription';
       else if (page.startsWith('loan') || page.includes('loan')) module = 'loan';
       else if (page.startsWith('master') || page.includes('master')) module = 'master';
       else if (page === 'resource_manager') module = 'documentation';
-      
+
       if (!unified[module]) unified[module] = {};
       unified[module][page] = action;
     });
@@ -118,7 +118,7 @@ export const hasPermission = (unifiedPermissions, module, page, action) => {
   if (action === 'view') {
     return currentAction === 'view' || currentAction === 'modify';
   }
-  
+
   if (action === 'modify') {
     return currentAction === 'modify';
   }

@@ -111,7 +111,14 @@ const MachineModal = ({ isOpen, onClose, machines }) => {
   );
 };
 
-const MaintenanceView = ({ startDate = "", endDate = "" }) => {
+const MaintenanceView = ({ 
+  startDate = "", 
+  endDate = "", 
+  dashboardStaffFilter = "all", 
+  departmentFilter = "all", 
+  unitFilter = "all", 
+  divisionFilter = "all" 
+}) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const userRole = localStorage.getItem("role")?.toLowerCase();
@@ -131,10 +138,25 @@ const MaintenanceView = ({ startDate = "", endDate = "" }) => {
   } = useSelector((state) => state.maintenance);
 
   useEffect(() => {
-    dispatch(maintenanceData({ page: 1, startDate, endDate }));
-    dispatch(maintenanceHistoryData({ startDate, endDate }));
+    dispatch(maintenanceData({ 
+      page: 1, 
+      startDate, 
+      endDate, 
+      name: dashboardStaffFilter, 
+      departmentFilter, 
+      unitFilter, 
+      division: divisionFilter 
+    }));
+    dispatch(maintenanceHistoryData({ 
+      startDate, 
+      endDate, 
+      name: dashboardStaffFilter, 
+      departmentFilter, 
+      unitFilter, 
+      division: divisionFilter 
+    }));
     dispatch(fetchMachinePartsData());
-  }, [dispatch, startDate, endDate]);
+  }, [dispatch, startDate, endDate, dashboardStaffFilter, departmentFilter, unitFilter, divisionFilter]);
 
   // --- Helpers ---
   const parseDate = (dateStr) => {
@@ -386,8 +408,23 @@ const MaintenanceView = ({ startDate = "", endDate = "" }) => {
   };
 
   const handleRefresh = () => {
-    dispatch(maintenanceData({ page: 1 }));
-    dispatch(maintenanceHistoryData());
+    dispatch(maintenanceData({ 
+      page: 1, 
+      startDate, 
+      endDate, 
+      name: dashboardStaffFilter, 
+      departmentFilter, 
+      unitFilter, 
+      division: divisionFilter 
+    }));
+    dispatch(maintenanceHistoryData({ 
+      startDate, 
+      endDate, 
+      name: dashboardStaffFilter, 
+      departmentFilter, 
+      unitFilter, 
+      division: divisionFilter 
+    }));
   };
 
   if (error) {
