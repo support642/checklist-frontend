@@ -1901,7 +1901,9 @@ const resetUserForm = () => {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
             <div>
               {currentUserRole?.toLowerCase() === 'user' ? (
-                <h1 className="text-xl font-bold text-purple-700">My Profile</h1>
+                <h1 className="text-xl font-bold text-purple-700">
+                  {activeTab === 'machines' ? 'Machine Management' : 'My Profile'}
+                </h1>
               ) : (
                 <>
                   <h1 className="text-lg font-bold text-gray-800">Global Settings Hub</h1>
@@ -1945,7 +1947,7 @@ const resetUserForm = () => {
           </div>
           
           {/* Bottom Row: Tabs */}
-          {currentUserRole?.toLowerCase() !== 'user' && (
+          {(currentUserRole?.toLowerCase() !== 'user' || canManageSettings) && (
             <div className="w-full max-w-full flex border-b border-gray-200 overflow-x-auto flex-nowrap scrollbar-hide custom-scrollbar-horizontal">
               <button
                 className={`flex flex-col items-center gap-1 px-2 sm:px-4 py-3 text-xs font-semibold border-b-2 transition-all flex-1 sm:flex-none min-w-[80px] sm:min-w-[100px] whitespace-nowrap ${
@@ -1959,8 +1961,25 @@ const resetUserForm = () => {
                 }}
               >
                 <User size={20} />
-                <span>Users</span>
+                <span>{currentUserRole?.toLowerCase() === 'user' ? 'My Profile' : 'Users'}</span>
               </button>
+
+              {canManageSettings && (
+                <button
+                  className={`flex flex-col items-center gap-1 px-2 sm:px-4 py-3 text-xs font-semibold border-b-2 transition-all flex-1 sm:flex-none min-w-[80px] sm:min-w-[100px] whitespace-nowrap ${
+                    activeTab === 'machines' 
+                      ? 'border-purple-600 text-purple-600 bg-purple-50' 
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                  }`}
+                  onClick={() => {
+                    handleTabChange('machines');
+                  }}
+                >
+                  <Settings size={20} />
+                  <span>Machines</span>
+                </button>
+              )}
+
               {currentUserRole?.toLowerCase() !== 'user' && (
                 <>
                   <button
@@ -2005,19 +2024,6 @@ const resetUserForm = () => {
                   >
                     <Calendar size={20} />
                     <span>Extend Task</span>
-                  </button>
-                  <button
-                    className={`flex flex-col items-center gap-1 px-2 sm:px-4 py-3 text-xs font-semibold border-b-2 transition-all flex-1 sm:flex-none min-w-[80px] sm:min-w-[100px] whitespace-nowrap ${
-                      activeTab === 'machines' 
-                        ? 'border-purple-600 text-purple-600 bg-purple-50' 
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                    }`}
-                    onClick={() => {
-                      handleTabChange('machines');
-                    }}
-                  >
-                    <Settings size={20} />
-                    <span>Machines</span>
                   </button>
                   {currentUserRole?.toLowerCase() === 'super_admin' && (
                     <button
@@ -3118,14 +3124,16 @@ const resetUserForm = () => {
                       <div key={machine.id} className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
                         <div className="flex justify-between items-start mb-2">
                           <p className="text-sm font-medium text-gray-900">#{index + 1} {machine.machine_name || '—'}</p>
-                          {canManageSettings && (
+                          {canModifySettings && (
                             <div className="flex gap-2">
                               <button onClick={() => handleEditMachine(machine.id)} className="text-blue-600" title="Edit">
                                 <Edit size={16} />
                               </button>
-                              <button onClick={() => handleDeleteMachine(machine.id)} className="text-red-600" title="Delete">
-                                <Trash2 size={16} />
-                              </button>
+                              {currentUserRole?.toLowerCase() !== 'user' && (
+                                <button onClick={() => handleDeleteMachine(machine.id)} className="text-red-600" title="Delete">
+                                  <Trash2 size={16} />
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>
@@ -3175,20 +3183,24 @@ const resetUserForm = () => {
                             <span className="text-sm text-gray-600">{machine.machine_division || '—'}</span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <div className="flex justify-end gap-3 text-gray-400">
-                              <button 
-                                onClick={() => handleEditMachine(machine.id)} 
-                                className="hover:text-blue-600 transition-colors"
-                              >
-                                <Edit size={18} />
-                              </button>
-                              <button 
-                                onClick={() => handleDeleteMachine(machine.id)} 
-                                className="hover:text-red-600 transition-colors"
-                              >
-                                <Trash2 size={18} />
-                              </button>
-                            </div>
+                            {canModifySettings && (
+                              <div className="flex justify-end gap-3 text-gray-400">
+                                <button 
+                                  onClick={() => handleEditMachine(machine.id)} 
+                                  className="hover:text-blue-600 transition-colors"
+                                >
+                                  <Edit size={18} />
+                                </button>
+                                {currentUserRole?.toLowerCase() !== 'user' && (
+                                  <button 
+                                    onClick={() => handleDeleteMachine(machine.id)} 
+                                    className="hover:text-red-600 transition-colors"
+                                  >
+                                    <Trash2 size={18} />
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </td>
                         </tr>
                       ))
