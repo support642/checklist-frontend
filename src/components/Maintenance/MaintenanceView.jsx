@@ -134,7 +134,9 @@ const MaintenanceView = ({
     error,
     pendingTotalCount,
     historyTotalCount,
-    historyApprovedCount
+    historyApprovedCount,
+    todayCount,
+    overdueCount: reduxOverdueCount
   } = useSelector((state) => state.maintenance);
 
   useEffect(() => {
@@ -225,68 +227,14 @@ const MaintenanceView = ({
 
   // --- Aggregate Stats ---
   const stats = useMemo(() => {
-    // 1. Total Unique Tasks based on accurate backend counts
-    const totalTasks = (pendingTotalCount || 0) + (historyTotalCount || 0);
-
-    // Helper to determine task category
-    const getTaskCategory = (task) => {
-      const adminDone = task.admin_done === 'true' || task.admin_done === 'Done' || task.admin_done === true;
-      const isSubmitted = !!(task.submission_date || task.status === 'yes' || task.status === 'no');
-
-      // 🔥 If submitted OR approved, it's considered "Complete" for the stats
-      if (adminDone || isSubmitted) return 'completed';
-      
-      // Unsubmitted - check for overdue
-      const dStr = task.planned_date || task.dueDate || task.task_start_date;
-      const taskDate = parseDate(dStr);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      if (!isNaN(taskDate.getTime())) {
-        const compareDate = new Date(taskDate);
-        compareDate.setHours(0, 0, 0, 0);
-        if (compareDate < today) return 'overdue';
-      }
-      return 'pending';
-    };
-
-    let completedCount = 0;
-    let pendingApprovalCount = 0;
-    let pendingTodayCount = 0;
-    let overdueCount = 0;
-
-    const todayDay = new Date();
-    todayDay.setHours(0, 0, 0, 0);
-
-    allMaintenanceTasks.forEach(task => {
-      const category = getTaskCategory(task);
-      if (category === 'completed') {
-        completedCount++;
-      } else if (category === 'pending_approval') {
-        pendingApprovalCount++;
-      } else if (category === 'overdue') {
-        overdueCount++;
-      } else if (category === 'pending') {
-        const dStr = task.planned_date || task.dueDate || task.task_start_date;
-        const taskDate = parseDate(dStr);
-        if (!isNaN(taskDate.getTime())) {
-          taskDate.setHours(0, 0, 0, 0);
-          if (taskDate.getTime() === todayDay.getTime()) {
-            pendingTodayCount++;
-          }
-        }
-      }
-    });
-
     return {
       totalMachines: filteredMachines.length || 0,
-      totalTasks: totalTasks,
-      // 🔥 Use global counts from backend for accuracy
+      totalTasks: (historyTotalCount || 0) + (todayCount || 0) + (reduxOverdueCount || 0),
       completedTasks: historyTotalCount || 0,
-      pendingTasks: pendingTotalCount || 0, 
-      overdueTasks: overdueCount // This remains a local count of loaded tasks for now
+      pendingTasks: todayCount || 0, 
+      overdueTasks: reduxOverdueCount || 0
     };
-  }, [allMaintenanceTasks, filteredMachines, pendingTotalCount, historyTotalCount]);
+  }, [filteredMachines, historyTotalCount, todayCount, reduxOverdueCount]);
 
   // --- Derive Department Data ---
   const deptData = useMemo(() => {

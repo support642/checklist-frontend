@@ -260,7 +260,8 @@ export default function TaskNavigationTabs({
               taskId: task.id,
               status: "yes",
               remarks: "",
-              image: null 
+              image: null,
+              submittedBy: username
             }]);
          } else {
             // Delegation
@@ -277,6 +278,7 @@ export default function TaskNavigationTabs({
                 next_extend_date: null,
                 reason: "",
                 image_base64: null,
+                submittedBy: username
               }]
             })).unwrap();
          }

@@ -841,6 +841,7 @@ function AccountDataPage() {
             status: maintAdditionalData[id] || "",
             remarks: maintRemarksData[id] || "",
             images: finalBase64Images.length > 0 ? finalBase64Images : (item.image ? [item.image] : []),
+            submittedBy: username
           };
         })
       );
@@ -990,7 +991,8 @@ const handleSubmit = async () => {
           taskId: item.task_id,
           status: additionalData[id] || "",
           remarks: remarksData[id] || "",
-          images: finalBase64Images.length > 0 ? finalBase64Images : (item.image ? [item.image] : []), // <– yahi backend ko milega
+          images: finalBase64Images.length > 0 ? finalBase64Images : (item.image ? [item.image] : []),
+          submittedBy: username
         };
       })
     );
@@ -1267,7 +1269,7 @@ const handleSubmit = async () => {
 
               {!showHistory && (userRole === "user" || userRole === "admin" || userRole === "div_admin" || userRole === "super_admin") && hasModifyAccess('pending_task') && (
                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto items-stretch sm:items-center">
-                  {activeView === 'maintenance' && (userRole === "admin" || userRole === "div_admin" || userRole === "super_admin") && maintSelectedItems.size > 0 && (
+                  {/* {activeView === 'maintenance' && (userRole === "admin" || userRole === "div_admin" || userRole === "super_admin") && maintSelectedItems.size > 0 && (
                     <button
                       onClick={handleSendMaintNotification}
                       disabled={isSubmitting}
@@ -1276,7 +1278,7 @@ const handleSubmit = async () => {
                       <Bell className={`h-4 w-4 ${isSubmitting ? 'animate-bounce' : 'group-hover:animate-ring'}`} />
                       <span>Notify ({maintSelectedItems.size})</span>
                     </button>
-                  )}
+                  )} */}
 
                   <div className="grid grid-cols-3 sm:flex sm:flex-row gap-2 w-full sm:w-auto items-stretch">
                     {(userRole === "admin" || userRole === "div_admin" || userRole === "super_admin") && (activeView === 'checklist' ? Array.from(selectedItems) : Array.from(maintSelectedItems)).some(id => {
@@ -1673,6 +1675,9 @@ const handleSubmit = async () => {
                           <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                             File
                           </th>
+                          <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-green-50 whitespace-nowrap">
+                            Submitted By
+                          </th>
 
                         </tr>
                       </thead>
@@ -1797,12 +1802,15 @@ const handleSubmit = async () => {
                                   <span className="text-gray-400 text-xs sm:text-sm">No files</span>
                                 )}
                               </td>
+                              <td className="px-2 sm:px-3 py-2 sm:py-4 bg-green-50">
+                                <div className="text-xs sm:text-sm text-gray-900 font-medium">{history.submitted_by || "—"}</div>
+                              </td>
 
                             </tr>
                           ))
                         ) : (
                           <tr>
-                            <td colSpan={(userRole === "admin" || userRole === "div_admin") ? 17 : 15} className="px-4 sm:px-6 py-4 text-center text-gray-500 text-xs sm:text-sm">
+                            <td colSpan={(userRole === "admin" || userRole === "div_admin") ? 17 : 16} className="px-4 sm:px-6 py-4 text-center text-gray-500 text-xs sm:text-sm">
                               {searchTerm || selectedMembers.length > 0 || startDate || endDate
                                 ? "No historical records matching your filters"
                                 : "No completed records found"}

@@ -960,6 +960,7 @@ function HistoryPage() {
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Division</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">M-Dept</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">M-Div</th>
+                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-green-50">Submitted By</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-green-50">Submission Time</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Frequency</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Proof</th>
@@ -1049,6 +1050,9 @@ function HistoryPage() {
                         <td className="px-2 sm:px-3 py-2 sm:py-4" data-label="M-Div">
                           <div className="text-xs sm:text-sm text-gray-900">{item.machine_division || "—"}</div>
                         </td>
+                        <td className="px-2 sm:px-3 py-2 sm:py-4 bg-green-50" data-label="Submitted By">
+                          <div className="text-xs sm:text-sm text-gray-900 font-medium">{item.submitted_by || "—"}</div>
+                        </td>
                         <td className="px-2 sm:px-3 py-2 sm:py-4 bg-green-50" data-label="Submission Time">
                           <div className="text-xs sm:text-sm text-gray-900">
                             {item.submission_date ? (() => {
@@ -1118,7 +1122,7 @@ function HistoryPage() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={isSuperAdmin ? 17 : 15} className="px-4 sm:px-6 py-4 text-center text-gray-500 text-xs sm:text-sm">
+                      <td colSpan={isSuperAdmin ? 18 : 16} className="px-4 sm:px-6 py-4 text-center text-gray-500 text-xs sm:text-sm">
                         {searchTerm || selectedMembers.length > 0 || startDate || endDate
                           ? "No records matching your filters"
                           : "No maintenance records found"}
@@ -1165,6 +1169,7 @@ function HistoryPage() {
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-yellow-50">Task Start Date</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Frequency</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-green-50">Submission Date</th>
+                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-green-50">Submitted By</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50">Status</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task ID</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
@@ -1265,6 +1270,9 @@ function HistoryPage() {
                             })() : "—"}
                           </div>
                         </td>
+                        <td className="px-2 sm:px-3 py-2 sm:py-4 bg-green-50" data-label="Submitted By">
+                           <div className="text-xs sm:text-sm text-gray-900 font-medium">{historyItem.submitted_by || "—"}</div>
+                        </td>
                         <td className="px-2 sm:px-3 py-2 sm:py-4 bg-blue-50" data-label="Status">
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                             historyItem.status === "yes"
@@ -1326,7 +1334,7 @@ function HistoryPage() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={isSuperAdmin ? 16 : 14} className="px-4 sm:px-6 py-4 text-center text-gray-500 text-xs sm:text-sm">
+                      <td colSpan={isSuperAdmin ? 17 : 15} className="px-4 sm:px-6 py-4 text-center text-gray-500 text-xs sm:text-sm">
                         {searchTerm || selectedMembers.length > 0 || startDate || endDate
                           ? "No records matching your filters"
                           : "No completed records found"}
@@ -1357,6 +1365,7 @@ function HistoryPage() {
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50">Status</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-yellow-50">Created At</th>
+                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-green-50">Submitted By</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Extend</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">File</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">Admin Status</th>
@@ -1421,6 +1430,9 @@ function HistoryPage() {
                           <div className="text-xs sm:text-sm text-gray-900">
                             {formatDateForDisplay(item.created_at)}
                           </div>
+                        </td>
+                        <td className="px-2 sm:px-3 py-2 sm:py-4 bg-green-50" data-label="Submitted By">
+                           <div className="text-xs sm:text-sm text-gray-900 font-medium">{item.submitted_by || "—"}</div>
                         </td>
                         <td className="px-2 sm:px-3 py-2 sm:py-4" data-label="Extend">
                           <div className="text-xs sm:text-sm text-gray-900">
@@ -1499,7 +1511,7 @@ function HistoryPage() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={isSuperAdmin ? 15 : 13} className="px-4 sm:px-6 py-4 text-center text-gray-500 text-xs sm:text-sm">
+                      <td colSpan={isSuperAdmin ? 16 : 14} className="px-4 sm:px-6 py-4 text-center text-gray-500 text-xs sm:text-sm">
                         {searchTerm || startDate || endDate
                           ? "No records matching your filters"
                           : "No delegation records found"}

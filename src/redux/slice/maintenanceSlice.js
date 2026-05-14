@@ -161,6 +161,8 @@ const maintenanceSlice = createSlice({
         hasMore: true,
         currentPage: 1,
         pendingTotalCount: 0,
+        todayCount: 0,
+        overdueCount: 0,
         historyTotalCount: 0,
         historyApprovedCount: 0,
         historyPendingCount: 0,
@@ -192,6 +194,8 @@ const maintenanceSlice = createSlice({
                 }
                 state.currentPage = action.payload.page;
                 state.pendingTotalCount = parseInt(action.payload.totalCount) || 0;
+                state.todayCount = parseInt(action.payload.todayCount) || 0;
+                state.overdueCount = parseInt(action.payload.overdueCount) || 0;
                 state.hasMore = state.maintenance.length < action.payload.totalCount;
             })
             .addCase(maintenanceData.rejected, (state, action) => {

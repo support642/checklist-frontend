@@ -39,7 +39,9 @@ export const fetchMaintenanceDataSortByDate = async (page = 1, search = '', star
     return { 
         data: json.data || [], 
         totalCount: json.totalCount || 0, 
-        page: json.page || page 
+        page: json.page || page,
+        todayCount: json.todayCount || 0,
+        overdueCount: json.overdueCount || 0
     };
 };
 

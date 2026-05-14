@@ -1,7 +1,7 @@
 import { authFetch } from "../utils/authFetch";
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 // import { Plus, User, Building, X, Save, Edit, Trash2, Settings, Search, ChevronDown, Calendar, RefreshCw } from 'lucide-react';
-import { Plus, User, Building, X, Save, Edit, Trash2, Settings, Search, ChevronDown, Calendar, RefreshCw, Eye, EyeOff, Upload, Image as ImageIcon, Copy } from 'lucide-react';
+import { Plus, User, Building, X, Save, Edit, Trash2, Settings, Search, ChevronDown, Calendar, RefreshCw, Eye, EyeOff, Upload, Image as ImageIcon, Copy, MessageSquare } from 'lucide-react';
 import AdminLayout from '../components/layout/AdminLayout';
 import { useDispatch, useSelector } from 'react-redux';
 import { departmentDetails, departmentOnlyDetails, extendUserDetails, givenByDetails, leaveUserDetails, machineDetails, resetExtendUserData, resetLeaveUserData, resetUserData, userDetails, createDepartment, createUser, deleteUser, updateDepartment, updateUser, createMachineThunk, updateMachineThunk, deleteMachineThunk } from '../redux/slice/settingSlice';
@@ -176,6 +176,7 @@ const Setting = () => {
   const [isDeletingTask, setIsDeletingTask] = useState(false);
   const [bulkPopupDoer, setBulkPopupDoer] = useState(''); // Bulk assignment for individual popup
 
+  const [isSendingAlerts, setIsSendingAlerts] = useState(false);
   // Machine Management State
   const [showMachineModal, setShowMachineModal] = useState(false);
   const [machineForm, setMachineForm] = useState({
@@ -801,6 +802,29 @@ const handleConfirmDelegation = async () => {
   } catch (error) {
     console.error('Error submitting delegation:', error);
     alert('Error submitting delegation');
+  }
+};
+
+const handleTriggerOverdueAlerts = async () => {
+  if (!window.confirm('Are you sure you want to send WhatsApp reminders to all employees with overdue tasks?')) return;
+  
+  try {
+    setIsSendingAlerts(true);
+    const response = await authFetch(`${import.meta.env.VITE_API_BASE_URL}/settings/whatsapp/trigger-overdue`, {
+      method: "POST"
+    });
+    
+    const data = await response.json();
+    if (response.ok) {
+      setToast({ show: true, message: data.message || "Alerts sent successfully!", type: "success" });
+    } else {
+      setToast({ show: true, message: data.error || "Failed to send alerts", type: "error" });
+    }
+  } catch (error) {
+    console.error('Error triggering alerts:', error);
+    setToast({ show: true, message: "Network error occurred", type: "error" });
+  } finally {
+    setIsSendingAlerts(false);
   }
 };
 
@@ -1995,6 +2019,19 @@ const resetUserForm = () => {
                     <Settings size={20} />
                     <span>Machines</span>
                   </button>
+                  {currentUserRole?.toLowerCase() === 'super_admin' && (
+                    <button
+                      className={`flex flex-col items-center gap-1 px-2 sm:px-4 py-3 text-xs font-semibold border-b-2 transition-all flex-1 sm:flex-none min-w-[80px] sm:min-w-[100px] whitespace-nowrap ${
+                        activeTab === 'whatsapp' 
+                          ? 'border-purple-600 text-purple-600 bg-purple-50' 
+                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                      }`}
+                      onClick={() => setActiveTab('whatsapp')}
+                    >
+                      <MessageSquare size={20} />
+                      <span>WhatsApp</span>
+                    </button>
+                  )}
                 </>
               )}
             </div>
@@ -3167,6 +3204,67 @@ const resetUserForm = () => {
                 </table>
               </div>
             )}
+          </div>
+        )}
+
+        {/* WhatsApp Tab */}
+        {activeTab === 'whatsapp' && (
+          <div className="bg-white shadow rounded-lg overflow-hidden border border-purple-200">
+            <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple px-6 py-4 flex items-center gap-3">
+              <MessageSquare className="text-purple-600" size={24} />
+              <h2 className="text-lg font-medium text-purple-700">WhatsApp Automation</h2>
+            </div>
+            
+            <div className="p-8">
+              <div className="max-w-2xl mx-auto space-y-6">
+                <div className="bg-purple-50 rounded-xl p-6 border border-purple-100">
+                  <h3 className="text-lg font-bold text-purple-800 mb-2">Overdue Task Reminders</h3>
+                  <p className="text-sm text-purple-600 mb-6">
+                    Manually trigger a bulk WhatsApp broadcast to all employees who have tasks marked as OVERDUE. 
+                    The system will group multiple tasks for each employee to prevent spamming.
+                  </p>
+                  
+                  <div className="bg-white p-4 rounded-lg border border-purple-100 mb-6">
+                    <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Preview of Notification:</p>
+                    <div className="bg-gray-50 p-3 rounded text-sm italic text-gray-600 font-serif border-l-4 border-purple-400">
+                      ⚠️ Hello [Name],<br/><br/>
+                      This is a reminder that you currently have *[X] overdue task(s)* pending in the system.<br/><br/>
+                      📋 *Pending Tasks:*<br/>
+                      • #101: Task Description...<br/><br/>
+                      🔗 Please review and update here: [Link]
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleTriggerOverdueAlerts}
+                    disabled={isSendingAlerts}
+                    className="w-full flex items-center justify-center gap-2 py-4 px-6 bg-purple-600 text-white rounded-xl font-bold text-lg hover:bg-purple-700 disabled:bg-purple-300 transition-all shadow-lg active:scale-[0.98]"
+                  >
+                    {isSendingAlerts ? (
+                      <>
+                        <RefreshCw className="animate-spin" size={24} />
+                        Sending Broadcast...
+                      </>
+                    ) : (
+                      <>
+                        <MessageSquare size={24} />
+                        Send Overdue Alerts Now
+                      </>
+                    )}
+                  </button>
+                </div>
+                
+                <div className="flex items-start gap-3 p-4 bg-yellow-50 rounded-lg border border-yellow-100">
+                  <div className="mt-1 text-yellow-600">
+                    <Settings size={18} />
+                  </div>
+                  <p className="text-xs text-yellow-700">
+                    <strong>Note:</strong> Automated reminders are scheduled to run daily at 9:00 AM. 
+                    Use this manual trigger if you need to send reminders immediately outside the schedule.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 

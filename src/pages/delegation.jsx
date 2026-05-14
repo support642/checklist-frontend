@@ -360,6 +360,7 @@ function DelegationDataPage() {
             next_extend_date: statusData[id] === "Extend date" ? nextTargetDate[id] : null,
             reason: remarksData[id] || "",
             image_base64: base64Image,
+            submittedBy: username
           };
         })
       );
