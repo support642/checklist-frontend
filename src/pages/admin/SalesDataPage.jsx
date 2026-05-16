@@ -450,7 +450,8 @@ function AccountDataPage() {
     try {
       const payload = selectedHistoryItems.map(item => ({
         task_id: item.task_id,
-        remarks: adminRemarks[item.task_id] || ""
+        remarks: adminRemarks[item.task_id] || "",
+        approvedBy: localStorage.getItem("user-name") || "Admin"
       }))
       const { data, error } = await postChecklistAdminDoneAPI(payload);
 
@@ -1678,6 +1679,9 @@ const handleSubmit = async () => {
                           <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-green-50 whitespace-nowrap">
                             Submitted By
                           </th>
+                          <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-purple-50 whitespace-nowrap">
+                            Approved By
+                          </th>
 
                         </tr>
                       </thead>
@@ -1804,6 +1808,9 @@ const handleSubmit = async () => {
                               </td>
                               <td className="px-2 sm:px-3 py-2 sm:py-4 bg-green-50">
                                 <div className="text-xs sm:text-sm text-gray-900 font-medium">{history.submitted_by || "—"}</div>
+                              </td>
+                              <td className="px-2 sm:px-3 py-2 sm:py-4 bg-purple-50">
+                                <div className="text-xs sm:text-sm text-purple-700 font-bold">{history.approved_by || "—"}</div>
                               </td>
 
                             </tr>

@@ -442,6 +442,15 @@ const Setting = () => {
     };
   }, [currentUser]);
 
+  const getRequesterContext = useCallback(() => {
+    return {
+      requesterRole: currentUserRole,
+      requesterUnit: loginUserData?.unit,
+      requesterDivision: loginUserData?.division,
+      requesterDepartment: loginUserData?.user_access || loginUserData?.department,
+    };
+  }, [currentUserRole, loginUserData]);
+
   const loggedInUserId = Array.isArray(userData) ? userData.find(u => u.user_name === (loginUserData?.user_name || localStorage.getItem('user-name')))?.id : null;
 
   // Memoized available doers for leave transfer/delegation
@@ -517,7 +526,7 @@ const Setting = () => {
       // Re-fetch data based on active tab
       if (activeTab === 'users') {
         dispatch(resetUserData());
-        await dispatch(userDetails({ page: 1, limit: 50, search: usernameFilter })).unwrap();
+        await dispatch(userDetails({ page: 1, limit: 50, search: usernameFilter, requesterContext: getRequesterContext() })).unwrap();
       } else if (activeTab === 'departments') {
         await dispatch(departmentDetails()).unwrap();
         await dispatch(departmentOnlyDetails()).unwrap();
@@ -526,7 +535,7 @@ const Setting = () => {
         await dispatch(machineDetails()).unwrap();
       } else if (activeTab === 'leave' || activeTab === 'extendTask') {
         dispatch(resetUserData());
-        await dispatch(userDetails({ page: 1, limit: 50 })).unwrap();
+        await dispatch(userDetails({ page: 1, limit: 50, requesterContext: getRequesterContext() })).unwrap();
       }
       
     } catch (error) {
@@ -1122,14 +1131,14 @@ const handleTriggerOverdueAlerts = async () => {
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     if (tab === 'users') {
-      if (userData.length === 0) dispatch(userDetails({ page: 1, limit: 50 }));
+      if (userData.length === 0) dispatch(userDetails({ page: 1, limit: 50, requesterContext: getRequesterContext() }));
     } else if (tab === 'departments') {
       if (department.length === 0) dispatch(departmentDetails());
     } else if (tab === 'leave') {
-      if (userData.length === 0) dispatch(userDetails({ page: 1, limit: 50 }));
+      if (userData.length === 0) dispatch(userDetails({ page: 1, limit: 50, requesterContext: getRequesterContext() }));
       dispatch(uniqueDoerNameData());
     } else if (tab === 'extendTask') {
-      if (userData.length === 0) dispatch(userDetails({ page: 1, limit: 50 }));
+      if (userData.length === 0) dispatch(userDetails({ page: 1, limit: 50, requesterContext: getRequesterContext() }));
     } else if (tab === 'machines') {
       if (machines.length === 0) dispatch(machineDetails());
     }
@@ -1251,15 +1260,15 @@ const [userForm, setUserForm] = useState({
   useEffect(() => {
     const handler = setTimeout(() => {
       if (activeTab === 'users') {
-        dispatch(userDetails({ page: 1, limit: 50, search: usernameFilter }));
+        dispatch(userDetails({ page: 1, limit: 50, search: usernameFilter, requesterContext: getRequesterContext() }));
       } else if (activeTab === 'leave') {
-        dispatch(leaveUserDetails({ page: 1, limit: 50, search: leaveUsernameFilter }));
+        dispatch(leaveUserDetails({ page: 1, limit: 50, search: leaveUsernameFilter, requesterContext: getRequesterContext() }));
       } else if (activeTab === 'extendTask') {
-        dispatch(extendUserDetails({ page: 1, limit: 50, search: extendUsernameFilter }));
+        dispatch(extendUserDetails({ page: 1, limit: 50, search: extendUsernameFilter, requesterContext: getRequesterContext() }));
       }
     }, 500);
     return () => clearTimeout(handler);
-  }, [usernameFilter, leaveUsernameFilter, extendUsernameFilter, dispatch, activeTab]);
+  }, [usernameFilter, leaveUsernameFilter, extendUsernameFilter, dispatch, activeTab, getRequesterContext]);
 
   // Initial data fetch for dropdowns
   useEffect(() => {
@@ -1274,11 +1283,11 @@ const [userForm, setUserForm] = useState({
     // Load more if scrolled to 90%
     if (scrollTop + clientHeight >= scrollHeight * 0.9) {
       if (activeTab === 'users' && !pagination.loadingMore && pagination.hasMore) {
-        dispatch(userDetails({ page: pagination.currentPage + 1, search: pagination.searchQuery }));
+        dispatch(userDetails({ page: pagination.currentPage + 1, search: pagination.searchQuery, requesterContext: getRequesterContext() }));
       } else if (activeTab === 'leave' && !leavePagination.loadingMore && leavePagination.hasMore) {
-        dispatch(leaveUserDetails({ page: leavePagination.currentPage + 1, search: leavePagination.searchQuery }));
+        dispatch(leaveUserDetails({ page: leavePagination.currentPage + 1, search: leavePagination.searchQuery, requesterContext: getRequesterContext() }));
       } else if (activeTab === 'extendTask' && !extendPagination.loadingMore && extendPagination.hasMore) {
-        dispatch(extendUserDetails({ page: extendPagination.currentPage + 1, search: extendPagination.searchQuery }));
+        dispatch(extendUserDetails({ page: extendPagination.currentPage + 1, search: extendPagination.searchQuery, requesterContext: getRequesterContext() }));
       }
     }
   };
@@ -1374,7 +1383,7 @@ const handleUpdateUser = async (e) => {
     }
 
     // Force re-fetch user details to ensure paginated lists are up to date
-    dispatch(userDetails({ page: 1, limit: 50 }));
+    dispatch(userDetails({ page: 1, limit: 50, requesterContext: getRequesterContext() }));
 
     resetUserForm();
     setShowUserModal(false);
@@ -1957,7 +1966,7 @@ const resetUserForm = () => {
                 }`}
                 onClick={() => {
                   handleTabChange('users');
-                  dispatch(userDetails());
+                  dispatch(userDetails({ page: 1, limit: 50, requesterContext: getRequesterContext() }));
                 }}
               >
                 <User size={20} />

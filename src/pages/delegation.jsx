@@ -617,16 +617,22 @@ function DelegationDataPage() {
                             {isSelected ? (
                               <label className="relative cursor-pointer bg-purple-100 text-purple-700 hover:bg-purple-200 p-2 rounded-full transition-colors inline-flex items-center justify-center min-w-[36px] min-h-[36px]" title={uploadedImages[item.task_id] ? "Image Uploaded" : "Upload Proof"}>
                                 {uploadedImages[item.task_id] ? (
-                                  <img 
-                                    src={uploadedImages[item.task_id].previewUrl} 
-                                    alt="Preview" 
-                                    className="w-8 h-8 rounded-full object-cover border-2 border-purple-400"
-                                  />
+                                  uploadedImages[item.task_id].file.type.startsWith('image/') ? (
+                                    <img 
+                                      src={uploadedImages[item.task_id].previewUrl} 
+                                      alt="Preview" 
+                                      className="w-8 h-8 rounded-full object-cover border-2 border-purple-400"
+                                    />
+                                  ) : (
+                                    <div className="w-8 h-8 rounded-full bg-purple-200 flex items-center justify-center text-[10px] font-bold text-purple-700 border-2 border-purple-400">
+                                      {uploadedImages[item.task_id].file.type.includes('pdf') ? 'PDF' : 'XLS'}
+                                    </div>
+                                  )
                                 ) : (
                                 <Upload size={18} />
                                 )}
                                 {uploadedImages[item.task_id] && <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></span>}
-                                <input type="file" className="hidden" accept="image/*" onChange={(e) => handleImageUpload(item.task_id, e)} />
+                                <input type="file" className="hidden" accept="image/*,.pdf,.xlsx,.xls" onChange={(e) => handleImageUpload(item.task_id, e)} />
                               </label>
                             ) : (
                               item.image && (
@@ -709,17 +715,23 @@ function DelegationDataPage() {
                             )}
                             <textarea className="w-full border rounded text-xs p-1" rows="2" placeholder="Remarks..." value={remarksData[item.task_id] || ""} onChange={(e) => setRemarksData(prev => ({ ...prev, [item.task_id]: e.target.value }))} />
                             <div className="mt-2 text-center border border-dashed border-gray-300 rounded p-2 bg-gray-50 flex flex-col items-center gap-2">
-                             {uploadedImages[item.task_id] && (
-                               <img 
-                                 src={uploadedImages[item.task_id].previewUrl} 
-                                 alt="Preview" 
-                                 className="w-16 h-16 rounded-md object-cover border border-purple-200 shadow-sm"
-                               />
-                             )}
+                              {uploadedImages[item.task_id] && (
+                               uploadedImages[item.task_id].file.type.startsWith('image/') ? (
+                                 <img 
+                                   src={uploadedImages[item.task_id].previewUrl} 
+                                   alt="Preview" 
+                                   className="w-16 h-16 rounded-md object-cover border border-purple-200 shadow-sm"
+                                 />
+                               ) : (
+                                 <div className="w-16 h-16 rounded-md bg-purple-100 border border-purple-200 flex items-center justify-center text-xs font-bold text-purple-700">
+                                   {uploadedImages[item.task_id].file.type.includes('pdf') ? 'PDF Document' : 'Excel Sheet'}
+                                 </div>
+                               )
+                              )}
                              <label className="cursor-pointer text-purple-600 hover:text-purple-800 flex items-center justify-center gap-1">
                                <Upload size={14} />
-                               <span className="text-xs font-bold uppercase">{uploadedImages[item.task_id] ? "Change image" : "Upload image"}</span>
-                               <input type="file" className="hidden" accept="image/*" onChange={(e) => handleImageUpload(item.task_id, e)} />
+                               <span className="text-xs font-bold uppercase">{uploadedImages[item.task_id] ? "Change file" : "Upload file"}</span>
+                               <input type="file" className="hidden" accept="image/*,.pdf,.xlsx,.xls" onChange={(e) => handleImageUpload(item.task_id, e)} />
                              </label>
                            </div>
                         </div>

@@ -14,7 +14,7 @@ export const fetchChechListDataSortByDate = async (page = 1, search = '', status
   const divisionLocal = localStorage.getItem("division");
 
   let url = `${BASE_URL}/pending?page=${page}&username=${username}&role=${role}&department=${department}&unit=${unit}&division=${divisionLocal}&search=${encodeURIComponent(search)}`;
-  
+
   if (status !== 'all') url += `&status=${status}`;
   if (frequency !== 'all') url += `&frequency=${frequency}`;
   if (name !== 'all') url += `&name=${encodeURIComponent(name)}`;
@@ -34,10 +34,10 @@ export const fetchChechListDataSortByDate = async (page = 1, search = '', status
   }
 
   const json = await response.json();
-  return { 
-    data: json.data || [], 
-    totalCount: json.totalCount || 0, 
-    page: json.page || page 
+  return {
+    data: json.data || [],
+    totalCount: json.totalCount || 0,
+    page: json.page || page
   };
 };
 

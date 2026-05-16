@@ -22,24 +22,24 @@ import {
 
 export const userDetails = createAsyncThunk(
   'fetch/user',
-  async ({ page = 1, limit = 50, search = '' } = {}) => {
-    const data = await fetchUserDetailsApi(page, limit, search);
+  async ({ page = 1, limit = 50, search = '', requesterContext = {} } = {}) => {
+    const data = await fetchUserDetailsApi(page, limit, search, requesterContext);
     return { ...data, search };
   }
 );
 
 export const leaveUserDetails = createAsyncThunk(
   'fetch/leave-user',
-  async ({ page = 1, limit = 50, search = '' } = {}) => {
-    const data = await fetchUserDetailsApi(page, limit, search);
+  async ({ page = 1, limit = 50, search = '', requesterContext = {} } = {}) => {
+    const data = await fetchUserDetailsApi(page, limit, search, requesterContext);
     return { ...data, search };
   }
 );
 
 export const extendUserDetails = createAsyncThunk(
   'fetch/extend-user',
-  async ({ page = 1, limit = 50, search = '' } = {}) => {
-    const data = await fetchUserDetailsApi(page, limit, search);
+  async ({ page = 1, limit = 50, search = '', requesterContext = {} } = {}) => {
+    const data = await fetchUserDetailsApi(page, limit, search, requesterContext);
     return { ...data, search };
   }
 );

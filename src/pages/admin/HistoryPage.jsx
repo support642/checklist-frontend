@@ -290,7 +290,8 @@ function HistoryPage() {
       if (type === "checklist") {
         const payload = selectedHistoryItems.map(item => ({
           task_id: item.task_id,
-          remarks: adminRemarks[item.task_id] || ""
+          remarks: adminRemarks[item.task_id] || "",
+          approvedBy: localStorage.getItem("user-name") || "Admin"
         }))
         const result = await postChecklistAdminDoneAPI(payload)
         data = result.data
@@ -298,7 +299,8 @@ function HistoryPage() {
       } else if (type === "maintenance") {
         const payload = selectedMaintenanceItems.map(item => ({
           task_id: item.task_id,
-          remarks: maintAdminRemarks[item.task_id] || ""
+          remarks: maintAdminRemarks[item.task_id] || "",
+          approvedBy: localStorage.getItem("user-name") || "Admin"
         }))
         const result = await postMaintenanceAdminDoneAPI(payload)
         data = result.data
@@ -306,7 +308,8 @@ function HistoryPage() {
       } else {
         const payload = selectedDelegationItems.map(item => ({
           id: item.id,
-          remarks: adminRemarks[item.id] || ""
+          remarks: adminRemarks[item.id] || "",
+          approvedBy: localStorage.getItem("user-name") || "Admin"
         }))
         const result = await postDelegationAdminDoneAPI(payload)
         data = result.data
@@ -961,6 +964,9 @@ function HistoryPage() {
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">M-Dept</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">M-Div</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-green-50">Submitted By</th>
+                    {approvalStatusFilter === 'approved' && (
+                      <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-purple-50">Approved By</th>
+                    )}
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-green-50">Submission Time</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Frequency</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Proof</th>
@@ -1053,6 +1059,11 @@ function HistoryPage() {
                         <td className="px-2 sm:px-3 py-2 sm:py-4 bg-green-50" data-label="Submitted By">
                           <div className="text-xs sm:text-sm text-gray-900 font-medium">{item.submitted_by || "—"}</div>
                         </td>
+                        {approvalStatusFilter === 'approved' && (
+                          <td className="px-2 sm:px-3 py-2 sm:py-4 bg-purple-50" data-label="Approved By">
+                            <div className="text-xs sm:text-sm text-purple-700 font-bold">{item.approved_by || "—"}</div>
+                          </td>
+                        )}
                         <td className="px-2 sm:px-3 py-2 sm:py-4 bg-green-50" data-label="Submission Time">
                           <div className="text-xs sm:text-sm text-gray-900">
                             {item.submission_date ? (() => {
@@ -1122,7 +1133,7 @@ function HistoryPage() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={isSuperAdmin ? 18 : 16} className="px-4 sm:px-6 py-4 text-center text-gray-500 text-xs sm:text-sm">
+                      <td colSpan={(isSuperAdmin ? 18 : 16) - (approvalStatusFilter === 'approved' ? 0 : 1)} className="px-4 sm:px-6 py-4 text-center text-gray-500 text-xs sm:text-sm">
                         {searchTerm || selectedMembers.length > 0 || startDate || endDate
                           ? "No records matching your filters"
                           : "No maintenance records found"}
@@ -1170,6 +1181,9 @@ function HistoryPage() {
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Frequency</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-green-50">Submission Date</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-green-50">Submitted By</th>
+                    {approvalStatusFilter === 'approved' && (
+                      <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-purple-50">Approved By</th>
+                    )}
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50">Status</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task ID</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
@@ -1273,6 +1287,11 @@ function HistoryPage() {
                         <td className="px-2 sm:px-3 py-2 sm:py-4 bg-green-50" data-label="Submitted By">
                            <div className="text-xs sm:text-sm text-gray-900 font-medium">{historyItem.submitted_by || "—"}</div>
                         </td>
+                        {approvalStatusFilter === 'approved' && (
+                          <td className="px-2 sm:px-3 py-2 sm:py-4 bg-purple-50" data-label="Approved By">
+                             <div className="text-xs sm:text-sm text-purple-700 font-bold">{historyItem.approved_by || "—"}</div>
+                          </td>
+                        )}
                         <td className="px-2 sm:px-3 py-2 sm:py-4 bg-blue-50" data-label="Status">
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                             historyItem.status === "yes"
@@ -1334,7 +1353,7 @@ function HistoryPage() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={isSuperAdmin ? 17 : 15} className="px-4 sm:px-6 py-4 text-center text-gray-500 text-xs sm:text-sm">
+                      <td colSpan={(isSuperAdmin ? 17 : 15) - (approvalStatusFilter === 'approved' ? 0 : 1)} className="px-4 sm:px-6 py-4 text-center text-gray-500 text-xs sm:text-sm">
                         {searchTerm || selectedMembers.length > 0 || startDate || endDate
                           ? "No records matching your filters"
                           : "No completed records found"}
@@ -1366,6 +1385,9 @@ function HistoryPage() {
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50">Status</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-yellow-50">Created At</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-green-50">Submitted By</th>
+                    {approvalStatusFilter === 'approved' && (
+                      <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-purple-50">Approved By</th>
+                    )}
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Extend</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">File</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">Admin Status</th>
@@ -1434,6 +1456,11 @@ function HistoryPage() {
                         <td className="px-2 sm:px-3 py-2 sm:py-4 bg-green-50" data-label="Submitted By">
                            <div className="text-xs sm:text-sm text-gray-900 font-medium">{item.submitted_by || "—"}</div>
                         </td>
+                        {approvalStatusFilter === 'approved' && (
+                          <td className="px-2 sm:px-3 py-2 sm:py-4 bg-purple-50" data-label="Approved By">
+                             <div className="text-xs sm:text-sm text-purple-700 font-bold">{item.approved_by || "—"}</div>
+                          </td>
+                        )}
                         <td className="px-2 sm:px-3 py-2 sm:py-4" data-label="Extend">
                           <div className="text-xs sm:text-sm text-gray-900">
                             {item.next_extend_date ? formatDateForDisplay(item.next_extend_date) : "—"}
@@ -1511,7 +1538,7 @@ function HistoryPage() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={isSuperAdmin ? 16 : 14} className="px-4 sm:px-6 py-4 text-center text-gray-500 text-xs sm:text-sm">
+                      <td colSpan={(isSuperAdmin ? 16 : 14) - (approvalStatusFilter === 'approved' ? 0 : 1)} className="px-4 sm:px-6 py-4 text-center text-gray-500 text-xs sm:text-sm">
                         {searchTerm || startDate || endDate
                           ? "No records matching your filters"
                           : "No delegation records found"}

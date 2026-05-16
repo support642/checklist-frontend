@@ -139,12 +139,20 @@ const BASE_URL = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5050/
 // =======================================================
 // 1️⃣ FETCH USERS
 // =======================================================
-export const fetchUserDetailsApi = async (page = 1, limit = 50, search = '') => {
+export const fetchUserDetailsApi = async (page = 1, limit = 50, search = '', requesterContext = {}) => {
   try {
     let url = `${BASE_URL}/users?page=${page}&limit=${limit}`;
     if (search) {
       url += `&search=${encodeURIComponent(search)}`;
     }
+    
+    // Add role-based filtering context
+    const { requesterRole, requesterUnit, requesterDivision, requesterDepartment } = requesterContext;
+    if (requesterRole) url += `&requesterRole=${encodeURIComponent(requesterRole)}`;
+    if (requesterUnit) url += `&requesterUnit=${encodeURIComponent(requesterUnit)}`;
+    if (requesterDivision) url += `&requesterDivision=${encodeURIComponent(requesterDivision)}`;
+    if (requesterDepartment) url += `&requesterDepartment=${encodeURIComponent(requesterDepartment)}`;
+
     const response = await authFetch(url);
     return await response.json();
   } catch (error) {

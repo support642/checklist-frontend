@@ -13,7 +13,7 @@ export const fetchMaintenanceDataSortByDate = async (page = 1, search = '', star
     const divisionLocal = localStorage.getItem("division");
 
     let url = `${BASE_URL}?page=${page}&username=${username}&role=${role}&department=${department}&unit=${unit}&division=${divisionLocal}&search=${encodeURIComponent(search)}`;
-    
+
     if (startDate) url += `&startDate=${startDate}`;
     if (endDate) url += `&endDate=${endDate}`;
     if (status !== 'all') url += `&status=${status}`;
@@ -36,9 +36,9 @@ export const fetchMaintenanceDataSortByDate = async (page = 1, search = '', star
     }
 
     const json = await response.json();
-    return { 
-        data: json.data || [], 
-        totalCount: json.totalCount || 0, 
+    return {
+        data: json.data || [],
+        totalCount: json.totalCount || 0,
         page: json.page || page,
         todayCount: json.todayCount || 0,
         overdueCount: json.overdueCount || 0
@@ -57,7 +57,7 @@ export const fetchMaintenanceDataForHistory = async (page = 1, search = "", star
     const limit = 50;
 
     let url = `${BASE_URL}/history?page=${page}&limit=${limit}&username=${username}&role=${role}&department=${department}&unit=${unit}&division=${divisionLocal}&search=${encodeURIComponent(search)}`;
-    
+
     if (startDate) url += `&startDate=${startDate}`;
     if (endDate) url += `&endDate=${endDate}`;
     if (name !== 'all') url += `&nameFilter=${encodeURIComponent(name)}`;

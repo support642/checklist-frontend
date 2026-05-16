@@ -139,17 +139,18 @@ const RequestForm = () => {
     fetchData();
   }, []);
 
-  const uniqueDivisions = [...new Set(allMachines.map(m => m.machine_division).filter(Boolean))].sort();
+  const uniqueDivisions = [...new Set(allMachines.map(m => m.machine_division?.trim()).filter(Boolean))].sort();
   const availableDepartments = [...new Set(allMachines
     .filter(m => !formData.machine_division || m.machine_division === formData.machine_division)
-    .map(m => m.machine_department)
+    .map(m => m.machine_department?.trim())
     .filter(Boolean)
   )].sort();
-  const availableMachines = allMachines
+  const availableMachines = [...new Set(allMachines
     .filter(m => !formData.machine_division || m.machine_division === formData.machine_division)
     .filter(m => !formData.machine_department || m.machine_department === formData.machine_department)
-    .map(m => m.machine_name)
-    .sort();
+    .map(m => m.machine_name?.trim())
+    .filter(Boolean)
+  )].sort();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -296,7 +297,7 @@ const RequestForm = () => {
                       className="w-full rounded-md border border-purple-200 p-2.5 pl-10 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 appearance-none bg-white font-medium text-slate-700"
                     >
                       <option value="">Select Division</option>
-                      {uniqueDivisions.map(div => <option key={div} value={div}>{div}</option>)}
+                      {uniqueDivisions.map((div, i) => <option key={`${div}-${i}`} value={div}>{div}</option>)}
                     </select>
                     <Database className="absolute left-3 top-2.5 h-5 w-5 text-purple-400" />
                   </div>
@@ -321,7 +322,7 @@ const RequestForm = () => {
                       className="w-full rounded-md border border-purple-200 p-2.5 pl-10 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 appearance-none bg-white font-medium text-slate-700"
                     >
                       <option value="">Select Department</option>
-                      {availableDepartments.map(dept => <option key={dept} value={dept}>{dept}</option>)}
+                      {availableDepartments.map((dept, i) => <option key={`${dept}-${i}`} value={dept}>{dept}</option>)}
                     </select>
                     <Settings className="absolute left-3 top-2.5 h-5 w-5 text-purple-400" />
                   </div>
@@ -343,7 +344,7 @@ const RequestForm = () => {
                     className="w-full rounded-md border border-purple-200 p-2.5 pl-10 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 appearance-none bg-white font-medium text-slate-700"
                   >
                     <option value="">Select Machine</option>
-                    {availableMachines.map(name => <option key={name} value={name}>{name}</option>)}
+                    {availableMachines.map((name, i) => <option key={`${name}-${i}`} value={name}>{name}</option>)}
                   </select>
                   <CheckSquare className="absolute left-3 top-2.5 h-5 w-5 text-purple-400" />
                 </div>
