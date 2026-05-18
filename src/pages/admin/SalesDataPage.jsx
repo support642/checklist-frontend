@@ -644,10 +644,14 @@ function AccountDataPage() {
   }
 
   const getFilteredMembersList = () => {
-    if ((userRole === "admin" || userRole === "div_admin")) {
-      return doerName
+    const doers = (doerName || []).map(member => {
+      return (typeof member === 'string' ? member : member?.user_name) || '';
+    }).filter(Boolean);
+
+    if (userRole === "admin" || userRole === "div_admin") {
+      return doers;
     } else {
-      return doerName.filter((member) => (member?.user_name || member).toLowerCase() === username.toLowerCase())
+      return doers.filter((member) => member.toLowerCase() === (username || '').toLowerCase());
     }
   }
 
@@ -1359,9 +1363,12 @@ const handleSubmit = async () => {
                     <div className="max-h-48 overflow-y-auto">
                       <button type="button" onClick={() => { setNameFilter('all'); setNameDropdownOpen(false); setNameSearchTerm(''); }} className={`w-full text-left px-3 py-2 text-sm hover:bg-purple-50 transition-colors ${nameFilter === 'all' ? 'bg-purple-100 text-purple-700 font-medium' : 'text-gray-700'}`}>All Names</button>
                       {doerName && doerName
-                        .filter(name => (name?.user_name || name).toLowerCase().includes(nameSearchTerm.toLowerCase()))
+                        .filter(name => {
+                          const displayName = (typeof name === 'string' ? name : name?.user_name) || '';
+                          return displayName.toLowerCase().includes(nameSearchTerm.toLowerCase());
+                        })
                         .map((name, index) => {
-                          const displayName = name?.user_name || name;
+                          const displayName = (typeof name === 'string' ? name : name?.user_name) || '';
                           return (
                             <button 
                               type="button" 
@@ -1395,7 +1402,7 @@ const handleSubmit = async () => {
                     </div>
                     <div className="max-h-48 overflow-y-auto">
                       <button type="button" onClick={() => { setDivisionFilter('all'); setDivisionDropdownOpen(false); setDivisionSearchTerm(''); }} className={`w-full text-left px-3 py-2 text-sm hover:bg-purple-50 transition-colors ${divisionFilter === 'all' ? 'bg-purple-100 text-purple-700 font-medium' : 'text-gray-700'}`}>All Divisions</button>
-                      {uniqueDivisions.filter(d => d.toLowerCase().includes(divisionSearchTerm.toLowerCase())).map((div, index) => (
+                      {uniqueDivisions.filter(d => (d || '').toLowerCase().includes(divisionSearchTerm.toLowerCase())).map((div, index) => (
                         <button type="button" key={index} onClick={() => { setDivisionFilter(div); setDivisionDropdownOpen(false); setDivisionSearchTerm(''); }} className={`w-full text-left px-3 py-2 text-sm hover:bg-purple-50 transition-colors ${divisionFilter === div ? 'bg-purple-100 text-purple-700 font-medium' : 'text-gray-700'}`}>{div}</button>
                       ))}
                     </div>
@@ -1419,7 +1426,7 @@ const handleSubmit = async () => {
                     </div>
                     <div className="max-h-48 overflow-y-auto">
                       <button type="button" onClick={() => { setDepartmentFilter('all'); setDepartmentDropdownOpen(false); setDepartmentSearchTerm(''); }} className={`w-full text-left px-3 py-2 text-sm hover:bg-purple-50 transition-colors ${departmentFilter === 'all' ? 'bg-purple-100 text-purple-700 font-medium' : 'text-gray-700'}`}>All Departments</button>
-                      {uniqueDepartments.filter(d => d.toLowerCase().includes(departmentSearchTerm.toLowerCase())).map((dept, index) => (
+                      {uniqueDepartments.filter(d => (d || '').toLowerCase().includes(departmentSearchTerm.toLowerCase())).map((dept, index) => (
                         <button type="button" key={index} onClick={() => { setDepartmentFilter(dept); setDepartmentDropdownOpen(false); setDepartmentSearchTerm(''); }} className={`w-full text-left px-3 py-2 text-sm hover:bg-purple-50 transition-colors ${departmentFilter === dept ? 'bg-purple-100 text-purple-700 font-medium' : 'text-gray-700'}`}>{dept}</button>
                       ))}
                     </div>

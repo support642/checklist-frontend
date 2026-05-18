@@ -184,6 +184,13 @@ const formatDateToDDMMYYYY = (date) => {
   return `${day}/${month}/${year}`;
 };
 
+const parseDateFromDDMMYYYY = (dateStr) => {
+  if (!dateStr || typeof dateStr !== "string") return null;
+  const parts = dateStr.split("/");
+  if (parts.length !== 3) return null;
+  return new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+};
+
 export default function AssignTask() {
   const { department } = useSelector((state) => state.assignTask)
   const { doerName } = useSelector((state) => state.assignTask)
@@ -274,7 +281,10 @@ export default function AssignTask() {
     
     return canAssignToOthers
       ? doerName
-      : doerName.filter(doer => doer?.user_name?.trim().toLowerCase() === username?.trim().toLowerCase());
+      : (doerName || []).filter(doer => {
+          const nameStr = (typeof doer === 'string' ? doer : doer?.user_name) || '';
+          return nameStr.trim().toLowerCase() === (username || '').trim().toLowerCase();
+        });
   }, [doerName, username, formData.department, userRole]);
 
   // Cascading dropdown data
@@ -461,11 +471,9 @@ useEffect(() => {
     }
 
     // Find the next working day after target date
-    const targetDateObj = new Date(
-      targetDateStr.split("/").reverse().join("-")
-    );
+    const targetDateObj = parseDateFromDDMMYYYY(targetDateStr);
     const nextWorkingDay = workingDays.find((day) => {
-      const dayObj = new Date(day.split("/").reverse().join("-"));
+      const dayObj = parseDateFromDDMMYYYY(day);
       return dayObj > targetDateObj;
     });
 
@@ -538,7 +546,7 @@ useEffect(() => {
     if (formData.frequency === "one-time") {
       const taskDateStr = findNextWorkingDay(selectedDate);
       const taskDateTimeStr = formatDateTimeForStorage(
-        new Date(taskDateStr.split("/").reverse().join("-")),
+        parseDateFromDDMMYYYY(taskDateStr),
         time
       );
 
@@ -586,49 +594,49 @@ useEffect(() => {
           case "daily":
             taskDate = findNextWorkingDay(currentDate);
             if (!taskDate) break; // No more working days available
-            currentDate = addDays(new Date(taskDate.split("/").reverse().join("-")), 1);
+            currentDate = addDays(parseDateFromDDMMYYYY(taskDate), 1);
             break;
 
           case "tertiary":
             taskDate = findNextWorkingDay(currentDate);
             if (!taskDate) break; // No more working days available
-            currentDate = addDays(new Date(taskDate.split("/").reverse().join("-")), 3);
+            currentDate = addDays(parseDateFromDDMMYYYY(taskDate), 3);
             break;
 
           case "weekly":
             taskDate = findNextWorkingDay(currentDate);
             if (!taskDate) break; // No more working days available
-            currentDate = addDays(new Date(taskDate.split("/").reverse().join("-")), 7);
+            currentDate = addDays(parseDateFromDDMMYYYY(taskDate), 7);
             break;
 
           case "fortnightly":
             taskDate = findNextWorkingDay(currentDate);
             if (!taskDate) break; // No more working days available
-            currentDate = addDays(new Date(taskDate.split("/").reverse().join("-")), 14);
+            currentDate = addDays(parseDateFromDDMMYYYY(taskDate), 14);
             break;
 
           case "monthly":
             taskDate = findNextWorkingDay(currentDate);
             if (!taskDate) break; // No more working days available
-            currentDate = addMonths(new Date(taskDate.split("/").reverse().join("-")), 1);
+            currentDate = addMonths(parseDateFromDDMMYYYY(taskDate), 1);
             break;
 
           case "quarterly":
             taskDate = findNextWorkingDay(currentDate);
             if (!taskDate) break; // No more working days available
-            currentDate = addMonths(new Date(taskDate.split("/").reverse().join("-")), 3);
+            currentDate = addMonths(parseDateFromDDMMYYYY(taskDate), 3);
             break;
 
           case "half-yearly":
             taskDate = findNextWorkingDay(currentDate);
             if (!taskDate) break; // No more working days available
-            currentDate = addMonths(new Date(taskDate.split("/").reverse().join("-")), 6);
+            currentDate = addMonths(parseDateFromDDMMYYYY(taskDate), 6);
             break;
 
           case "yearly":
             taskDate = findNextWorkingDay(currentDate);
             if (!taskDate) break; // No more working days available
-            currentDate = addYears(new Date(taskDate.split("/").reverse().join("-")), 1);
+            currentDate = addYears(parseDateFromDDMMYYYY(taskDate), 1);
             break;
 
           case "end-of-1st-week":
@@ -638,14 +646,14 @@ useEffect(() => {
             const weekNum = parseInt(formData.frequency.split("-")[2]);
             taskDate = findEndOfWeekDate(currentDate, weekNum);
             if (!taskDate) break; // No more working days available
-            currentDate = addMonths(new Date(taskDate.split("/").reverse().join("-")), 1);
+            currentDate = addMonths(parseDateFromDDMMYYYY(taskDate), 1);
             break;
           }
 
           case "end-of-last-week":
             taskDate = findEndOfWeekDate(currentDate, -1);
             if (!taskDate) break; // No more working days available
-            currentDate = addMonths(new Date(taskDate.split("/").reverse().join("-")), 1);
+            currentDate = addMonths(parseDateFromDDMMYYYY(taskDate), 1);
             break;
 
           default:
@@ -659,7 +667,7 @@ useEffect(() => {
         }
 
         const taskDateTimeStr = formatDateTimeForStorage(
-          new Date(taskDate.split("/").reverse().join("-")),
+          parseDateFromDDMMYYYY(taskDate),
           time
         );
 
@@ -736,7 +744,7 @@ useEffect(() => {
       if (formData.frequency === "one-time") {
         const taskDateStr = findNextWorkingDay(selectedDate);
         const taskDateTimeStr = formatDateTimeForStorage(
-          new Date(taskDateStr.split("/").reverse().join("-")),
+          parseDateFromDDMMYYYY(taskDateStr),
           time
         );
 
@@ -786,42 +794,42 @@ useEffect(() => {
             case "daily":
               taskDate = findNextWorkingDay(currentDate);
               if (!taskDate) break;
-              currentDate = addDays(new Date(taskDate.split("/").reverse().join("-")), 1);
+              currentDate = addDays(parseDateFromDDMMYYYY(taskDate), 1);
               break;
             case "tertiary":
               taskDate = findNextWorkingDay(currentDate);
               if (!taskDate) break;
-              currentDate = addDays(new Date(taskDate.split("/").reverse().join("-")), 3);
+              currentDate = addDays(parseDateFromDDMMYYYY(taskDate), 3);
               break;
             case "weekly":
               taskDate = findNextWorkingDay(currentDate);
               if (!taskDate) break;
-              currentDate = addDays(new Date(taskDate.split("/").reverse().join("-")), 7);
+              currentDate = addDays(parseDateFromDDMMYYYY(taskDate), 7);
               break;
             case "fortnightly":
               taskDate = findNextWorkingDay(currentDate);
               if (!taskDate) break;
-              currentDate = addDays(new Date(taskDate.split("/").reverse().join("-")), 14);
+              currentDate = addDays(parseDateFromDDMMYYYY(taskDate), 14);
               break;
             case "monthly":
               taskDate = findNextWorkingDay(currentDate);
               if (!taskDate) break;
-              currentDate = addMonths(new Date(taskDate.split("/").reverse().join("-")), 1);
+              currentDate = addMonths(parseDateFromDDMMYYYY(taskDate), 1);
               break;
             case "quarterly":
               taskDate = findNextWorkingDay(currentDate);
               if (!taskDate) break;
-              currentDate = addMonths(new Date(taskDate.split("/").reverse().join("-")), 3);
+              currentDate = addMonths(parseDateFromDDMMYYYY(taskDate), 3);
               break;
             case "half-yearly":
               taskDate = findNextWorkingDay(currentDate);
               if (!taskDate) break;
-              currentDate = addMonths(new Date(taskDate.split("/").reverse().join("-")), 6);
+              currentDate = addMonths(parseDateFromDDMMYYYY(taskDate), 6);
               break;
             case "yearly":
               taskDate = findNextWorkingDay(currentDate);
               if (!taskDate) break;
-              currentDate = addYears(new Date(taskDate.split("/").reverse().join("-")), 1);
+              currentDate = addYears(parseDateFromDDMMYYYY(taskDate), 1);
               break;
             case "end-of-1st-week":
             case "end-of-2nd-week":
@@ -830,13 +838,13 @@ useEffect(() => {
               const weekNum = parseInt(formData.frequency.split("-")[2]);
               taskDate = findEndOfWeekDate(currentDate, weekNum);
               if (!taskDate) break;
-              currentDate = addMonths(new Date(taskDate.split("/").reverse().join("-")), 1);
+              currentDate = addMonths(parseDateFromDDMMYYYY(taskDate), 1);
               break;
             }
             case "end-of-last-week":
               taskDate = findEndOfWeekDate(currentDate, -1);
               if (!taskDate) break;
-              currentDate = addMonths(new Date(taskDate.split("/").reverse().join("-")), 1);
+              currentDate = addMonths(parseDateFromDDMMYYYY(taskDate), 1);
               break;
             default:
               currentDate = endDate;
@@ -848,7 +856,7 @@ useEffect(() => {
           }
 
           const taskDateTimeStr = formatDateTimeForStorage(
-            new Date(taskDate.split("/").reverse().join("-")),
+            parseDateFromDDMMYYYY(taskDate),
             time
           );
 

@@ -441,12 +441,14 @@ function HistoryPage() {
   }
 
   const getFilteredMembersList = () => {
+    const doers = (doerName || []).map(member => {
+      return (typeof member === 'string' ? member : member?.user_name) || '';
+    }).filter(Boolean);
+
     if (userRole === "admin" || userRole === "div_admin") {
-      return doerName.map(member => member?.user_name || member)
+      return doers;
     } else {
-      return doerName
-        .map(member => member?.user_name || member)
-        .filter((member) => member.toLowerCase() === username.toLowerCase())
+      return doers.filter((member) => member.toLowerCase() === (username || '').toLowerCase());
     }
   }
 
