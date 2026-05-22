@@ -1,3 +1,5 @@
+/* eslint-disable no-unused-vars */
+/* eslint-disable no-undef */
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
@@ -169,6 +171,7 @@ export default function StaffTasksTable({
   const handleOpenModal = useCallback(async (staffOrName, customFrom = null, customTo = null) => {
     const staffName = typeof staffOrName === 'string' ? staffOrName : staffOrName.name;
     const staffData = typeof staffOrName === 'string' ? null : staffOrName;
+    let currentStaffData = staffData;
 
     setSelectedStaffName(staffName);
     if (staffData) {
@@ -176,7 +179,10 @@ export default function StaffTasksTable({
     } else {
       // If we only have a name (e.g. from refresh), try to find it in current list
       const found = staffMembers.find(s => s.name === staffName);
-      if (found) setSelectedStaffData(found);
+      if (found) {
+        setSelectedStaffData(found);
+        currentStaffData = found;
+      }
     }
 
     setIsModalOpen(true);
@@ -193,11 +199,11 @@ export default function StaffTasksTable({
     try {
       // Fetch Checklist, Delegation, and conditionally Maintenance tasks for the report
       const fetchPromises = [
-        fetchStaffDetailsApi('checklist', staffName, selectedMonthYear, tillDate, fromDate, toDate),
-        fetchStaffDetailsApi('delegation', staffName, selectedMonthYear, tillDate, fromDate, toDate),
+        fetchStaffDetailsApi('checklist', staffName, selectedMonthYear, tillDate, fromDate, toDate, currentStaffData?.division, currentStaffData?.department),
+        fetchStaffDetailsApi('delegation', staffName, selectedMonthYear, tillDate, fromDate, toDate, currentStaffData?.division, currentStaffData?.department),
       ];
       if (hasMaintenanceAccess) {
-        fetchPromises.push(fetchStaffDetailsApi('maintenance', staffName, selectedMonthYear, tillDate, fromDate, toDate));
+        fetchPromises.push(fetchStaffDetailsApi('maintenance', staffName, selectedMonthYear, tillDate, fromDate, toDate, currentStaffData?.division, currentStaffData?.department));
       }
       const [checklistDetails, delegationDetails, maintenanceDetails] = await Promise.all(fetchPromises);
 
@@ -797,11 +803,12 @@ const loadStaffData = useCallback(async () => {
       }
 
       // Define CSV headers
-      const headers = ["SEQ NO.", "NAME", "DIVISION", "DEPARTMENT", "TOTAL TASKS", "COMPLETED", "PENDING", "OVERDUE", "DONE ON TIME", "WORK DONE SCORE"];
+      const headers = ["SEQ NO.", "NAME", "DIVISION", "DEPARTMENT", "TOTAL TASKS", "COMPLETED", "PENDING", "OVERDUE", "DONE ON TIME", "DONE ON TIME SCORE (%)", "WORK DONE SCORE"];
       
       // Map data to rows
       const rows = allData.map((staff, index) => {
         const score = staff.completedTasks > 0 ? Math.round((staff.completedTasks / staff.totalTasks) * 100) : 0;
+        const doneOnTimeScore = staff.completedTasks > 0 ? Math.round((staff.doneOnTime / staff.completedTasks) * 100) : 0;
         return [
           index + 1,
           staff.name,
@@ -812,6 +819,7 @@ const loadStaffData = useCallback(async () => {
           staff.pendingTasks,
           staff.overdueTasks || 0,
           staff.doneOnTime || 0,
+          `${doneOnTimeScore}%`,
           `${score}%`
         ];
       });
@@ -875,11 +883,12 @@ const loadStaffData = useCallback(async () => {
       doc.text(`${new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })} ${new Date().toLocaleTimeString()}`, 14, 27);
       
       // Define table headers
-      const tableColumn = ["Seq", "Name", "Division", "Department", "Total", "Done", "Pending", "Overdue", "On Time", "Score"];
+      const tableColumn = ["Seq", "Name", "Division", "Department", "Total", "Done", "Pending", "Overdue", "On Time", "On Time Score", "Score"];
       
       // Map data to rows
       const tableRows = allData.map((staff, index) => {
         const score = staff.completedTasks > 0 ? Math.round((staff.completedTasks / staff.totalTasks) * 100) : 0;
+        const doneOnTimeScore = staff.completedTasks > 0 ? Math.round((staff.doneOnTime / staff.completedTasks) * 100) : 0;
         return [
           index + 1,
           staff.name,
@@ -890,6 +899,7 @@ const loadStaffData = useCallback(async () => {
           staff.pendingTasks,
           staff.overdueTasks || 0,
           staff.doneOnTime || 0,
+          `${doneOnTimeScore}%`,
           `${score}%`
         ];
       });

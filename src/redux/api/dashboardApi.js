@@ -360,7 +360,9 @@ export const fetchStaffDetailsApi = async (
   monthYear = "",
   tillDate = "",
   startDate = "",
-  endDate = ""
+  endDate = "",
+  targetDivision = "",
+  targetDepartment = ""
 ) => {
   const role = localStorage.getItem("role");
   const username = localStorage.getItem("user-name");
@@ -382,6 +384,8 @@ export const fetchStaffDetailsApi = async (
   if (tillDate) params.append('tillDate', tillDate);
   if (startDate) params.append('startDate', startDate);
   if (endDate) params.append('endDate', endDate);
+  if (targetDivision) params.append('targetDivision', targetDivision);
+  if (targetDepartment) params.append('targetDepartment', targetDepartment);
 
   const res = await authFetch(`${BASE_URL1}/details?${params.toString()}`);
   return await res.json();
