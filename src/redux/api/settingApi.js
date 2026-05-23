@@ -147,11 +147,12 @@ export const fetchUserDetailsApi = async (page = 1, limit = 50, search = '', req
     }
     
     // Add role-based filtering context
-    const { requesterRole, requesterUnit, requesterDivision, requesterDepartment } = requesterContext;
+    const { requesterRole, requesterUnit, requesterDivision, requesterDepartment, username } = requesterContext;
     if (requesterRole) url += `&requesterRole=${encodeURIComponent(requesterRole)}`;
     if (requesterUnit) url += `&requesterUnit=${encodeURIComponent(requesterUnit)}`;
     if (requesterDivision) url += `&requesterDivision=${encodeURIComponent(requesterDivision)}`;
     if (requesterDepartment) url += `&requesterDepartment=${encodeURIComponent(requesterDepartment)}`;
+    if (username) url += `&username=${encodeURIComponent(username)}`;
 
     const response = await authFetch(url);
     return await response.json();

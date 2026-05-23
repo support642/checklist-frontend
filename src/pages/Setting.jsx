@@ -448,6 +448,7 @@ const Setting = () => {
       requesterUnit: loginUserData?.unit,
       requesterDivision: loginUserData?.division,
       requesterDepartment: loginUserData?.user_access || loginUserData?.department,
+      username: loginUserData?.user_name || localStorage.getItem('user-name')
     };
   }, [currentUserRole, loginUserData]);
 
