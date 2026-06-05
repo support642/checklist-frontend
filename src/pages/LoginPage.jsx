@@ -38,7 +38,6 @@ const LoginPage = () => {
   useEffect(() => {
     if (isLoggedIn && userData && !hasRedirected.current) {
       hasRedirected.current = true;
-      console.log("User Data received:", userData);
 
       localStorage.setItem('user-name', userData.user_name || userData.username || "");
       localStorage.setItem('role', (userData.role || "").toLowerCase());
@@ -58,7 +57,6 @@ const LoginPage = () => {
       localStorage.setItem('session_id', userData.session_id || "");
       localStorage.setItem('user_id', userData.id || "");
 
-      console.log("Stored email:", userEmail);
       
       // Check if there's a redirect location in state
       const from = location.state?.from?.pathname || getDefaultDashboardRoute();

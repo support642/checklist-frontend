@@ -682,7 +682,6 @@ useEffect(() => {
         return
       }
 
-      console.log(`Fetched ${data.length} records successfully`)
 
       const username = localStorage.getItem("user-name")
       const userRole = localStorage.getItem("role")
