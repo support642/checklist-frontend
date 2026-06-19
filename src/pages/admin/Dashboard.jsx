@@ -13,21 +13,16 @@ import TasksOverviewChart from "./dashboard/Chart/TaskOverviewChart.jsx"
 import TasksCompletionChart from "./dashboard/Chart/TaskCompletionChart.jsx"
 import StaffTasksTable from "./dashboard/StaffTaskTable.jsx"
 import {
-  totalTaskInTable,
-  completeTaskInTable,
-  pendingTaskInTable,
-  overdueTaskInTable,
-  notDoneTaskInTable,
-  pendingTodayInTable,
-  pendingUpcomingInTable,
-  pendingOverdueInTable
+  fetchDashboardSummaryCounts,
+  resetDashboardState
 } from "../../redux/slice/dashboardSlice.js"
 import {
   fetchDashboardDataApi,
   getUniqueDepartmentsApi,
   getStaffNamesByDepartmentApi,
   fetchChecklistDataByDateRangeApi,
-  getChecklistDateRangeStatsApi
+  getChecklistDateRangeStatsApi,
+  fetchDepartmentReportSummaryApi
 } from "../../redux/api/dashboardApi.js"
 import { fetchDepartmentDataApi } from "../../redux/api/settingApi.js"
 import MaintenanceView from "../../components/Maintenance/MaintenanceView.jsx"
@@ -56,7 +51,7 @@ export default function AdminDashboard() {
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [hasMoreData, setHasMoreData] = useState(true)
   const [allTasks, setAllTasks] = useState([])
-  const [batchSize] = useState(1000)
+  const [batchSize] = useState(2000)
   const [departmentFilter, setDepartmentFilter] = useState("all")
   const [availableDepartments, setAvailableDepartments] = useState([])
 
@@ -95,6 +90,8 @@ export default function AdminDashboard() {
     filtered: false,
   })
 
+  const [isExporting, setIsExporting] = useState(false)
+
   const { 
     dashboard, 
     totalTask, 
@@ -104,7 +101,10 @@ export default function AdminDashboard() {
     pendingToday,
     pendingUpcoming,
     pendingOverdue,
-    notDoneTask
+    notDoneTask,
+    completedRatingOne,
+    completedRatingTwo,
+    completedRatingThreePlus,
   } = useSelector((state) => state.dashBoard)
   const { profile } = useSelector((state) => state.userProfile)
   const dispatch = useDispatch()
@@ -211,67 +211,316 @@ useEffect(() => {
   };
 
   // CSV Export Logic
-  const handleExportCSV = () => {
-    const tasks = departmentData.allTasks;
-    if (!tasks || tasks.length === 0) {
-      alert("No data available to export.");
-      return;
-    }
+  const handleExportCSV = async (statusType = "all") => {
+    setIsExporting(true);
+    try {
+      // Fetch all matching tasks using page = 1 and limit = 10000
+      const allTasksData = await fetchDashboardDataApi(
+        dashboardType,
+        dashboardStaffFilter,
+        1,
+        10000,
+        "all",
+        departmentFilter,
+        unitFilter,
+        divisionFilter,
+        dateRange.startDate,
+        dateRange.endDate
+      );
 
-    // CSV Headers
-    const headers = [
-      "Task ID",
-      "Task Description",
-      "Assigned To",
-      "Planned Date",
-      "Status",
-      "Submission Date",
-      "Frequency"
-    ];
-
-    // Helper to escape CSV fields (handle commas and quotes)
-    const escapeCSV = (val) => {
-      if (val === null || val === undefined) return "";
-      const str = String(val);
-      if (str.includes(",") || str.includes("\"") || str.includes("\n")) {
-        return `"${str.replace(/"/g, "\"\"")}"`;
+      if (!allTasksData || allTasksData.length === 0) {
+        alert("No data available to export.");
+        setIsExporting(false);
+        return;
       }
-      return str;
-    };
 
-    // Generate CSV Rows
-    const csvRows = tasks.map(task => [
-      escapeCSV(task.id),
-      escapeCSV(task.title),
-      escapeCSV(task.assignedTo),
-      escapeCSV(task.taskStartDate),
-      escapeCSV(task.status?.toUpperCase()),
-      escapeCSV(task.submission_date ? formatDateToDDMMYYYY(new Date(task.submission_date)) : "N/A"),
-      escapeCSV(task.frequency)
-    ]);
+      const username = localStorage.getItem("user-name");
+      const userRole = localStorage.getItem("role");
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
 
-    // Combine into final string
-    const csvString = [
-      headers.join(","),
-      ...csvRows.map(row => row.join(","))
-    ].join("\n");
+      // Admin-level restrictions: Filter data by department
+      const userAccess = localStorage.getItem("user_access") || "";
+      const userDepartments = userAccess ? userAccess.split(',').map(dept => dept.trim().toLowerCase()) : [];
+      
+      let filteredData = allTasksData;
+      if (userRole === "admin" && userDepartments.length > 0) {
+        filteredData = allTasksData.filter(task => {
+          const taskDept = (task.department || "").toLowerCase().trim();
+          return userDepartments.includes(taskDept);
+        });
+      }
 
-    // Trigger Download
-    const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    
-    // Create meaningful filename
-    const dateStr = new Date().toISOString().split('T')[0];
-    const moduleStr = dashboardType.charAt(0).toUpperCase() + dashboardType.slice(1);
-    const filterStr = dashboardStaffFilter !== "all" ? `_${dashboardStaffFilter}` : "";
-    
-    link.setAttribute("href", url);
-    link.setAttribute("download", `Task_History_${moduleStr}${filterStr}_${dateStr}.csv`);
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      // For standard users, filter to only their tasks
+      if (userRole === "user" && username) {
+        filteredData = filteredData.filter(
+          (task) => task.name && task.name.toLowerCase() === username.toLowerCase()
+        );
+      }
+
+      // Apply dynamic status logic & mapping
+      const processedTasks = filteredData
+        .map((task) => {
+          const dateField = dashboardType === "delegation" ? task.planned_date : task.task_start_date;
+          const taskStartDate = parseTaskStartDate(dateField);
+          const completionDate = task.submission_date ? parseTaskStartDate(task.submission_date) : null;
+
+          let status = "pending";
+          if (completionDate) {
+            status = "completed";
+          } else if (taskStartDate && isDateInPast(taskStartDate)) {
+            status = "overdue";
+          }
+
+          // Override for checklist if status field says "Yes" or "yes"
+          if (dashboardType === "checklist" && task.status?.toLowerCase() === 'yes') {
+            status = "completed";
+          }
+
+          const shouldCountForCards = 
+            (taskStartDate && taskStartDate <= today) || 
+            (dashboardType === "delegation") ||
+            (status === "completed");
+
+          if (!shouldCountForCards) {
+            return null;
+          }
+
+          return {
+            id: task.task_id,
+            title: task.task_description,
+            assignedTo: task.name || "Unassigned",
+            department: task.department || "N/A",
+            division: task.division || "N/A",
+            taskStartDate: formatDateToDDMMYYYY(taskStartDate),
+            originalTaskStartDate: task.task_start_date,
+            submission_date: task.submission_date,
+            status,
+            frequency: task.frequency || "one-time",
+            rating: task.color_code_for || 0,
+            is_on_time: task.is_on_time,
+          };
+        })
+        .filter(Boolean);
+
+      // Helper to escape CSV fields (handle commas and quotes)
+      const escapeCSV = (val) => {
+        if (val === null || val === undefined) return "";
+        const str = String(val);
+        if (str.includes(",") || str.includes("\"") || str.includes("\n")) {
+          return `"${str.replace(/"/g, "\"\"")}"`;
+        }
+        return str;
+      };
+
+      // =====================================================
+      // SUMMARY / DEPARTMENT REPORT MODE
+      // =====================================================
+      if (statusType === "summary") {
+        const summaryData = await fetchDepartmentReportSummaryApi({
+          dashboardType,
+          staffFilter: dashboardStaffFilter,
+          departmentFilter,
+          unitFilter,
+          divisionFilter,
+          role: userRole,
+          username,
+          startDate: dateRange.startDate,
+          endDate: dateRange.endDate
+        });
+
+        // Group tasks by Division → Department
+        const groupMap = {};
+        summaryData.forEach((row) => {
+          const div = (row.division || "N/A").trim();
+          const dept = (row.department || "N/A").trim();
+
+          if (!groupMap[div]) groupMap[div] = {};
+          groupMap[div][dept] = {
+            total: row.total,
+            completed: row.completed,
+            pending: row.pending,
+            overdue: row.overdue
+          };
+        });
+
+        // Build CSV rows
+        const summaryHeaders = [
+          "Row Labels",
+          "Sum of TOTAL TASKS",
+          "Sum of COMPLETED",
+          "Sum of PENDING",
+          "Sum of OVERDUE",
+          "Average of WORK"
+        ];
+
+        const summaryRows = [];
+        let grandTotal = 0, grandCompleted = 0, grandPending = 0, grandOverdue = 0;
+
+        // Sort divisions alphabetically
+        const sortedDivisions = Object.keys(groupMap).sort();
+
+        sortedDivisions.forEach((div) => {
+          const departments = groupMap[div];
+          let divTotal = 0, divCompleted = 0, divPending = 0, divOverdue = 0;
+
+          // Calculate division totals first
+          Object.values(departments).forEach((stats) => {
+            divTotal += stats.total;
+            divCompleted += stats.completed;
+            divPending += stats.pending;
+            divOverdue += stats.overdue;
+          });
+
+          const divWorkPct = divTotal > 0 ? Math.round((divCompleted / divTotal) * 100) : 0;
+
+          // Division header row
+          summaryRows.push([
+            escapeCSV(div),
+            divTotal,
+            divCompleted,
+            divPending,
+            divOverdue,
+            `${divWorkPct}%`
+          ]);
+
+          // Sort departments alphabetically within division
+          const sortedDepts = Object.keys(departments).sort();
+          sortedDepts.forEach((dept) => {
+            const s = departments[dept];
+            const deptWorkPct = s.total > 0 ? Math.round((s.completed / s.total) * 100) : 0;
+            summaryRows.push([
+              escapeCSV(`    ${dept}`),
+              s.total,
+              s.completed,
+              s.pending,
+              s.overdue,
+              `${deptWorkPct}%`
+            ]);
+          });
+
+          grandTotal += divTotal;
+          grandCompleted += divCompleted;
+          grandPending += divPending;
+          grandOverdue += divOverdue;
+        });
+
+        // Grand Total row
+        const grandWorkPct = grandTotal > 0 ? Math.round((grandCompleted / grandTotal) * 100) : 0;
+        summaryRows.push([
+          "Grand Total",
+          grandTotal,
+          grandCompleted,
+          grandPending,
+          grandOverdue,
+          `${grandWorkPct}%`
+        ]);
+
+        const csvString = [
+          summaryHeaders.join(","),
+          ...summaryRows.map(row => row.join(","))
+        ].join("\n");
+
+        // Trigger Download
+        const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        const dateStr = new Date().toISOString().split('T')[0];
+        const moduleStr = dashboardType.charAt(0).toUpperCase() + dashboardType.slice(1);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `Department_Report_${moduleStr}_${dateStr}.csv`);
+        link.style.visibility = "hidden";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        return; // Exit early for summary mode
+      }
+
+      // =====================================================
+      // DETAILED TASK-LEVEL EXPORT (all / completed / pending / overdue)
+      // =====================================================
+      const exportedTasks = processedTasks.filter((task) => {
+        // Status filter (statusType)
+        if (statusType !== "all" && task.status !== statusType) return false;
+        
+        // Local staff filter
+        if (filterStaff !== "all" && task.assignedTo.toLowerCase() !== filterStaff.toLowerCase()) {
+          return false;
+        }
+        
+        // Search query filter
+        if (searchQuery && searchQuery.trim() !== "") {
+          const query = searchQuery.toLowerCase().trim();
+          return (
+            (task.title && task.title.toLowerCase().includes(query)) ||
+            (task.id && task.id.toString().includes(query)) ||
+            (task.assignedTo && task.assignedTo.toLowerCase().includes(query))
+          );
+        }
+        return true;
+      });
+
+      if (exportedTasks.length === 0) {
+        alert(`No ${statusType} tasks found to export.`);
+        setIsExporting(false);
+        return;
+      }
+
+      // CSV Headers
+      const headers = [
+        "Task ID",
+        "Task Description",
+        "Assigned To",
+        "Department",
+        "Division",
+        "Planned Date",
+        "Status",
+        "Submission Date",
+        "Frequency"
+      ];
+
+      // Generate CSV Rows
+      const csvRows = exportedTasks.map(task => [
+        escapeCSV(task.id),
+        escapeCSV(task.title),
+        escapeCSV(task.assignedTo),
+        escapeCSV(task.department),
+        escapeCSV(task.division),
+        escapeCSV(task.taskStartDate),
+        escapeCSV(task.status?.toUpperCase()),
+        escapeCSV(task.submission_date ? formatDateToDDMMYYYY(new Date(task.submission_date)) : "N/A"),
+        escapeCSV(task.frequency)
+      ]);
+
+      // Combine into final string
+      const csvString = [
+        headers.join(","),
+        ...csvRows.map(row => row.join(","))
+      ].join("\n");
+
+      // Trigger Download
+      const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      
+      // Create meaningful filename
+      const dateStr = new Date().toISOString().split('T')[0];
+      const moduleStr = dashboardType.charAt(0).toUpperCase() + dashboardType.slice(1);
+      const filterStr = dashboardStaffFilter !== "all" ? `_${dashboardStaffFilter}` : "";
+      const statusStr = statusType !== "all" ? `_${statusType.toUpperCase()}` : "";
+      
+      link.setAttribute("href", url);
+      link.setAttribute("download", `Task_History_${moduleStr}${filterStr}${statusStr}_${dateStr}.csv`);
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error("Error exporting CSV:", error);
+      alert("Failed to export CSV. Please try again.");
+    } finally {
+      setIsExporting(false);
+    }
   };
 
 
@@ -339,14 +588,14 @@ useEffect(() => {
 
           if (dashboardType === "checklist") {
             // For checklist: Use status field directly
-            if (task.status === 'Yes') {
+            if (task.status?.toLowerCase() === 'yes') {
               completedTasks++;
             } else {
               pendingTasks++;
             }
 
-            // Overdue tasks for checklist: past tasks with status not 'Yes'
-            if (taskStartDate && taskStartDate < todayInProcess && task.status !== 'Yes') {
+            // Overdue tasks for checklist: past tasks with status not 'yes'
+            if (taskStartDate && taskStartDate < todayInProcess && task.status?.toLowerCase() !== 'yes') {
               overdueTasks++;
             }
           } else {
@@ -479,9 +728,9 @@ useEffect(() => {
 
         if (dashboardType === "checklist") {
           // For checklist: Use status field
-          if (task.status === 'Yes') {
+          if (task.status?.toLowerCase() === 'yes') {
             completedTasks++;
-          } else if (task.status === 'No') {
+          } else if (task.status?.toLowerCase() === 'no') {
             notDoneTasks++;
             pendingTasks++; // Not done tasks are also pending
           } else {
@@ -489,8 +738,8 @@ useEffect(() => {
             pendingTasks++;
           }
 
-          // Overdue tasks for checklist: past tasks with status not 'Yes'
-          if (taskDate && taskDate < today && task.status !== 'Yes') {
+          // Overdue tasks for checklist: past tasks with status not 'yes'
+          if (taskDate && taskDate < today && task.status?.toLowerCase() !== 'yes') {
             overdueTasks++;
           }
         } else {
@@ -851,6 +1100,7 @@ useEffect(() => {
             status,
             frequency: task.frequency || "one-time",
             rating: task.color_code_for || 0,
+            is_on_time: task.is_on_time,
           };
         })
         .filter(Boolean);
@@ -932,9 +1182,11 @@ useEffect(() => {
       // Check if we have more data to load
       if (data.length < batchSize) {
         setHasMoreData(false)
+        setIsLoadingMore(false)
+      } else {
+        setCurrentPage(page)
+        fetchDepartmentData(page + 1, true)
       }
-
-      setIsLoadingMore(false)
     } catch (error) {
       console.error(`Error fetching ${dashboardType} data:`, error)
       setIsLoadingMore(false)
@@ -1114,14 +1366,7 @@ useEffect(() => {
       endDate: dateRange.endDate
     };
 
-    dispatch(totalTaskInTable(filterParams));
-    dispatch(completeTaskInTable(filterParams));
-    dispatch(pendingTaskInTable(filterParams));
-    dispatch(overdueTaskInTable(filterParams));
-    dispatch(notDoneTaskInTable(filterParams));
-    dispatch(pendingTodayInTable(filterParams));
-    dispatch(pendingUpcomingInTable(filterParams));
-    dispatch(pendingOverdueInTable(filterParams));
+    dispatch(fetchDashboardSummaryCounts(filterParams));
 
     if (dashboardType === "delegation") {
       dispatch(delegationData({ startDate: dateRange.startDate, endDate: dateRange.endDate }));
@@ -1275,16 +1520,22 @@ useEffect(() => {
 
   // Use displayStats consistently
   const displayStats = {
-    totalTasks: totalTask || 0,
+    totalTasks: dashboardType === "delegation" 
+      ? ((completedRatingOne || 0) + 
+         (completedRatingTwo || 0) + 
+         (completedRatingThreePlus || 0) + 
+         (pendingToday || 0) + 
+         (pendingOverdue || 0))
+      : (totalTask || 0),
     completedTasks: completeTask || 0,
     pendingTasks: pendingTask || 0,
     overdueTasks: overdueTask || 0,
     pendingToday: pendingToday || 0,
     pendingUpcoming: pendingUpcoming || 0,
     pendingOverdue: pendingOverdue || 0,
-    completedRatingOne: departmentData.completedRatingOne || 0,
-    completedRatingTwo: departmentData.completedRatingTwo || 0,
-    completedRatingThreePlus: departmentData.completedRatingThreePlus || 0,
+    completedRatingOne: completedRatingOne || 0,
+    completedRatingTwo: completedRatingTwo || 0,
+    completedRatingThreePlus: completedRatingThreePlus || 0,
     notDoneTasks: notDoneTask || 0,
   };
 
@@ -1305,6 +1556,46 @@ useEffect(() => {
     setActiveModule(module);
     localStorage.setItem("admin_dashboard_active_module", module);
     
+    // Dispatch reset to clear Redux counts immediately to prevent showing old counts from previous tab
+    dispatch(resetDashboardState());
+    
+    // Reset local department state data
+    setDepartmentData({
+      allTasks: [],
+      staffMembers: [],
+      totalTasks: 0,
+      completedTasks: 0,
+      pendingTasks: 0,
+      overdueTasks: 0,
+      completionRate: 0,
+      barChartData: [],
+      pieChartData: [],
+      completedRatingOne: 0,
+      completedRatingTwo: 0,
+      completedRatingThreePlus: 0,
+      pendingToday: 0,
+      pendingUpcoming: 0,
+      pendingOverdue: 0,
+    });
+    
+    // Reset all filter states to default values immediately to prevent duplicate fetch on render
+    setDashboardStaffFilter("all");
+    setDepartmentFilter("all");
+    setUnitFilter("all");
+    if (userRole === "div_admin") {
+      const userDivision = localStorage.getItem("division");
+      setDivisionFilter(userDivision || "all");
+    } else {
+      setDivisionFilter("all");
+    }
+    setCurrentPage(1);
+    setHasMoreData(true);
+    setDateRange({
+      startDate: "",
+      endDate: "",
+      filtered: false
+    });
+
     // Sync dashboardType with module
     if (module === "checklist") {
       setDashboardType("checklist");
@@ -1398,6 +1689,7 @@ useEffect(() => {
             onDateRangeChange={handleDateRangeChange}
             onResetFilters={resetAllFilters}
             onExportCSV={handleExportCSV}
+            isExporting={isExporting}
           />
 
           {(activeModule === "checklist" || activeModule === "delegation") ? (
@@ -1418,29 +1710,7 @@ useEffect(() => {
                 completedRatingOne={displayStats.completedRatingOne}
                 completedRatingTwo={displayStats.completedRatingTwo}
                 completedRatingThreePlus={displayStats.completedRatingThreePlus}
-              />
-
-              <TaskNavigationTabs
-                taskView={taskView}
-                setTaskView={setTaskView}
-                dashboardType={dashboardType}
-                dashboardStaffFilter={dashboardStaffFilter}
-                departmentFilter={departmentFilter}
-                searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
-                filterStaff={filterStaff}
-                setFilterStaff={setFilterStaff}
-                departmentData={departmentData}
-                getTasksByView={getTasksByView}
-                getFrequencyColor={getFrequencyColor}
-                isLoadingMore={isLoadingMore}
-                hasMoreData={hasMoreData}
-                username={username}
-                userRole={userRole}
-                onTaskComplete={() => {
-                  setCurrentPage(1)
-                  fetchDepartmentData(1, false)
-                }}
+                isLoading={isLoadingMore}
               />
 
               {activeTab === "overview" && (activeModule === "checklist" || activeModule === "delegation") && (
@@ -1465,6 +1735,29 @@ useEffect(() => {
                   </div>
                 </div>
               )}
+
+              <TaskNavigationTabs
+                taskView={taskView}
+                setTaskView={setTaskView}
+                dashboardType={dashboardType}
+                dashboardStaffFilter={dashboardStaffFilter}
+                departmentFilter={departmentFilter}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                filterStaff={filterStaff}
+                setFilterStaff={setFilterStaff}
+                departmentData={departmentData}
+                getTasksByView={getTasksByView}
+                getFrequencyColor={getFrequencyColor}
+                isLoadingMore={isLoadingMore}
+                hasMoreData={hasMoreData}
+                username={username}
+                userRole={userRole}
+                onTaskComplete={() => {
+                  setCurrentPage(1)
+                  fetchDepartmentData(1, false)
+                }}
+              />
             </>
           ) : (
             <MaintenanceView 

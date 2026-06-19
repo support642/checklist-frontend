@@ -6,7 +6,8 @@ import {
   countTotalTaskApi,
   fetchDashboardDataApi,
   countNotDoneTaskApi,
-  getDashboardDataCount
+  getDashboardDataCount,
+  fetchDashboardSummaryCountsApi
 } from "../api/dashboardApi";
 
 // Dashboard data thunk
@@ -155,6 +156,20 @@ export const pendingOverdueInTable = createAsyncThunk(
     }
   }
 )
+
+export const fetchDashboardSummaryCounts = createAsyncThunk(
+  "dashboard/fetchSummaryCounts",
+  async (filterParams) => {
+    try {
+      const response = await fetchDashboardSummaryCountsApi(filterParams);
+      return response;
+    } catch (error) {
+      console.error("Error fetching dashboard summary counts:", error);
+      throw error;
+    }
+  }
+)
+
 const dashboardSlice = createSlice({
   name: 'dashBoard',
   initialState: {
@@ -167,11 +182,13 @@ const dashboardSlice = createSlice({
     pendingToday: 0,
     pendingUpcoming: 0,
     pendingOverdue: 0,
+    completedRatingOne: 0,
+    completedRatingTwo: 0,
+    completedRatingThreePlus: 0,
     error: null,
     loading: false,
   },
   reducers: {
-    // Reset dashboard state
     resetDashboardState: (state) => {
       state.dashboard = [];
       state.totalTask = 0;
@@ -181,6 +198,9 @@ const dashboardSlice = createSlice({
       state.pendingToday = 0;
       state.pendingUpcoming = 0;
       state.pendingOverdue = 0;
+      state.completedRatingOne = 0;
+      state.completedRatingTwo = 0;
+      state.completedRatingThreePlus = 0;
       state.error = null;
       state.loading = false;
     },
@@ -285,6 +305,29 @@ const dashboardSlice = createSlice({
       // Pending Overdue cases
       .addCase(pendingOverdueInTable.fulfilled, (state, action) => {
         state.pendingOverdue = action.payload || 0;
+      })
+      .addCase(fetchDashboardSummaryCounts.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchDashboardSummaryCounts.fulfilled, (state, action) => {
+        state.loading = false;
+        const data = action.payload || {};
+        state.totalTask = data.totalTasks || 0;
+        state.completeTask = data.completedTasks || 0;
+        state.pendingTask = data.pendingTasks || 0;
+        state.overdueTask = data.overdueTasks || 0;
+        state.notDoneTask = data.notDoneTasks || 0;
+        state.pendingToday = data.pendingToday || 0;
+        state.pendingUpcoming = data.pendingUpcoming || 0;
+        state.pendingOverdue = data.pendingOverdue || 0;
+        state.completedRatingOne = data.completedRatingOne || 0;
+        state.completedRatingTwo = data.completedRatingTwo || 0;
+        state.completedRatingThreePlus = data.completedRatingThreePlus || 0;
+      })
+      .addCase(fetchDashboardSummaryCounts.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error?.message || 'Failed to fetch summary counts';
       });
   },
 });

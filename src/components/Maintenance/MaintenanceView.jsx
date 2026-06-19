@@ -139,6 +139,27 @@ const MaintenanceView = ({
     overdueCount: reduxOverdueCount
   } = useSelector((state) => state.maintenance);
 
+  const { historyStartDate, historyEndDate } = useMemo(() => {
+    let historyStartDate = startDate;
+    let historyEndDate = endDate;
+
+    if (!startDate && !endDate) {
+      const today = new Date();
+      const sixMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 5, 1);
+      
+      const formatYMD = (d) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+      };
+      
+      historyStartDate = formatYMD(sixMonthsAgo);
+      historyEndDate = formatYMD(today);
+    }
+    return { historyStartDate, historyEndDate };
+  }, [startDate, endDate]);
+
   useEffect(() => {
     dispatch(maintenanceData({ 
       page: 1, 
@@ -150,15 +171,16 @@ const MaintenanceView = ({
       division: divisionFilter 
     }));
     dispatch(maintenanceHistoryData({ 
-      startDate, 
-      endDate, 
+      startDate: historyStartDate, 
+      endDate: historyEndDate, 
       name: dashboardStaffFilter, 
       departmentFilter, 
       unitFilter, 
-      division: divisionFilter 
+      division: divisionFilter,
+      limit: 1000
     }));
     dispatch(fetchMachinePartsData());
-  }, [dispatch, startDate, endDate, dashboardStaffFilter, departmentFilter, unitFilter, divisionFilter]);
+  }, [dispatch, startDate, endDate, dashboardStaffFilter, departmentFilter, unitFilter, divisionFilter, historyStartDate, historyEndDate]);
 
   // --- Helpers ---
   const parseDate = (dateStr) => {
@@ -256,14 +278,14 @@ const MaintenanceView = ({
   const monthlyData = useMemo(() => {
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     
-    // Window: Current Month + Next 5 Months
+    // Window: Past 6 Months (ending with Current Month)
     const today = new Date();
     const currentYear = today.getFullYear();
     const currentMonth = today.getMonth();
     
     const window = [];
-    for (let i = 0; i < 6; i++) {
-      const d = new Date(currentYear, currentMonth + i, 1);
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(currentYear, currentMonth - i, 1);
       window.push({ 
         month: monthNames[d.getMonth()], 
         year: d.getFullYear(), 
@@ -366,12 +388,13 @@ const MaintenanceView = ({
       division: divisionFilter 
     }));
     dispatch(maintenanceHistoryData({ 
-      startDate, 
-      endDate, 
+      startDate: historyStartDate, 
+      endDate: historyEndDate, 
       name: dashboardStaffFilter, 
       departmentFilter, 
       unitFilter, 
-      division: divisionFilter 
+      division: divisionFilter,
+      limit: 1000
     }));
   };
 

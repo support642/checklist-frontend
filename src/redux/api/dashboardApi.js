@@ -488,3 +488,15 @@ export const countNotDoneTaskApi = async (dashboardType, staffFilter = "all", de
   const res = await authFetch(url);
   return res.json();
 };
+
+export const fetchDashboardSummaryCountsApi = async (paramsObj) => {
+  const params = new URLSearchParams(paramsObj);
+  const res = await authFetch(`${BASE_URL}/summary-counts?${params.toString()}`);
+  return await res.json();
+};
+
+export const fetchDepartmentReportSummaryApi = async (paramsObj) => {
+  const params = new URLSearchParams(paramsObj);
+  const res = await authFetch(`${BASE_URL}/report-summary?${params.toString()}`);
+  return await res.json();
+};

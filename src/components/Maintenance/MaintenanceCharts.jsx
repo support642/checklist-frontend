@@ -38,7 +38,7 @@ const MaintenanceCharts = ({ frequencyData, deptData, monthlyData }) => {
       <div className="rounded-lg border border-blue-200 shadow-md bg-white overflow-hidden">
         <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-100">
           <h3 className="text-sm font-semibold text-blue-700">Monthly Maintenance Activity</h3>
-          <p className="text-[10px] text-blue-600 font-medium">Activity for next 6 months</p>
+          <p className="text-[10px] text-blue-600 font-medium">Activity for past 6 months</p>
         </div>
         <div className="p-4 h-[300px]">
           <ResponsiveContainer width="100%" height="100%">

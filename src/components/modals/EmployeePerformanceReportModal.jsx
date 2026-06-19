@@ -66,7 +66,7 @@ const EmployeePerformanceReportModal = ({
 
   // Process tasks into categories for the table - Using unique tasks for the listing
   const checklistTasks = getUniqueTasks(tasks.filter(t => t.type === 'checklist'))
-    .map(t => ({ ...t, displayType: 'Checklist', displayFrequency: t.frequency || 'N/A' }));
+    .map(t => ({ ...t, displayType: t.is_ledger ? 'Ledger' : 'Checklist', displayFrequency: t.frequency || 'N/A' }));
 
   const delegationTasks = getUniqueTasks(tasks.filter(t => t.type === 'delegation' || t.is_delegated))
     .map(t => ({ ...t, displayType: 'Delegation', displayFrequency: 'One Time' }));
@@ -101,6 +101,7 @@ const EmployeePerformanceReportModal = ({
   };
 
   const checklistStats = calculateStats(tasks.filter(t => t.type === 'checklist'));
+  const ledgerStats = calculateStats(tasks.filter(t => t.type === 'checklist' && t.is_ledger));
   const delegationStats = calculateStats(tasks.filter(t => t.type === 'delegation' || t.is_delegated));
   const maintenanceStats = hasMaintenanceAccess 
     ? calculateStats(tasks.filter(t => t.type === 'maintenance'))
@@ -169,7 +170,7 @@ const EmployeePerformanceReportModal = ({
             {/* Row 2: Stats & Range */}
             <div className="grid grid-cols-[1fr_220px] divide-x divide-gray-300 h-20">
               {/* Left Side: Performance Stats */}
-              <div className={`grid ${hasMaintenanceAccess ? 'grid-cols-3' : 'grid-cols-2'} h-full divide-x divide-gray-300`}>
+              <div className={`grid ${hasMaintenanceAccess ? 'grid-cols-4' : 'grid-cols-3'} h-full divide-x divide-gray-300`}>
                 {/* Checklist Stats */}
                 <div className="flex flex-col divide-y divide-gray-200">
                   <div className="bg-gray-100/80 px-2 h-6 flex items-center justify-center font-bold uppercase text-gray-700 text-[10px] tracking-widest">Checklist</div>
@@ -185,6 +186,21 @@ const EmployeePerformanceReportModal = ({
                         <span className="text-gray-300">|</span>
                         <span className="text-blue-600">{checklistStats.onTimeScore}%</span>
                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Ledger Stats */}
+                <div className="flex flex-col divide-y divide-gray-200">
+                  <div className="bg-gray-100/80 px-2 h-6 flex items-center justify-center font-bold uppercase text-gray-700 text-[10px] tracking-widest">Ledger</div>
+                  <div className="flex-1 grid grid-cols-2 divide-x divide-gray-200">
+                    <div className="flex flex-col items-center justify-center py-2">
+                      <span className="text-[9px] text-gray-400 uppercase font-bold mb-1">Assigned / Done</span>
+                      <span className="text-base font-bold text-gray-800 leading-none">{ledgerStats.total} / {ledgerStats.completed}</span>
+                    </div>
+                    <div className="flex flex-col items-center justify-center py-2 bg-emerald-50/20">
+                      <span className="text-[9px] text-gray-400 uppercase font-bold mb-1">Percentage</span>
+                      <span className="text-base font-bold text-emerald-700 leading-none">{ledgerStats.workDoneScore}%</span>
                     </div>
                   </div>
                 </div>
@@ -261,6 +277,7 @@ const EmployeePerformanceReportModal = ({
                     // Row background tint per task type
                     const rowBg =
                       task.displayType === 'Checklist' ? 'bg-blue-50/40' :
+                      task.displayType === 'Ledger' ? 'bg-emerald-50/10' :
                       task.displayType === 'Delegation' ? 'bg-purple-50/40' :
                       task.displayType === 'Maintenance' ? 'bg-orange-50/40' : '';
 
@@ -268,6 +285,8 @@ const EmployeePerformanceReportModal = ({
                     const typeBadge =
                       task.displayType === 'Checklist'
                         ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                        : task.displayType === 'Ledger'
+                        ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
                         : task.displayType === 'Delegation'
                         ? 'bg-purple-100 text-purple-700 border border-purple-200'
                         : task.displayType === 'Maintenance'

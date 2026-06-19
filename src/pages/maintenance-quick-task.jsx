@@ -303,8 +303,8 @@ function MaintenanceQuickTaskPage({ searchTerm, nameFilter, deptFilter, divFilte
       )}
 
       {!error && isInitialized && (!loading || uniqueMaintenanceTasks.length > 0) && (
-         <div className="mt-4 rounded-lg border border-purple-200 shadow-md bg-white overflow-hidden">
-          <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-100 p-3 sm:p-4 flex justify-between items-center">
+        <div className="mt-4 rounded-lg border border-purple-200 shadow-md bg-white overflow-hidden flex-1 min-h-0 flex flex-col">
+          <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-100 p-3 sm:p-4 flex justify-between items-center flex-shrink-0">
             <div>
               <h2 className="text-purple-700 font-medium text-sm sm:text-base">Maintenance Tasks</h2>
               <p className="text-purple-600 text-sm mt-1">
@@ -328,8 +328,7 @@ function MaintenanceQuickTaskPage({ searchTerm, nameFilter, deptFilter, divFilte
 
           <div 
             ref={tableContainerRef}
-            className="overflow-x-auto overflow-y-auto custom-scrollbar" 
-            style={{ maxHeight: 'calc(100vh - 280px)' }}
+            className="flex-1 overflow-auto custom-scrollbar"
           >
             {/* Mobile View */}
             <div className="sm:hidden space-y-3 p-3">

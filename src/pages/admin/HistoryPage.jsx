@@ -148,8 +148,17 @@ function HistoryPage() {
   }, [dispatch, debouncedSearch, nameFilter, divisionFilter, departmentFilter, startDate, endDate, approvalStatusFilter, maintCurrentPage])
 
   useEffect(() => {
-    dispatch(uniqueDoerNameData())
+    dispatch(uniqueDoerNameData({ ignoreLocalStorage: true }))
   }, [dispatch])
+
+  // Re-fetch unique doer names when division or department filters change
+  useEffect(() => {
+    dispatch(uniqueDoerNameData({
+      department: departmentFilter === 'all' ? undefined : departmentFilter,
+      division: divisionFilter === 'all' ? undefined : divisionFilter,
+      ignoreLocalStorage: true
+    }));
+  }, [departmentFilter, divisionFilter, dispatch]);
 
   useEffect(() => {
     const role = localStorage.getItem("role")
@@ -157,7 +166,8 @@ function HistoryPage() {
     setUserRole(role || "")
     setUsername(user || "")
     const tab = searchParams.get('tab')
-    setIsSuperAdmin(role === "super_admin" || role === "admin" || role === "div_admin")
+    const roleNormalized = (role || "").toLowerCase()
+    setIsSuperAdmin(roleNormalized === "super_admin" || roleNormalized === "admin" || roleNormalized === "div_admin")
 
     if (tab === 'maintenance') {
       setActiveTab('maintenance')
@@ -445,7 +455,7 @@ function HistoryPage() {
       return (typeof member === 'string' ? member : member?.user_name) || '';
     }).filter(Boolean);
 
-    if (userRole === "admin" || userRole === "div_admin") {
+    if (isSuperAdmin) {
       return doers;
     } else {
       return doers.filter((member) => member.toLowerCase() === (username || '').toLowerCase());
@@ -831,6 +841,14 @@ function HistoryPage() {
         {/* Table Container - More height */}
         <div className="bg-white rounded-md shadow-sm overflow-hidden">
           <style>{`
+            .table-container {
+              max-height: calc(100vh - 350px);
+            }
+            @media (max-width: 768px) {
+              .table-container {
+                max-height: none;
+              }
+            }
             /* Mobile Card Layout Styles - Improved Grid version */
             @media (max-width: 768px) {
               .mobile-card-table {
@@ -918,7 +936,7 @@ function HistoryPage() {
               }
             }
           `}</style>
-          <div className="overflow-x-auto custom-scrollbar" style={{ maxHeight: 'calc(100vh - 260px)' }}>
+          <div className="overflow-x-auto overflow-y-auto custom-scrollbar table-container">
             {(loading || maintLoading) ? (
               <div className="text-center py-10">
                 <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-500 mb-4"></div>

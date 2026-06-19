@@ -6,9 +6,10 @@ interface ShareEmailModalProps {
   onClose: () => void;
   onSend: (recipientName: string, recipientEmail: string, recipientPhone: string, message: string) => void;
   documentName: string;
+  shareMode: 'email' | 'whatsapp';
 }
 
-const ShareEmailModal: React.FC<ShareEmailModalProps> = ({ isOpen, onClose, onSend, documentName }) => {
+const ShareEmailModal: React.FC<ShareEmailModalProps> = ({ isOpen, onClose, onSend, documentName, shareMode }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -30,8 +31,8 @@ const ShareEmailModal: React.FC<ShareEmailModalProps> = ({ isOpen, onClose, onSe
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
         <div className="relative p-6 border-b border-slate-100">
           <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-            <Mail className="w-6 h-6 text-indigo-500" />
-            Share Document
+            {shareMode === 'email' ? <Mail className="w-6 h-6 text-indigo-500" /> : <MessageSquare className="w-6 h-6 text-green-500" />}
+            {shareMode === 'email' ? 'Share via Email' : 'Share via WhatsApp'}
           </h3>
           <button 
             onClick={onClose}
@@ -60,35 +61,39 @@ const ShareEmailModal: React.FC<ShareEmailModalProps> = ({ isOpen, onClose, onSe
             />
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
-              <Mail className="w-4 h-4" />
-              Recipient Email
-            </label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all text-slate-800"
-              placeholder="Enter email address"
-            />
-          </div>
+          {shareMode === 'email' && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                <Mail className="w-4 h-4" />
+                Recipient Email
+              </label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all text-slate-800"
+                placeholder="Enter email address"
+              />
+            </div>
+          )}
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
-              <Phone className="w-4 h-4" />
-              Recipient Phone (WhatsApp)
-            </label>
-            <input
-              type="tel"
-              required
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all text-slate-800"
-              placeholder="Enter phone number (e.g. 919876543210)"
-            />
-          </div>
+          {shareMode === 'whatsapp' && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                <Phone className="w-4 h-4" />
+                Recipient Phone (WhatsApp)
+              </label>
+              <input
+                type="tel"
+                required
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all text-slate-800"
+                placeholder="Enter phone number (e.g. 919876543210)"
+              />
+            </div>
+          )}
 
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
@@ -115,7 +120,7 @@ const ShareEmailModal: React.FC<ShareEmailModalProps> = ({ isOpen, onClose, onSe
               ) : (
                 <>
                   <Send className="w-5 h-5" />
-                  Send Notification
+                  {shareMode === 'email' ? 'Send Email' : 'Send WhatsApp'}
                 </>
               )}
             </button>

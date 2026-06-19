@@ -110,7 +110,7 @@ function AccountDataPage() {
 
   // Initial data load - Reset all
   useEffect(() => {
-    dispatch(uniqueDoerNameData());
+    dispatch(uniqueDoerNameData({ ignoreLocalStorage: true }));
     dispatch(checklistMetadata());
 
     const view = searchParams.get('view');
@@ -118,6 +118,15 @@ function AccountDataPage() {
       setActiveView('maintenance');
     }
   }, [dispatch, searchParams])
+
+  // Re-fetch unique doer names when division or department filters change
+  useEffect(() => {
+    dispatch(uniqueDoerNameData({
+      department: departmentFilter === 'all' ? undefined : departmentFilter,
+      division: divisionFilter === 'all' ? undefined : divisionFilter,
+      ignoreLocalStorage: true
+    }));
+  }, [departmentFilter, divisionFilter, dispatch]);
 
   // Re-fetch data when filters or search change
   useEffect(() => {
@@ -648,7 +657,8 @@ function AccountDataPage() {
       return (typeof member === 'string' ? member : member?.user_name) || '';
     }).filter(Boolean);
 
-    if (userRole === "admin" || userRole === "div_admin") {
+    const role = (userRole || "").toLowerCase();
+    if (["super_admin", "admin", "div_admin"].includes(role)) {
       return doers;
     } else {
       return doers.filter((member) => member.toLowerCase() === (username || '').toLowerCase());
@@ -1362,13 +1372,11 @@ const handleSubmit = async () => {
                     </div>
                     <div className="max-h-48 overflow-y-auto">
                       <button type="button" onClick={() => { setNameFilter('all'); setNameDropdownOpen(false); setNameSearchTerm(''); }} className={`w-full text-left px-3 py-2 text-sm hover:bg-purple-50 transition-colors ${nameFilter === 'all' ? 'bg-purple-100 text-purple-700 font-medium' : 'text-gray-700'}`}>All Names</button>
-                      {doerName && doerName
-                        .filter(name => {
-                          const displayName = (typeof name === 'string' ? name : name?.user_name) || '';
+                      {getFilteredMembersList()
+                        .filter(displayName => {
                           return displayName.toLowerCase().includes(nameSearchTerm.toLowerCase());
                         })
-                        .map((name, index) => {
-                          const displayName = (typeof name === 'string' ? name : name?.user_name) || '';
+                        .map((displayName, index) => {
                           return (
                             <button 
                               type="button" 
@@ -1401,9 +1409,9 @@ const handleSubmit = async () => {
                       <input type="text" placeholder="Search division..." value={divisionSearchTerm} onChange={(e) => setDivisionSearchTerm(e.target.value)} className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-purple-500" autoFocus />
                     </div>
                     <div className="max-h-48 overflow-y-auto">
-                      <button type="button" onClick={() => { setDivisionFilter('all'); setDivisionDropdownOpen(false); setDivisionSearchTerm(''); }} className={`w-full text-left px-3 py-2 text-sm hover:bg-purple-50 transition-colors ${divisionFilter === 'all' ? 'bg-purple-100 text-purple-700 font-medium' : 'text-gray-700'}`}>All Divisions</button>
+                      <button type="button" onClick={() => { setDivisionFilter('all'); setNameFilter('all'); setDivisionDropdownOpen(false); setDivisionSearchTerm(''); }} className={`w-full text-left px-3 py-2 text-sm hover:bg-purple-50 transition-colors ${divisionFilter === 'all' ? 'bg-purple-100 text-purple-700 font-medium' : 'text-gray-700'}`}>All Divisions</button>
                       {uniqueDivisions.filter(d => (d || '').toLowerCase().includes(divisionSearchTerm.toLowerCase())).map((div, index) => (
-                        <button type="button" key={index} onClick={() => { setDivisionFilter(div); setDivisionDropdownOpen(false); setDivisionSearchTerm(''); }} className={`w-full text-left px-3 py-2 text-sm hover:bg-purple-50 transition-colors ${divisionFilter === div ? 'bg-purple-100 text-purple-700 font-medium' : 'text-gray-700'}`}>{div}</button>
+                        <button type="button" key={index} onClick={() => { setDivisionFilter(div); setNameFilter('all'); setDivisionDropdownOpen(false); setDivisionSearchTerm(''); }} className={`w-full text-left px-3 py-2 text-sm hover:bg-purple-50 transition-colors ${divisionFilter === div ? 'bg-purple-100 text-purple-700 font-medium' : 'text-gray-700'}`}>{div}</button>
                       ))}
                     </div>
                   </div>
@@ -1425,9 +1433,9 @@ const handleSubmit = async () => {
                       <input type="text" placeholder="Search department..." value={departmentSearchTerm} onChange={(e) => setDepartmentSearchTerm(e.target.value)} className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-purple-500" autoFocus />
                     </div>
                     <div className="max-h-48 overflow-y-auto">
-                      <button type="button" onClick={() => { setDepartmentFilter('all'); setDepartmentDropdownOpen(false); setDepartmentSearchTerm(''); }} className={`w-full text-left px-3 py-2 text-sm hover:bg-purple-50 transition-colors ${departmentFilter === 'all' ? 'bg-purple-100 text-purple-700 font-medium' : 'text-gray-700'}`}>All Departments</button>
+                      <button type="button" onClick={() => { setDepartmentFilter('all'); setNameFilter('all'); setDepartmentDropdownOpen(false); setDepartmentSearchTerm(''); }} className={`w-full text-left px-3 py-2 text-sm hover:bg-purple-50 transition-colors ${departmentFilter === 'all' ? 'bg-purple-100 text-purple-700 font-medium' : 'text-gray-700'}`}>All Departments</button>
                       {uniqueDepartments.filter(d => (d || '').toLowerCase().includes(departmentSearchTerm.toLowerCase())).map((dept, index) => (
-                        <button type="button" key={index} onClick={() => { setDepartmentFilter(dept); setDepartmentDropdownOpen(false); setDepartmentSearchTerm(''); }} className={`w-full text-left px-3 py-2 text-sm hover:bg-purple-50 transition-colors ${departmentFilter === dept ? 'bg-purple-100 text-purple-700 font-medium' : 'text-gray-700'}`}>{dept}</button>
+                        <button type="button" key={index} onClick={() => { setDepartmentFilter(dept); setNameFilter('all'); setDepartmentDropdownOpen(false); setDepartmentSearchTerm(''); }} className={`w-full text-left px-3 py-2 text-sm hover:bg-purple-50 transition-colors ${departmentFilter === dept ? 'bg-purple-100 text-purple-700 font-medium' : 'text-gray-700'}`}>{dept}</button>
                       ))}
                     </div>
                   </div>
@@ -1457,7 +1465,7 @@ const handleSubmit = async () => {
           )}
 
             {/* Admin Submit Button for History View */}
-            {showHistory && (userRole === "admin" || userRole === "div_admin") && selectedHistoryItems.length > 0 && (
+            {showHistory && (userRole === "admin" || userRole === "div_admin" || userRole === "super_admin") && selectedHistoryItems.length > 0 && (
               <div className="fixed bottom-4 right-4 sm:top-40 sm:bottom-auto sm:right-10 z-50">
                 <button
                   onClick={handleMarkMultipleDone}
@@ -1496,7 +1504,7 @@ const handleSubmit = async () => {
             </h2>
             <p className="text-purple-600 text-xs sm:text-sm mt-1">
               {showHistory
-                ? `${CONFIG[activeView].historyDescription} for ${(userRole === "admin" || userRole === "div_admin") ? "all" : "your"} tasks`
+                ? `${CONFIG[activeView].historyDescription} for ${(userRole === "admin" || userRole === "div_admin" || userRole === "super_admin") ? "all" : "your"} tasks`
                 : CONFIG[activeView].description}
             </p>
           </div>
@@ -1654,7 +1662,7 @@ const handleSubmit = async () => {
                           <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                             Unit
                           </th>
-                          {(userRole === "admin" || userRole === "div_admin") && (
+                          {(userRole === "admin" || userRole === "div_admin" || userRole === "super_admin") && (
                             <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-purple-50 whitespace-nowrap">
                               Admin Remarks
                             </th>
@@ -1721,7 +1729,7 @@ const handleSubmit = async () => {
                               <td className="px-2 sm:px-3 py-2 sm:py-4">
                                 <div className="text-xs sm:text-sm text-gray-900 break-words">{history.unit || "—"}</div>
                               </td>
-                              {(userRole === "admin" || userRole === "div_admin") && (
+                              {(userRole === "admin" || userRole === "div_admin" || userRole === "super_admin") && (
                                 <td className="px-2 sm:px-3 py-2 sm:py-4 bg-purple-50">
                                   {history.admin_done !== 'Done' ? (
                                     <input
@@ -1824,7 +1832,7 @@ const handleSubmit = async () => {
                           ))
                         ) : (
                           <tr>
-                            <td colSpan={(userRole === "admin" || userRole === "div_admin") ? 17 : 16} className="px-4 sm:px-6 py-4 text-center text-gray-500 text-xs sm:text-sm">
+                            <td colSpan={(userRole === "admin" || userRole === "div_admin" || userRole === "super_admin") ? 17 : 16} className="px-4 sm:px-6 py-4 text-center text-gray-500 text-xs sm:text-sm">
                               {searchTerm || selectedMembers.length > 0 || startDate || endDate
                                 ? "No historical records matching your filters"
                                 : "No completed records found"}

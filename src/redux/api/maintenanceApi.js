@@ -48,13 +48,12 @@ export const fetchMaintenanceDataSortByDate = async (page = 1, search = '', star
 // =======================================================
 // 2️⃣ Fetch Maintenance History
 // =======================================================
-export const fetchMaintenanceDataForHistory = async (page = 1, search = "", startDate = "", endDate = "", name = 'all', division = 'all', departmentFilter = 'all', approvalStatus = 'all', unitFilter = 'all') => {
+export const fetchMaintenanceDataForHistory = async (page = 1, search = "", startDate = "", endDate = "", name = 'all', division = 'all', departmentFilter = 'all', approvalStatus = 'all', unitFilter = 'all', limit = 50) => {
     const username = localStorage.getItem("user-name");
     const role = localStorage.getItem("role");
     const department = localStorage.getItem("department");
     const unit = localStorage.getItem("unit");
     const divisionLocal = localStorage.getItem("division");
-    const limit = 50;
 
     let url = `${BASE_URL}/history?page=${page}&limit=${limit}&username=${username}&role=${role}&department=${department}&unit=${unit}&division=${divisionLocal}&search=${encodeURIComponent(search)}`;
 

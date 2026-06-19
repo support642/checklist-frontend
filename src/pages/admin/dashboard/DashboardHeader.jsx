@@ -2,7 +2,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Search, ChevronDown, X, Download } from "lucide-react"
+import { Search, ChevronDown, X, Download, Loader2 } from "lucide-react"
 import { getTotalUsersCountApi } from "../../../redux/api/dashboardApi"
 import { canAccessModule } from "../../../utils/permissionUtils"
 
@@ -111,6 +111,126 @@ function SearchableDropdown({ value, onChange, options, placeholder, allLabel })
   );
 }
 
+// Dropdown to select which task status to export
+function ExportDropdown({ onExport, isMobile, isExporting }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  if (isMobile) {
+    return (
+      <div ref={dropdownRef} className="relative flex-1">
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          disabled={isExporting}
+          className="w-full rounded-md border border-purple-200 bg-purple-600 p-2 text-sm font-bold text-white hover:bg-purple-700 transition-all flex items-center justify-center gap-1 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isExporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+          <span>{isExporting ? "CSV..." : "CSV"}</span>
+          {!isExporting && <ChevronDown size={12} className={`ml-0.5 transition-transform ${isOpen ? "rotate-180" : ""}`} />}
+        </button>
+
+        {isOpen && !isExporting && (
+          <div className="absolute right-0 top-full mt-1 w-44 bg-white border border-slate-200 rounded-lg shadow-lg z-[100] overflow-hidden py-1">
+            <button
+              onClick={() => { onExport("summary"); setIsOpen(false); }}
+              className="w-full text-left px-3 py-2 text-xs font-bold uppercase tracking-wider text-blue-600 hover:bg-blue-50 hover:text-blue-800 transition-colors"
+            >
+              Department Report
+            </button>
+            <div className="border-t border-slate-100 my-1" />
+            <button
+              onClick={() => { onExport("all"); setIsOpen(false); }}
+              className="w-full text-left px-3 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 hover:bg-purple-50 hover:text-purple-900 transition-colors"
+            >
+              Export All
+            </button>
+            <button
+              onClick={() => { onExport("completed"); setIsOpen(false); }}
+              className="w-full text-left px-3 py-2 text-xs font-bold uppercase tracking-wider text-green-600 hover:bg-green-50 hover:text-green-800 transition-colors"
+            >
+              Completed
+            </button>
+            <button
+              onClick={() => { onExport("pending"); setIsOpen(false); }}
+              className="w-full text-left px-3 py-2 text-xs font-bold uppercase tracking-wider text-amber-600 hover:bg-amber-50 hover:text-amber-800 transition-colors"
+            >
+              Pending
+            </button>
+            <button
+              onClick={() => { onExport("overdue"); setIsOpen(false); }}
+              className="w-full text-left px-3 py-2 text-xs font-bold uppercase tracking-wider text-red-600 hover:bg-red-50 hover:text-red-800 transition-colors"
+            >
+              Overdue
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div ref={dropdownRef} className="relative flex-1">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        disabled={isExporting}
+        className="w-full rounded-xl border border-purple-200 bg-purple-600 p-2.5 text-xs font-bold text-white hover:bg-purple-700 transition-all flex items-center justify-center gap-2 uppercase tracking-wider shadow-md active:scale-95 animate-in fade-in duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {isExporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+        {isExporting ? "Exporting..." : "Performance"}
+        {!isExporting && <ChevronDown size={12} className={`transition-transform ${isOpen ? "rotate-180" : ""}`} />}
+      </button>
+
+      {isOpen && !isExporting && (
+        <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-slate-200 rounded-2xl shadow-xl z-[100] overflow-hidden py-1">
+          <button
+            onClick={() => { onExport("summary"); setIsOpen(false); }}
+            className="w-full text-left px-4 py-2 text-xs font-bold uppercase tracking-wider text-blue-600 hover:bg-blue-50 hover:text-blue-800 transition-colors"
+          >
+            Department Report
+          </button>
+          <div className="border-t border-slate-100 my-1" />
+          <button
+            onClick={() => { onExport("all"); setIsOpen(false); }}
+            className="w-full text-left px-4 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 hover:bg-purple-50 hover:text-purple-900 transition-colors"
+          >
+            Export All
+          </button>
+          <button
+            onClick={() => { onExport("completed"); setIsOpen(false); }}
+            className="w-full text-left px-4 py-2 text-xs font-bold uppercase tracking-wider text-green-600 hover:bg-green-50 hover:text-green-800 transition-colors"
+          >
+            Completed
+          </button>
+          <button
+            onClick={() => { onExport("pending"); setIsOpen(false); }}
+            className="w-full text-left px-4 py-2 text-xs font-bold uppercase tracking-wider text-amber-600 hover:bg-amber-50 hover:text-amber-800 transition-colors"
+          >
+            Pending
+          </button>
+          <button
+            onClick={() => { onExport("overdue"); setIsOpen(false); }}
+            className="w-full text-left px-4 py-2 text-xs font-bold uppercase tracking-wider text-red-600 hover:bg-red-50 hover:text-red-800 transition-colors"
+          >
+            Overdue
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function DashboardHeader({
   dashboardType,
   setDashboardType,
@@ -133,7 +253,8 @@ export default function DashboardHeader({
   endDate: propEndDate = "",
   onDateRangeChange, // Add this prop to handle date range selection
   onResetFilters, // Add this prop to handle resetting all filters
-  onExportCSV // Add this prop to handle CSV download
+  onExportCSV, // Add this prop to handle CSV download
+  isExporting
 }) {
   const [totalUsersCount, setTotalUsersCount] = useState(0)
   const [showDateRangePicker, setShowDateRangePicker] = useState(false)
@@ -151,9 +272,16 @@ export default function DashboardHeader({
     const fetchTotalUsers = async () => {
       try {
         const count = await getTotalUsersCountApi()
-        setTotalUsersCount(count)
+        if (typeof count === 'number') {
+          setTotalUsersCount(count)
+        } else if (count && typeof count === 'object' && 'count' in count) {
+          setTotalUsersCount(Number(count.count) || 0)
+        } else {
+          setTotalUsersCount(0)
+        }
       } catch (error) {
         console.error('Error fetching total users count:', error)
+        setTotalUsersCount(0)
       }
     }
 
@@ -343,13 +471,7 @@ export default function DashboardHeader({
               >
                 Reset
               </button>
-              <button
-                onClick={onExportCSV}
-                className="flex-1 rounded-md border border-purple-200 bg-purple-600 p-2 text-sm font-bold text-white hover:bg-purple-700 transition-all flex items-center justify-center gap-1 shadow-sm"
-              >
-                <Download size={14} />
-                <span>CSV</span>
-              </button>
+              <ExportDropdown onExport={onExportCSV} isMobile={true} isExporting={isExporting} />
             </div>
           )}
         </div>
@@ -485,13 +607,7 @@ export default function DashboardHeader({
               >
                 Reset
               </button>
-              <button
-                onClick={onExportCSV}
-                className="flex-1 rounded-xl border border-purple-200 bg-purple-600 p-2.5 text-xs font-bold text-white hover:bg-purple-700 transition-all flex items-center justify-center gap-2 uppercase tracking-wider shadow-md active:scale-95"
-              >
-                <Download size={14} />
-                Performance
-              </button>
+              <ExportDropdown onExport={onExportCSV} isMobile={false} isExporting={isExporting} />
             </div>
           )}
         </div>

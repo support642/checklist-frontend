@@ -477,6 +477,34 @@ const Setting = () => {
     }).map(u => u.user_name).sort();
   }, [userData]);
 
+  // Memoized available doers for popup leave transfer (filtered by leave user's division and department)
+  const popupAvailableDoers = useMemo(() => {
+    if (!currentLeaveUser || !userData || userData.length === 0) return [];
+
+    const leaveUserDepts = (currentLeaveUser.user_access || currentLeaveUser.department || '')
+      .split(',')
+      .map(d => d.trim().toLowerCase())
+      .filter(Boolean);
+    const leaveUserDiv = (currentLeaveUser.division || '').trim().toLowerCase();
+
+    return userData.filter(u => {
+      // Don't delegate to the leave user themselves
+      if (u.user_name === currentLeaveUser.user_name) return false;
+
+      const uDepts = (u.user_access || u.department || '')
+        .split(',')
+        .map(d => d.trim().toLowerCase())
+        .filter(Boolean);
+      const uDiv = (u.division || '').trim().toLowerCase();
+
+      // Check division match
+      if (uDiv !== leaveUserDiv) return false;
+
+      // Check department intersection (at least one matching department)
+      return uDepts.some(d => leaveUserDepts.includes(d));
+    }).map(u => u.user_name).sort();
+  }, [currentLeaveUser, userData]);
+
   const togglePasswordVisibility = (userId) => {
   setShowPasswords(prev => ({
     ...prev,
@@ -2111,9 +2139,10 @@ const resetUserForm = () => {
                 {canManageSettings && (
                   <button
                     onClick={handleSubmitLeave}
+                    title="Select the users who will be on leave"
                     className="flex-shrink-0 rounded-md bg-green-600 py-2 px-4 text-white font-semibold hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all shadow-sm active:scale-95"
                   >
-                    Submit Leave
+                    Bulk Leave
                   </button>
                 )}
               </div>
@@ -2153,14 +2182,12 @@ const resetUserForm = () => {
                     id: user.id,
                     updatedUser: { 
                       ...user,
+                      status: 'active',
                       leave_date: null, 
                       leave_end_date: null, 
                       remark: null 
                     }
                   }));
-                  // .then(() => {
-                  //   setTimeout(() => window.location.reload(), 500);
-                  // });
                 }
               }}
               className="text-red-600" title="Clear Leave"
@@ -2239,6 +2266,7 @@ const resetUserForm = () => {
                       id: user.id,
                       updatedUser: {
                         ...user,
+                        status: 'active',
                         leave_date: null,
                         leave_end_date: null,
                         remark: null
@@ -4673,7 +4701,7 @@ const resetUserForm = () => {
                                       className="w-full text-xs border border-purple-200 rounded-md shadow-sm py-1.5 px-3 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
                                     />
                                     <datalist id="bulkPopupDoerOptions">
-                                      {availableDoersForLeave.map((name, index) => (
+                                      {popupAvailableDoers.map((name, index) => (
                                         <option key={index} value={name} />
                                       ))}
                                     </datalist>
@@ -4712,7 +4740,7 @@ const resetUserForm = () => {
                                                 className="w-full text-xs border border-gray-300 rounded-md shadow-sm py-1.5 px-3 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500"
                                               />
                                               <datalist id={`doerOptions-${task.task_id}`}>
-                                                {availableDoersForLeave.map((name, index) => (
+                                                {popupAvailableDoers.map((name, index) => (
                                                   <option key={index} value={name} />
                                                 ))}
                                               </datalist>

@@ -15,10 +15,8 @@ import {
   updateChecklistTask, 
   fetchUsers, 
   resetChecklistPagination, 
-  resetDelegationPagination,
-  fetchQuickTaskCounts
+  resetDelegationPagination
 } from "../redux/slice/quickTaskSlice";
-import { fetchMaintenanceCounts } from "../redux/slice/maintenanceSlice";
 
 
 export default function QuickTask() {
@@ -45,7 +43,8 @@ export default function QuickTask() {
   const [deptFilter, setDeptFilter] = useState('');
   const [divFilter, setDivFilter] = useState('');
   const [freqFilter, setFreqFilter] = useState('');
-    const tableContainerRef = useRef(null);
+  const tableContainerRef = useRef(null);
+  const containerRef = useRef(null);
   const [dropdownOpen, setDropdownOpen] = useState({
     name: false,
     department: false,
@@ -69,11 +68,9 @@ export default function QuickTask() {
     checklistTotal,
     checklistHasMore,
     delegationPage,
-    delegationHasMore,
-    discreteChecklistTotal,
-    discreteDelegationTotal
+    delegationHasMore
   } = useSelector((state) => state.quickTask);
-  const { uniqueMaintenanceTasks, uniqueMaintenanceTotal, discreteMaintenanceTotal } = useSelector((state) => state.maintenance);
+  const { uniqueMaintenanceTasks, uniqueMaintenanceTotal } = useSelector((state) => state.maintenance);
   const { userData: currentUser } = useSelector((state) => state.login);
   const dispatch = useDispatch();
 
@@ -137,14 +134,6 @@ export default function QuickTask() {
         }));
       }
     }
-    const countParams = {
-      userRole,
-      userDept,
-      userDiv,
-      userName: loginUserData.user_name
-    };
-    dispatch(fetchQuickTaskCounts(countParams));
-    dispatch(fetchMaintenanceCounts(countParams));
   }, [dispatch, userRole, userDept, userDiv, loginUserData.user_name, debouncedSearchTerm, nameFilter, deptFilter, divFilter, freqFilter, activeTab]);
 
 
@@ -199,19 +188,51 @@ useEffect(() => {
   }
 }, [handleScroll]);
 
-  // Helper to refresh discrete counts
-  const refreshCounts = useCallback(() => {
-    if (userRole) {
-      const params = {
-        userRole,
-        userDept,
-        userDiv,
-        userName: loginUserData.user_name
-      };
-      dispatch(fetchQuickTaskCounts(params));
-      dispatch(fetchMaintenanceCounts(params));
+// Global scroll forwarding behavior by mouse scrolling
+useEffect(() => {
+  const handleGlobalWheel = (e) => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const scrollContainer = container.querySelector('.custom-scrollbar');
+    if (!scrollContainer) return;
+
+    // If the scroll event happened inside the scrollContainer itself, let it scroll naturally
+    if (scrollContainer.contains(e.target)) {
+      return;
     }
-  }, [dispatch, userRole, userDept, userDiv, loginUserData.user_name]);
+
+    // Check if target is inside any other scrollable container (e.g. filter dropdowns)
+    let currentEl = e.target;
+    let insideOtherScrollable = false;
+    while (currentEl && currentEl !== container) {
+      if (currentEl !== scrollContainer && (currentEl.classList.contains('overflow-auto') || currentEl.classList.contains('overflow-y-auto'))) {
+        if (currentEl.scrollHeight > currentEl.clientHeight) {
+          insideOtherScrollable = true;
+          break;
+        }
+      }
+      currentEl = currentEl.parentElement;
+    }
+
+    if (insideOtherScrollable) {
+      return;
+    }
+
+    scrollContainer.scrollTop += e.deltaY;
+    e.preventDefault();
+  };
+
+  const container = containerRef.current;
+  if (container) {
+    container.addEventListener('wheel', handleGlobalWheel, { passive: false });
+    return () => {
+      container.removeEventListener('wheel', handleGlobalWheel);
+    };
+  }
+}, [activeTab]);
+
+
 
   // const userRole = localStorage.getItem("role");
   const canModifyTasks = hasModifyAccess("quick_task");
@@ -276,8 +297,6 @@ useEffect(() => {
         userName: loginUserData.user_name
       }));
 
-      refreshCounts();
-
     } catch (error) {
       console.error("Failed to update task:", error);
       setError("Failed to update task");
@@ -335,8 +354,6 @@ useEffect(() => {
         userDiv,
         userName: loginUserData.user_name
       }));
-
-      refreshCounts();
 
     } catch (error) {
       console.error("Failed to delete tasks:", error);
@@ -822,25 +839,9 @@ const filteredMaintenanceTasks = useMemo(() => {
 
   return (
     <AdminLayout>
-      <div className="sticky top-0 z-30 bg-white pb-4 border-b border-gray-200">
-        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-purple-700">
-              {CONFIG.PAGE_CONFIG.title}
-            </h1>
-            <p className="text-purple-600 text-sm">
-              {activeTab === 'checklist'
-                // ? `Showing ${filteredChecklistTasks.length} of ${discreteChecklistTotal} checklist tasks`
-                ? `Showing ${discreteChecklistTotal} checklist tasks`
-                : activeTab === 'delegation' 
-                  // ? `Showing ${filteredDelegationTasks.length} of ${discreteDelegationTotal} delegation tasks` 
-                  // : `Showing ${filteredMaintenanceTasks.length} of ${discreteMaintenanceTotal} maintenance tasks`}
-                  ? `Showing ${discreteDelegationTotal} delegation tasks` 
-                  : `Showing ${discreteMaintenanceTotal} maintenance tasks`}
-            </p>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 w-full sm:w-auto flex-wrap">
+      <div ref={containerRef} className="flex flex-col md:h-[calc(100vh-112px)] md:overflow-hidden">
+        <div className="bg-white pb-4 border-b border-gray-200 pt-2 flex-shrink-0">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 w-full flex-wrap items-center justify-between">
             <div className="flex border border-purple-200 rounded-md overflow-hidden self-start">
               {canAccessModule('checklist') && (
                 <button
@@ -1001,7 +1002,6 @@ const filteredMaintenanceTasks = useMemo(() => {
             )}
           </div>
         </div>
-      </div>
 
       {error && (
         <div className="mt-4 bg-red-50 p-4 rounded-md text-red-800 text-center">
@@ -1036,12 +1036,12 @@ const filteredMaintenanceTasks = useMemo(() => {
       {!error && (
         <>
           {activeTab === 'checklist' ? (
-            <div className="mt-4 rounded-lg border border-purple-200 shadow-md bg-white overflow-hidden">
-              <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-100 p-3 sm:p-4 flex justify-between items-center">
+            <div className="mt-4 rounded-lg border border-purple-200 shadow-md bg-white overflow-hidden flex-1 min-h-0 flex flex-col">
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-100 p-3 sm:p-4 flex justify-between items-center flex-shrink-0">
                 <div>
                   <h2 className="text-purple-700 font-medium text-sm sm:text-base">Checklist Tasks</h2>
                   <p className="text-purple-600 text-xs sm:text-sm mt-1">
-                    {CONFIG.PAGE_CONFIG.description}
+                    {CONFIG.PAGE_CONFIG.description} ({checklistTotal} tasks)
                   </p>
                 </div>
                 {selectedTasks.length > 0 && (
@@ -1053,8 +1053,7 @@ const filteredMaintenanceTasks = useMemo(() => {
               {/* <div className="overflow-x-auto" style={{ maxHeight: 'calc(100vh - 220px)' }}> */}
 <div 
   ref={tableContainerRef}
-  className="overflow-x-auto overflow-y-auto custom-scrollbar" 
-  style={{ maxHeight: 'calc(100vh - 280px)' }}
+  className="flex-1 overflow-auto custom-scrollbar"
 >
                 {/* Mobile Card View */}
                 <div className="sm:hidden space-y-3 p-3">
@@ -1609,6 +1608,7 @@ const filteredMaintenanceTasks = useMemo(() => {
           )}
         </>
       )}
+      </div>
     </AdminLayout>
   );
 }

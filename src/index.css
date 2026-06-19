@@ -19,6 +19,18 @@
   background: linear-gradient(to right, #7e22ce, #be185d);
 }
 
+.gradient-blue {
+  background: linear-gradient(to right, #2563eb, #4f46e5);
+}
+
+.gradient-blue:hover {
+  background: linear-gradient(to right, #1d4ed8, #4338ca);
+}
+
+.gradient-card-purple {
+  background: linear-gradient(to bottom right, #ffffff, rgba(250, 245, 255, 0.3)) !important;
+}
+
 /* Improve scrolling performance for large tables */
 .h-\[calc\(100vh-250px\)\] {
   transform: translateZ(0);
@@ -147,4 +159,25 @@
 
 .animation-scale-in {
   animation: scale-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ========================================
+   TOP PERFORMERS RANKING BADGE STYLES
+   ======================================== */
+.badge-gold {
+  background: linear-gradient(to right, #fbbf24, #f59e0b) !important;
+  color: #ffffff !important;
+  border: 1px solid #fcd34d !important;
+}
+
+.badge-silver {
+  background: linear-gradient(to right, #cbd5e1, #94a3b8) !important;
+  color: #1e293b !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+.badge-bronze {
+  background: linear-gradient(to right, #fb923c, #b45309) !important;
+  color: #ffffff !important;
+  border: 1px solid #fdba74 !important;
 }

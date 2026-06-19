@@ -270,8 +270,8 @@ useEffect(()=>{
 
       {/* Main Content */}
       {!error && isInitialized && !loading && (
-         <div className="mt-4 rounded-lg border border-purple-200 shadow-md bg-white overflow-hidden">
-          <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-100 p-4 flex justify-between items-center">
+        <div className="mt-4 rounded-lg border border-purple-200 shadow-md bg-white overflow-hidden flex-1 min-h-0 flex flex-col">
+          <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-100 p-4 flex justify-between items-center flex-shrink-0">
             <div>
               <h2 className="text-purple-700 font-medium">Delegation Tasks</h2>
               <p className="text-purple-600 text-sm">
@@ -292,7 +292,7 @@ useEffect(()=>{
             )}
           </div>
 
-          <div className="overflow-x-auto overflow-y-auto custom-scrollbar" style={{ maxHeight: 'calc(100vh - 280px)' }}>
+          <div className="flex-1 overflow-auto custom-scrollbar">
             {/* Mobile Card View */}
             <div className="sm:hidden space-y-3 p-3">
               {filteredTasks.length > 0 ? (

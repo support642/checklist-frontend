@@ -126,8 +126,14 @@ function StaffTasksPage() {
                     getTotalUsersCountApi()
                 ]);
 
-                setTotalStaffCount(staffCount)
-                setTotalUsersCount(usersCount)
+                setTotalStaffCount(typeof staffCount === 'number' ? staffCount : 0)
+                if (typeof usersCount === 'number') {
+                    setTotalUsersCount(usersCount)
+                } else if (usersCount && typeof usersCount === 'object' && 'count' in usersCount) {
+                    setTotalUsersCount(Number(usersCount.count) || 0)
+                } else {
+                    setTotalUsersCount(0)
+                }
 
                 const combinedData = combineStaffData(checklistData, delegationData)
 

@@ -32,14 +32,14 @@ export const workingDateHistoryApi = createApi({
     endpoints: (builder) => ({
         // Get role-based history list with pagination
         getWorkingHistory: builder.query({
-            query: ({ search, page = 1, limit = 10 }) => ({
+            query: ({ search, page = 1, limit = 10, startDate, endDate, filterUser }) => ({
                 url: '/working-date-history/list',
                 method: 'GET',
-                params: { search, page, limit }
+                params: { search, page, limit, startDate, endDate, filterUser }
             }),
-            // Use search term as part of the cache key to keep results separate per search
+            // Use search term and filters as part of the cache key to keep results separate
             serializeQueryArgs: ({ endpointName, queryArgs }) => {
-                return `${endpointName}-${queryArgs.search || ''}`;
+                return `${endpointName}-${queryArgs.search || ''}-${queryArgs.startDate || ''}-${queryArgs.endDate || ''}-${queryArgs.filterUser || ''}`;
             },
             // Merge incoming paginated data into the existing cache
             merge: (currentCache, newItems) => {
@@ -51,9 +51,13 @@ export const workingDateHistoryApi = createApi({
                     data: [...currentCache.data, ...newItems.data]
                 };
             },
-            // Refetch when the page or search changes
+            // Refetch when the page or any filter changes
             forceRefetch({ currentArg, previousArg }) {
-                return currentArg?.page !== previousArg?.page || currentArg?.search !== previousArg?.search;
+                return currentArg?.page !== previousArg?.page || 
+                       currentArg?.search !== previousArg?.search ||
+                       currentArg?.startDate !== previousArg?.startDate ||
+                       currentArg?.endDate !== previousArg?.endDate ||
+                       currentArg?.filterUser !== previousArg?.filterUser;
             },
             providesTags: [{ type: 'WorkingHistory', id: 'LIST' }],
         }),
@@ -92,11 +96,35 @@ export const workingDateHistoryApi = createApi({
             }),
             invalidatesTags: [{ type: 'WorkingHistory', id: 'LIST' }],
         }),
+
+        // Update work history
+        updateWorkingDate: builder.mutation({
+            query: ({ id, payload }) => ({
+                url: `/working-date-history/update/${id}`,
+                method: 'PUT',
+                data: payload,
+            }),
+            invalidatesTags: (result, error, { payload }) => [
+                { type: 'WorkingHistory', id: 'LIST' },
+                { type: 'WorkingHistory', id: payload?.userName }
+            ],
+        }),
+
+        // Delete work history
+        deleteWorkingDate: builder.mutation({
+            query: (id) => ({
+                url: `/working-date-history/delete/${id}`,
+                method: 'DELETE',
+            }),
+            invalidatesTags: [{ type: 'WorkingHistory', id: 'LIST' }],
+        }),
     }),
 });
 
 export const {
     useGetWorkingHistoryQuery,
     useGetEmployeeHistoryDetailQuery,
-    useSubmitWorkingDateMutation
+    useSubmitWorkingDateMutation,
+    useUpdateWorkingDateMutation,
+    useDeleteWorkingDateMutation
 } = workingDateHistoryApi;

@@ -4,12 +4,13 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { createPortal } from "react-dom"
-import { Download, FileText, Search, X, User, ExternalLink, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight } from "lucide-react"
+import { Download, FileText, Search, X, User, ExternalLink, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Trophy } from "lucide-react"
 import { fetchStaffTasksDataApi, getStaffTasksCountApi, getTotalUsersCountApi, fetchStaffDetailsApi } from "../../../redux/api/dashboardApi"
 import Papa from "papaparse"
 import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
 import EmployeePerformanceReportModal from "../../../components/modals/EmployeePerformanceReportModal"
+import TopPerformersModal from "../../../components/modals/TopPerformersModal"
 import { hasSystemAccess } from "../../../utils/permissionUtils"
 
 export default function StaffTasksTable({
@@ -38,6 +39,9 @@ export default function StaffTasksTable({
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedStaffName, setSelectedStaffName] = useState("")
+  const [isTopPerformersModalOpen, setIsTopPerformersModalOpen] = useState(false)
+  const [topPerformersData, setTopPerformersData] = useState([])
+  const [topPerformersRange, setTopPerformersRange] = useState({ from: "", to: "", isCustom: false, monthLabel: "" })
   const [selectedStaffData, setSelectedStaffData] = useState(null)
   const [staffTaskDetails, setStaffTaskDetails] = useState([])
   const [isModalLoading, setIsModalLoading] = useState(false)
@@ -251,7 +255,7 @@ export default function StaffTasksTable({
     
     // Categorize and Process Data (Matches UI Modal Logic)
     const checklistTasks = getUniqueTasksCSV(staffTaskDetails.filter(t => t.type === 'checklist'))
-      .map(t => ({ taskType: 'Checklist', description: t.task_description, frequency: t.frequency || 'N/A' }));
+      .map(t => ({ taskType: t.is_ledger ? 'Ledger' : 'Checklist', description: t.task_description, frequency: t.frequency || 'N/A' }));
 
     const delegationTasks = staffTaskDetails.filter(t => t.type === 'delegation' || t.is_delegated)
       .map(t => ({ taskType: 'Delegation', description: t.task_description, frequency: 'Delegated' }));
@@ -278,6 +282,7 @@ export default function StaffTasksTable({
     };
 
     const checklistStats = calculateStats(staffTaskDetails.filter(t => t.type === 'checklist'));
+    const ledgerStats = calculateStats(staffTaskDetails.filter(t => t.type === 'checklist' && t.is_ledger));
     const delegationStats = calculateStats(staffTaskDetails.filter(t => t.type === 'delegation' || t.is_delegated));
     const maintenanceStats = calculateStats(staffTaskDetails.filter(t => t.type === 'maintenance'));
 
@@ -301,6 +306,7 @@ export default function StaffTasksTable({
     csvData.push(["PERFORMANCE SUMMARY"]);
     csvData.push(["Category", "Assigned", "Completed", "Score (%)", "On-Time (%)"]);
     csvData.push(["Checklist", checklistStats.total, checklistStats.completed, checklistStats.score, checklistStats.onTime]);
+    csvData.push(["Ledger", ledgerStats.total, ledgerStats.completed, ledgerStats.score, "—"]);
     csvData.push(["Delegation", delegationStats.total, delegationStats.completed, delegationStats.score, delegationStats.onTime]);
     if (hasMaintenanceAccess) {
       csvData.push(["Maintenance", maintenanceStats.total, maintenanceStats.completed, maintenanceStats.score, maintenanceStats.onTime]);
@@ -371,7 +377,7 @@ export default function StaffTasksTable({
       return orderA - orderB;
     };
     const checklistTasks = getUniqueTasksPDF(staffTaskDetails.filter(t => t.type === 'checklist'))
-      .map(t => ({ taskType: 'Checklist', description: t.task_description, frequency: t.frequency || 'N/A' }))
+      .map(t => ({ taskType: t.is_ledger ? 'Ledger' : 'Checklist', description: t.task_description, frequency: t.frequency || 'N/A' }))
       .sort(sortByFreqPDF);
 
     const delegationTasks = getUniqueTasksPDF(staffTaskDetails.filter(t => t.type === 'delegation' || t.is_delegated))
@@ -396,12 +402,14 @@ export default function StaffTasksTable({
     };
 
     const checklistTasksAll = staffTaskDetails.filter(t => t.type === 'checklist');
+    const ledgerTasksAll = staffTaskDetails.filter(t => t.type === 'checklist' && t.is_ledger);
     const delegationTasksAll = staffTaskDetails.filter(t => t.type === 'delegation' || t.is_delegated);
     const maintenanceTasksAll = hasMaintenanceAccess 
       ? staffTaskDetails.filter(t => t.type === 'maintenance')
       : [];
 
     const checklistStats = calculateStats(checklistTasksAll);
+    const ledgerStats = calculateStats(ledgerTasksAll);
     const delegationStats = calculateStats(delegationTasksAll);
     const maintenanceStats = calculateStats(maintenanceTasksAll);
 
@@ -489,7 +497,7 @@ export default function StaffTasksTable({
     };
 
     // Helper: Draw a Stat block
-    const drawStatBlock = (x, y, w, h, title, stats) => {
+    const drawStatBlock = (x, y, w, h, title, stats, isLedger = false) => {
       doc.setFillColor(245, 245, 245);
       doc.rect(x, y, w, 6, 'F');
       doc.setDrawColor(200);
@@ -505,12 +513,16 @@ export default function StaffTasksTable({
       doc.setTextColor(120);
       doc.setFontSize(5.5);
       doc.text("ASSIGNED / DONE", x + w / 4, y + 10, { align: "center" });
-      doc.text("SCORE / ON-TIME", x + 3 * w / 4, y + 10, { align: "center" });
+      doc.text(isLedger ? "SCORE %" : "SCORE / ON-TIME", x + 3 * w / 4, y + 10, { align: "center" });
 
       doc.setTextColor(0);
       doc.setFontSize(9);
       doc.text(`${stats.total} / ${stats.completed}`, x + w / 4, y + 16, { align: "center" });
-      doc.text(`${stats.workDoneScore}% | ${stats.onTimeScore}%`, x + 3 * w / 4, y + 16, { align: "center" });
+      if (isLedger) {
+        doc.text(`${stats.workDoneScore}%`, x + 3 * w / 4, y + 16, { align: "center" });
+      } else {
+        doc.text(`${stats.workDoneScore}% | ${stats.onTimeScore}%`, x + 3 * w / 4, y + 16, { align: "center" });
+      }
     };
 
     // --- ROW 1: Employee Details (Full Width - Redistributed) ---
@@ -527,11 +539,12 @@ export default function StaffTasksTable({
     drawDetailBlock(marginX + nameW + desgW + deptW + divW, startY, idW, row1H, "Emp ID", staffInfo.employee_id);
 
     // --- ROW 2: Performance Stats & Range (Split) ---
-    const statW = mainColW / (hasMaintenanceAccess ? 3 : 2);
+    const statW = mainColW / (hasMaintenanceAccess ? 4 : 3);
     drawStatBlock(marginX, startY + row1H, statW, row2H, "Checklist", checklistStats);
-    drawStatBlock(marginX + statW, startY + row1H, statW, row2H, "Delegation", delegationStats);
+    drawStatBlock(marginX + statW, startY + row1H, statW, row2H, "Ledger", ledgerStats, true);
+    drawStatBlock(marginX + 2 * statW, startY + row1H, statW, row2H, "Delegation", delegationStats);
     if (hasMaintenanceAccess) {
-      drawStatBlock(marginX + 2 * statW, startY + row1H, statW, row2H, "Maintenance", maintenanceStats);
+      drawStatBlock(marginX + 3 * statW, startY + row1H, statW, row2H, "Maintenance", maintenanceStats);
     }
 
     // From / To (Right)
@@ -733,10 +746,16 @@ const loadStaffData = useCallback(async () => {
       ),
       getTotalUsersCountApi()
     ]);
-    setTotalStaffCount(staffCount)
-    setTotalUsersCount(usersCount)
+    setTotalStaffCount(typeof staffCount === 'number' ? staffCount : 0)
+    if (typeof usersCount === 'number') {
+      setTotalUsersCount(usersCount)
+    } else if (usersCount && typeof usersCount === 'object' && 'count' in usersCount) {
+      setTotalUsersCount(Number(usersCount.count) || 0)
+    } else {
+      setTotalUsersCount(0)
+    }
 
-    if (!data || data.length === 0) {
+    if (!Array.isArray(data) || data.length === 0) {
       setStaffMembers([])
       return
     }
@@ -754,6 +773,84 @@ const loadStaffData = useCallback(async () => {
   useEffect(() => {
     loadStaffData()
   }, [loadStaffData]) // Added loadStaffData to dependency array
+
+  const handleOpenTopPerformers = async () => {
+    try {
+      setIsLoading(true);
+      
+      const isCustom = !!(startDate && endDate);
+      let queryFrom = "";
+      let queryTo = "";
+      
+      if (isCustom) {
+        queryFrom = startDate;
+        queryTo = endDate;
+      } else {
+        // Compute the date range of the selected month
+        if (selectedMonthYear) {
+          const [year, month] = selectedMonthYear.split('-').map(Number);
+          const startOfMonth = new Date(year, month - 1, 1);
+          const endOfMonth = new Date(year, month, 0);
+          
+          const formatYMD = (d) => {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+          };
+          
+          queryFrom = formatYMD(startOfMonth);
+          let tempTo = formatYMD(endOfMonth);
+          if (tillDate) {
+            const tillDateObj = new Date(tillDate);
+            if (tillDateObj < endOfMonth) {
+              tempTo = tillDate;
+            }
+          }
+          queryTo = tempTo;
+        } else {
+          // If no month is selected
+          const defaultStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toLocaleDateString('en-CA');
+          queryFrom = defaultStart;
+          queryTo = tillDate || new Date().toLocaleDateString('en-CA');
+        }
+      }
+
+      // Fetch all filtered records (with high limit to get all)
+      const allData = await fetchStaffTasksDataApi(
+        dashboardType,
+        dashboardStaffFilter,
+        1,
+        10000, 
+        isCustom ? "" : selectedMonthYear,
+        isCustom ? "" : tillDate,
+        isCustom ? queryFrom : "",
+        isCustom ? queryTo : ""
+      );
+
+      if (!Array.isArray(allData) || allData.length === 0) {
+        alert("No performance data available.");
+        return;
+      }
+
+      const activeMonthOption = monthYearOptions.find(opt => opt.value === selectedMonthYear);
+      const monthLabel = activeMonthOption ? activeMonthOption.label : selectedMonthYear;
+
+      setTopPerformersData(allData);
+      setTopPerformersRange({ 
+        from: queryFrom, 
+        to: queryTo, 
+        isCustom, 
+        monthLabel: monthLabel || "this month" 
+      });
+      setIsTopPerformersModalOpen(true);
+    } catch (error) {
+      console.error("Error generating top performers ranking:", error);
+      alert("Failed to load top performers.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
 
   const renderOnTimeScore = (score) => {
@@ -797,13 +894,13 @@ const loadStaffData = useCallback(async () => {
         exportFrom,
         exportTo
       );
-      if (!allData || allData.length === 0) {
+      if (!Array.isArray(allData) || allData.length === 0) {
         alert("No data available to export.");
         return;
       }
 
       // Define CSV headers
-      const headers = ["SEQ NO.", "NAME", "DIVISION", "DEPARTMENT", "TOTAL TASKS", "COMPLETED", "PENDING", "OVERDUE", "DONE ON TIME", "DONE ON TIME SCORE (%)", "WORK DONE SCORE"];
+      const headers = ["SEQ NO.", "NAME", "DESIGNATION", "DIVISION", "DEPARTMENT", "TOTAL TASKS", "COMPLETED", "PENDING", "OVERDUE", "DONE ON TIME", "DONE ON TIME SCORE (%)", "WORK DONE SCORE"];
       
       // Map data to rows
       const rows = allData.map((staff, index) => {
@@ -812,6 +909,7 @@ const loadStaffData = useCallback(async () => {
         return [
           index + 1,
           staff.name,
+          (!staff.designation || staff.designation === "—") ? "" : staff.designation,
           staff.division || "N/A",
           staff.department || "N/A",
           staff.totalTasks,
@@ -865,7 +963,7 @@ const loadStaffData = useCallback(async () => {
         exportFrom,
         exportTo
       );
-      if (!allData || allData.length === 0) {
+      if (!Array.isArray(allData) || allData.length === 0) {
         alert("No data available to export.");
         return;
       }
@@ -883,7 +981,7 @@ const loadStaffData = useCallback(async () => {
       doc.text(`${new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })} ${new Date().toLocaleTimeString()}`, 14, 27);
       
       // Define table headers
-      const tableColumn = ["Seq", "Name", "Division", "Department", "Total", "Done", "Pending", "Overdue", "On Time", "On Time Score", "Score"];
+      const tableColumn = ["Seq", "Name", "Designation", "Division", "Department", "Total", "Done", "Pending", "Overdue", "On Time", "On Time Score", "Score"];
       
       // Map data to rows
       const tableRows = allData.map((staff, index) => {
@@ -892,6 +990,7 @@ const loadStaffData = useCallback(async () => {
         return [
           index + 1,
           staff.name,
+          (!staff.designation || staff.designation === "—") ? "" : staff.designation,
           staff.division || "N/A",
           staff.department || "N/A",
           staff.totalTasks,
@@ -1026,7 +1125,16 @@ const loadStaffData = useCallback(async () => {
 
         <div className="flex flex-col items-end gap-3">
           {canExportReport && (
-            <div className="relative">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                disabled={isLoading}
+                onClick={handleOpenTopPerformers}
+                className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 transition-colors shadow-sm text-sm font-medium disabled:opacity-50"
+              >
+                <Trophy size={18} />
+                Top Performers
+              </button>
+
               <button
                 disabled={isLoading}
                 onClick={() => setIsReportModalOpen(true)}
@@ -1089,6 +1197,9 @@ const loadStaffData = useCallback(async () => {
                   Name
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Designation
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Division
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1136,6 +1247,7 @@ const loadStaffData = useCallback(async () => {
                       </div>
                     </div>
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{(!staff.designation || staff.designation === "—") ? "" : staff.designation}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{staff.division || "N/A"}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{staff.department || "N/A"}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{staff.totalTasks}</td>
@@ -1178,7 +1290,7 @@ const loadStaffData = useCallback(async () => {
                   <User size={12} className={isSuperAdmin ? 'text-purple-600' : 'text-gray-400'} />
                   {staff.name} 
                   <span className="text-[10px] text-gray-500 font-normal ml-1">
-                    ({staff.division || "N/A"} - {staff.department || "N/A"})
+                    {(!staff.designation || staff.designation === "—") ? "" : `${staff.designation} • `}({staff.division || "N/A"} - {staff.department || "N/A"})
                   </span>
                   {isSuperAdmin && <ExternalLink size={10} className="text-gray-400 ml-auto" />}
                 </div>
@@ -1422,6 +1534,20 @@ const loadStaffData = useCallback(async () => {
           onDownloadCSV={(from, to, info) => handleDownloadCSV(from, to, info || selectedStaffData || staffMembers.find(s => s.name === selectedStaffName))}
           onRefresh={(from, to) => handleOpenModal(selectedStaffName, from, to)}
           hasMaintenanceAccess={hasMaintenanceAccess}
+        />,
+        document.body
+      )}
+
+      {/* Top Performers Modal */}
+      {isTopPerformersModalOpen && createPortal(
+        <TopPerformersModal
+          isOpen={isTopPerformersModalOpen}
+          onClose={() => setIsTopPerformersModalOpen(false)}
+          performers={topPerformersData}
+          startDate={topPerformersRange.from}
+          endDate={topPerformersRange.to}
+          isCustomRange={topPerformersRange.isCustom}
+          monthLabel={topPerformersRange.monthLabel}
         />,
         document.body
       )}

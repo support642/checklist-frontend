@@ -108,9 +108,11 @@ const AllDocuments = () => {
     // Share Modal State
     const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
     const [shareDoc, setShareDoc] = useState<DocumentItem | null>(null);
+    const [shareMode, setShareMode] = useState<'email' | 'whatsapp'>('email');
 
-    const handleOpenShareModal = (doc: DocumentItem) => {
+    const handleOpenShareModal = (doc: DocumentItem, mode: 'email' | 'whatsapp') => {
         setShareDoc(doc);
+        setShareMode(mode);
         setIsEmailModalOpen(true);
     };
 
@@ -127,10 +129,10 @@ const AllDocuments = () => {
                 documentId: Number(shareDoc.id)
             });
             
-            toast.success(`Document shared with ${recipientName} successfully!`);
+            toast.success(`Document shared with ${recipientName} successfully via ${shareMode === 'whatsapp' ? 'WhatsApp' : 'Email'}!`);
         } catch (err) {
             console.error('Failed to share document:', err);
-            toast.error('Failed to share document via email');
+            toast.error(`Failed to share document via ${shareMode === 'whatsapp' ? 'WhatsApp' : 'Email'}`);
         }
     };
 
@@ -290,13 +292,22 @@ const AllDocuments = () => {
                                             />
                                         </td>
                                         <td className="px-3 py-2 text-center">
-                                            <button 
-                                                onClick={() => handleOpenShareModal(item)}
-                                                className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                                                title="Share via Email"
-                                            >
-                                                <Mail size={16} />
-                                            </button>
+                                            <div className="flex justify-center gap-2">
+                                                <button 
+                                                    onClick={() => handleOpenShareModal(item, 'email')}
+                                                    className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                                    title="Share via Email"
+                                                >
+                                                    <Mail size={16} />
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleOpenShareModal(item, 'whatsapp')}
+                                                    className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                                    title="Share via WhatsApp"
+                                                >
+                                                    <MessageCircle size={16} />
+                                                </button>
+                                            </div>
                                         </td>
                                         {isAdmin && (
                                             <td className="px-3 py-2 flex justify-center items-center gap-2">
@@ -492,11 +503,18 @@ const AllDocuments = () => {
                                     )}
                                     <div className="flex gap-2">
                                         <button 
-                                            onClick={() => handleOpenShareModal(item)}
+                                            onClick={() => handleOpenShareModal(item, 'email')}
                                             className="p-1.5 text-indigo-600 bg-indigo-50 rounded-lg"
                                             title="Share via Email"
                                         >
                                             <Mail size={14} />
+                                        </button>
+                                        <button 
+                                            onClick={() => handleOpenShareModal(item, 'whatsapp')}
+                                            className="p-1.5 text-green-600 bg-green-50 rounded-lg"
+                                            title="Share via WhatsApp"
+                                        >
+                                            <MessageCircle size={14} />
                                         </button>
                                         {isAdmin && (
                                             editingDocId === item.id ? (
@@ -540,6 +558,7 @@ const AllDocuments = () => {
                     }}
                     onSend={handleSendEmail}
                     documentName={shareDoc.documentName}
+                    shareMode={shareMode}
                 />
             )}
         </>

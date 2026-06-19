@@ -15,18 +15,33 @@ export const fetchUniqueGivenByDataApi = async () => {
 };
 
 export const fetchUniqueDoerNameDataApi = async (args = {}) => {
-  const { department, unit, division } = args;
+  const { department, unit, division, role, ignoreLocalStorage } = args;
   
+  // When ignoreLocalStorage is true (e.g. SalesDataPage), always use /doer-all
+  // and pass division/department as query params for filtering
+  if (ignoreLocalStorage) {
+    const roleParam = role || localStorage.getItem("role");
+    const params = {};
+    if (roleParam) params.role = roleParam;
+    if (division) params.division = division;
+    if (department) params.department = department;
+    return (await API.get(`/doer-all`, { params })).data;
+  }
+
   if (!department) {
     // No department specified — return all active doer names with role-based filtering
-    const role = localStorage.getItem("role");
-    const divisionLocal = localStorage.getItem("division");
-    const departmentLocal = localStorage.getItem("department");
+    const roleParam = role || localStorage.getItem("role");
     
     const params = {};
-    if (role) params.role = role;
+    if (roleParam) params.role = roleParam;
+    
+    const divisionLocal = localStorage.getItem("division");
+    const departmentLocal = localStorage.getItem("department");
     if (divisionLocal) params.division = divisionLocal;
     if (departmentLocal) params.department = departmentLocal;
+    
+    if (division) params.division = division;
+    if (department) params.department = department;
     
     return (await API.get(`/doer-all`, { params })).data;
   }

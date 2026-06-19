@@ -48,8 +48,8 @@ export const maintenanceData = createAsyncThunk(
 // 2. FETCH HISTORY MAINTENANCE TASKS
 export const maintenanceHistoryData = createAsyncThunk(
     "fetch/maintenanceHistory",
-    async ({ page = 1, search = "", startDate = "", endDate = "", name = 'all', division = 'all', departmentFilter = 'all', approvalStatus = 'all', unitFilter = 'all' } = {}) => {
-        return await fetchMaintenanceDataForHistory(page, search, startDate, endDate, name, division, departmentFilter, approvalStatus, unitFilter);
+    async ({ page = 1, search = "", startDate = "", endDate = "", name = 'all', division = 'all', departmentFilter = 'all', approvalStatus = 'all', unitFilter = 'all', limit = 50 } = {}) => {
+        return await fetchMaintenanceDataForHistory(page, search, startDate, endDate, name, division, departmentFilter, approvalStatus, unitFilter, limit);
     }
 );
 
