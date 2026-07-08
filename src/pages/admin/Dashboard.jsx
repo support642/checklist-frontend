@@ -22,7 +22,8 @@ import {
   getStaffNamesByDepartmentApi,
   fetchChecklistDataByDateRangeApi,
   getChecklistDateRangeStatsApi,
-  fetchDepartmentReportSummaryApi
+  fetchDepartmentReportSummaryApi,
+  fetchMachineReportSummaryApi
 } from "../../redux/api/dashboardApi.js"
 import { fetchDepartmentDataApi } from "../../redux/api/settingApi.js"
 import MaintenanceView from "../../components/Maintenance/MaintenanceView.jsx"
@@ -434,6 +435,163 @@ useEffect(() => {
         link.click();
         document.body.removeChild(link);
         return; // Exit early for summary mode
+      }
+
+      // =====================================================
+      // MACHINE REPORT MODE
+      // =====================================================
+      if (statusType === "machine") {
+        const machineData = await fetchMachineReportSummaryApi({
+          staffFilter: dashboardStaffFilter,
+          departmentFilter,
+          unitFilter,
+          divisionFilter,
+          role: userRole,
+          username,
+          startDate: dateRange.startDate,
+          endDate: dateRange.endDate
+        });
+
+        if (!machineData || machineData.length === 0) {
+          alert("No machine data available to export.");
+          setIsExporting(false);
+          return;
+        }
+
+        // Group tasks by Machine Division → Machine Department → Machine Name
+        const groupMap = {};
+        machineData.forEach((row) => {
+          const div = (row.machine_division || "N/A").trim();
+          const dept = (row.machine_department || "N/A").trim();
+          const machine = (row.machine_name || "N/A").trim();
+
+          if (!groupMap[div]) groupMap[div] = {};
+          if (!groupMap[div][dept]) groupMap[div][dept] = {};
+          groupMap[div][dept][machine] = {
+            total: row.total,
+            completed: row.completed,
+            pending: row.pending,
+            overdue: row.overdue
+          };
+        });
+
+        // Build CSV rows
+        const summaryHeaders = [
+          "Row Labels",
+          "Sum of TOTAL TASKS",
+          "Sum of COMPLETED",
+          "Sum of PENDING",
+          "Sum of OVERDUE",
+          "Average of WORK"
+        ];
+
+        const summaryRows = [];
+        let grandTotal = 0, grandCompleted = 0, grandPending = 0, grandOverdue = 0;
+
+        // Sort divisions alphabetically
+        const sortedDivisions = Object.keys(groupMap).sort();
+
+        sortedDivisions.forEach((div) => {
+          const departments = groupMap[div];
+          let divTotal = 0, divCompleted = 0, divPending = 0, divOverdue = 0;
+
+          // Calculate division totals first
+          Object.values(departments).forEach((depts) => {
+            Object.values(depts).forEach((stats) => {
+              divTotal += stats.total;
+              divCompleted += stats.completed;
+              divPending += stats.pending;
+              divOverdue += stats.overdue;
+            });
+          });
+
+          const divWorkPct = divTotal > 0 ? Math.round((divCompleted / divTotal) * 100) : 0;
+
+          // Division header row
+          summaryRows.push([
+            escapeCSV(div),
+            divTotal,
+            divCompleted,
+            divPending,
+            divOverdue,
+            `${divWorkPct}%`
+          ]);
+
+          // Sort departments alphabetically within division
+          const sortedDepts = Object.keys(departments).sort();
+          sortedDepts.forEach((dept) => {
+            const machines = departments[dept];
+            let deptTotal = 0, deptCompleted = 0, deptPending = 0, deptOverdue = 0;
+
+            // Calculate department totals
+            Object.values(machines).forEach((stats) => {
+              deptTotal += stats.total;
+              deptCompleted += stats.completed;
+              deptPending += stats.pending;
+              deptOverdue += stats.overdue;
+            });
+
+            const deptWorkPct = deptTotal > 0 ? Math.round((deptCompleted / deptTotal) * 100) : 0;
+
+            summaryRows.push([
+              escapeCSV(`    ${dept}`),
+              deptTotal,
+              deptCompleted,
+              deptPending,
+              deptOverdue,
+              `${deptWorkPct}%`
+            ]);
+
+            // Sort machines alphabetically within department
+            const sortedMachines = Object.keys(machines).sort();
+            sortedMachines.forEach((machine) => {
+              const s = machines[machine];
+              const machineWorkPct = s.total > 0 ? Math.round((s.completed / s.total) * 100) : 0;
+              summaryRows.push([
+                escapeCSV(`        ${machine}`),
+                s.total,
+                s.completed,
+                s.pending,
+                s.overdue,
+                `${machineWorkPct}%`
+              ]);
+            });
+          });
+
+          grandTotal += divTotal;
+          grandCompleted += divCompleted;
+          grandPending += divPending;
+          grandOverdue += divOverdue;
+        });
+
+        // Grand Total row
+        const grandWorkPct = grandTotal > 0 ? Math.round((grandCompleted / grandTotal) * 100) : 0;
+        summaryRows.push([
+          "Grand Total",
+          grandTotal,
+          grandCompleted,
+          grandPending,
+          grandOverdue,
+          `${grandWorkPct}%`
+        ]);
+
+        const csvString = [
+          summaryHeaders.join(","),
+          ...summaryRows.map(row => row.join(","))
+        ].join("\n");
+
+        // Trigger Download
+        const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        const dateStr = new Date().toISOString().split('T')[0];
+        link.setAttribute("href", url);
+        link.setAttribute("download", `Machine_Report_Maintenance_${dateStr}.csv`);
+        link.style.visibility = "hidden";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        return; // Exit early for machine mode
       }
 
       // =====================================================

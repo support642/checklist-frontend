@@ -112,7 +112,7 @@ function SearchableDropdown({ value, onChange, options, placeholder, allLabel })
 }
 
 // Dropdown to select which task status to export
-function ExportDropdown({ onExport, isMobile, isExporting }) {
+function ExportDropdown({ onExport, isMobile, isExporting, dashboardType }) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -148,6 +148,14 @@ function ExportDropdown({ onExport, isMobile, isExporting }) {
             >
               Department Report
             </button>
+            {dashboardType === "maintenance" && (
+              <button
+                onClick={() => { onExport("machine"); setIsOpen(false); }}
+                className="w-full text-left px-3 py-2 text-xs font-bold uppercase tracking-wider text-purple-600 hover:bg-purple-50 hover:text-purple-800 transition-colors"
+              >
+                Machine Report
+              </button>
+            )}
             <div className="border-t border-slate-100 my-1" />
             <button
               onClick={() => { onExport("all"); setIsOpen(false); }}
@@ -200,6 +208,14 @@ function ExportDropdown({ onExport, isMobile, isExporting }) {
           >
             Department Report
           </button>
+          {dashboardType === "maintenance" && (
+            <button
+              onClick={() => { onExport("machine"); setIsOpen(false); }}
+              className="w-full text-left px-4 py-2 text-xs font-bold uppercase tracking-wider text-purple-600 hover:bg-purple-50 hover:text-purple-800 transition-colors"
+            >
+              Machine Report
+            </button>
+          )}
           <div className="border-t border-slate-100 my-1" />
           <button
             onClick={() => { onExport("all"); setIsOpen(false); }}
@@ -471,7 +487,7 @@ export default function DashboardHeader({
               >
                 Reset
               </button>
-              <ExportDropdown onExport={onExportCSV} isMobile={true} isExporting={isExporting} />
+              <ExportDropdown onExport={onExportCSV} isMobile={true} isExporting={isExporting} dashboardType={dashboardType} />
             </div>
           )}
         </div>
@@ -607,7 +623,7 @@ export default function DashboardHeader({
               >
                 Reset
               </button>
-              <ExportDropdown onExport={onExportCSV} isMobile={false} isExporting={isExporting} />
+              <ExportDropdown onExport={onExportCSV} isMobile={false} isExporting={isExporting} dashboardType={dashboardType} />
             </div>
           )}
         </div>

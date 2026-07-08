@@ -48,7 +48,7 @@ export const fetchMaintenanceDataSortByDate = async (page = 1, search = '', star
 // =======================================================
 // 2️⃣ Fetch Maintenance History
 // =======================================================
-export const fetchMaintenanceDataForHistory = async (page = 1, search = "", startDate = "", endDate = "", name = 'all', division = 'all', departmentFilter = 'all', approvalStatus = 'all', unitFilter = 'all', limit = 50) => {
+export const fetchMaintenanceDataForHistory = async (page = 1, search = "", startDate = "", endDate = "", name = 'all', division = 'all', departmentFilter = 'all', approvalStatus = 'all', unitFilter = 'all', limit = 50, usePlannedDate = false) => {
     const username = localStorage.getItem("user-name");
     const role = localStorage.getItem("role");
     const department = localStorage.getItem("department");
@@ -64,6 +64,7 @@ export const fetchMaintenanceDataForHistory = async (page = 1, search = "", star
     if (departmentFilter !== 'all') url += `&departmentFilter=${encodeURIComponent(departmentFilter)}`;
     if (unitFilter !== 'all') url += `&unitFilter=${encodeURIComponent(unitFilter)}`;
     if (approvalStatus !== 'all') url += `&approvalStatus=${approvalStatus}`;
+    if (usePlannedDate) url += `&usePlannedDate=true`;
 
     const response = await authFetch(url);
     if (!response.ok) {

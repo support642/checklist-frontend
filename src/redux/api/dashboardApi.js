@@ -500,3 +500,10 @@ export const fetchDepartmentReportSummaryApi = async (paramsObj) => {
   const res = await authFetch(`${BASE_URL}/report-summary?${params.toString()}`);
   return await res.json();
 };
+
+export const fetchMachineReportSummaryApi = async (paramsObj) => {
+  const params = new URLSearchParams(paramsObj);
+  const res = await authFetch(`${BASE_URL}/machine-report-summary?${params.toString()}`);
+  return await res.json();
+};
+

@@ -12,7 +12,7 @@ import {
 import StatsCards from './StatsCards';
 import MaintenanceCharts from './MaintenanceCharts';
 import MaintenanceTable from './MaintenanceTable';
-import { RefreshCw, ClipboardList, X, Settings2, MapPin, Cog } from 'lucide-react';
+import { RefreshCw, ClipboardList, X, Settings2, MapPin, Cog, CheckCircle2, AlertCircle, Clock, Download, Filter, ChevronUp, ChevronDown } from 'lucide-react';
 
 const MachineModal = ({ isOpen, onClose, machines }) => {
   if (!isOpen) return null;
@@ -111,6 +111,514 @@ const MachineModal = ({ isOpen, onClose, machines }) => {
   );
 };
 
+const TasksByMachineModal = ({ isOpen, onClose, title, tasks, cardCount }) => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [assignedFilter, setAssignedFilter] = useState('all');
+  const [machineFilter, setMachineFilter] = useState('all');
+  const [frequencyFilter, setFrequencyFilter] = useState('all');
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(20);
+
+  // Generate unique filter options dynamically from input tasks
+  const assignedToOptions = useMemo(() => {
+    const names = tasks.map(t => t.name).filter(Boolean);
+    return Array.from(new Set(names)).sort();
+  }, [tasks]);
+
+  const machineNameOptions = useMemo(() => {
+    const names = tasks.map(t => t.machine_name).filter(Boolean);
+    return Array.from(new Set(names)).sort();
+  }, [tasks]);
+
+  const frequencyOptions = useMemo(() => {
+    const freqs = tasks.map(t => t.frequency).filter(Boolean);
+    return Array.from(new Set(freqs)).sort();
+  }, [tasks]);
+
+  useEffect(() => {
+    setVisibleCount(20);
+  }, [searchQuery, assignedFilter, machineFilter, frequencyFilter, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setSearchQuery('');
+      setAssignedFilter('all');
+      setMachineFilter('all');
+      setFrequencyFilter('all');
+      setShowMobileFilters(false);
+    }
+  }, [isOpen]);
+
+  const handleScroll = (e) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.target;
+    if (scrollHeight - scrollTop - clientHeight < 50) {
+      if (visibleCount < filtered.length) {
+        setVisibleCount(prev => prev + 20);
+      }
+    }
+  };
+
+  if (!isOpen) return null;
+
+  // Normalise partName into string for display
+  const getPartNameDisplay = (partName) => {
+    if (Array.isArray(partName)) return partName.join(', ');
+    return partName || '-';
+  };
+
+  // Helper to parse date from string (same logic as table)
+  const parseDateLocal = (dateStr) => {
+    if (!dateStr || typeof dateStr !== "string") return new Date(NaN);
+    if (dateStr.includes("-") && dateStr.match(/^\d{4}-\d{2}-\d{2}/)) {
+      const parts = dateStr.split(/[ T]/);
+      const datePart = parts[0];
+      const timePart = parts[1] ? parts[1].split(/[+-Z]/)[0] : "00:00:00";
+      const [y, m, d] = datePart.split("-").map(Number);
+      const tUnits = timePart.split(":").map(Number);
+      return new Date(y, m - 1, d, tUnits[0] || 0, tUnits[1] || 0, tUnits[2] || 0);
+    }
+    if (dateStr.includes("/")) {
+      const parts = dateStr.split(" ");
+      const dateComponents = parts[0].split("/");
+      if (dateComponents.length !== 3) return new Date(NaN);
+      const [d, m, y] = dateComponents.map(Number);
+      const date = new Date(y, m - 1, d);
+      if (parts.length > 1) {
+        const tParts = parts[1].split(":");
+        if (tParts.length >= 2) date.setHours(Number(tParts[0]) || 0, Number(tParts[1]) || 0, Number(tParts[2]) || 0);
+      } else date.setHours(0, 0, 0, 0);
+      return date;
+    }
+    return new Date(dateStr);
+  };
+
+  const getStatusBadge = (task) => {
+    const isCompleted = task.submission_date !== null && task.submission_date !== undefined;
+    if (isCompleted) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-cyan-100 text-cyan-800">
+          <CheckCircle2 className="h-3 w-3" /> Completed
+        </span>
+      );
+    }
+    const dStr = task.planned_date || task.dueDate || task.task_start_date;
+    const taskDate = parseDateLocal(dStr);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (!isNaN(taskDate.getTime())) {
+      const compareDate = new Date(taskDate);
+      compareDate.setHours(0, 0, 0, 0);
+      if (compareDate < today) {
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800">
+            <AlertCircle className="h-3 w-3" /> Overdue
+          </span>
+        );
+      }
+      if (compareDate > today) {
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800">
+            <Clock className="h-3 w-3" /> Upcoming
+          </span>
+        );
+      }
+    }
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
+        <Clock className="h-3 w-3" /> Pending
+      </span>
+    );
+  };
+
+  const formatDateDisplay = (dateStr) => {
+    if (!dateStr) return '-';
+    const date = parseDateLocal(dateStr);
+    if (isNaN(date.getTime())) return dateStr;
+    return date.toLocaleDateString('en-US', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  // Filter tasks based on search query and selections
+  const filtered = tasks.filter(task => {
+    const q = searchQuery.toLowerCase().trim();
+    if (q) {
+      const matchesSearch = (
+        (task.machine_name || '').toLowerCase().includes(q) ||
+        (task.task_description || '').toLowerCase().includes(q) ||
+        (task.name || '').toLowerCase().includes(q) ||
+        (task.machine_department || '').toLowerCase().includes(q) ||
+        (task.machine_division || '').toLowerCase().includes(q)
+      );
+      if (!matchesSearch) return false;
+    }
+
+    if (assignedFilter !== 'all' && task.name !== assignedFilter) return false;
+    if (machineFilter !== 'all' && task.machine_name !== machineFilter) return false;
+    if (frequencyFilter !== 'all' && task.frequency !== frequencyFilter) return false;
+
+    return true;
+  });
+
+  // Slice tasks for pagination
+  const paginatedTasks = filtered.slice(0, visibleCount);
+
+  // Group paginated tasks by machine name
+  const grouped = {};
+  paginatedTasks.forEach(task => {
+    const mName = task.machine_name || 'Unassigned Machine';
+    if (!grouped[mName]) grouped[mName] = [];
+    grouped[mName].push(task);
+  });
+
+  const sortedMachines = Object.keys(grouped).sort();
+
+  const handleExportCSV = () => {
+    const headers = [
+      'Machine Name',
+      'Machine Division',
+      'Machine Department',
+      'Part Name',
+      'Task Description',
+      'Assigned To',
+      'Planned Date',
+      'Frequency',
+      'Status'
+    ];
+
+    const rows = filtered.map(task => {
+      const isCompleted = task.submission_date !== null && task.submission_date !== undefined;
+      let statusStr = 'Pending';
+      if (isCompleted) {
+        statusStr = 'Completed';
+      } else {
+        const dStr = task.planned_date || task.dueDate || task.task_start_date;
+        const taskDate = parseDateLocal(dStr);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (!isNaN(taskDate.getTime())) {
+          const compareDate = new Date(taskDate);
+          compareDate.setHours(0, 0, 0, 0);
+          if (compareDate < today) statusStr = 'Overdue';
+          else if (compareDate > today) statusStr = 'Upcoming';
+        }
+      }
+
+      const partNameStr = Array.isArray(task.part_name) 
+        ? task.part_name.join('; ') 
+        : (task.part_name || '-');
+
+      return [
+        task.machine_name || '-',
+        task.machine_division || '-',
+        task.machine_department || '-',
+        partNameStr,
+        task.task_description || '-',
+        task.name || '-',
+        formatDateDisplay(task.planned_date || task.task_start_date),
+        task.frequency || '-',
+        statusStr
+      ];
+    });
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => 
+        row.map(val => {
+          const cleanVal = String(val).replace(/"/g, '""');
+          return cleanVal.includes(',') || cleanVal.includes('\n') || cleanVal.includes('\r')
+            ? `"${cleanVal}"`
+            : cleanVal;
+        }).join(',')
+      )
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    
+    const formattedTitle = title.toLowerCase().replace(/\s+/g, '_');
+    const dStr = new Date().toISOString().split('T')[0];
+    link.setAttribute('download', `${formattedTitle}_export_${dStr}.csv`);
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh] border border-gray-200 animate-in zoom-in-95 duration-200">
+        
+        {/* Modal Header */}
+        <div className="p-4 sm:p-6 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-purple-50 to-indigo-50">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-purple-600 rounded-xl shadow-lg shadow-purple-200 text-white">
+              <ClipboardList className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">{title}</h2>
+              <p className="text-sm text-gray-500">Total {cardCount} activities found</p>
+            </div>
+          </div>
+          <button 
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors group"
+          >
+            <X className="h-5 w-5 text-gray-400 group-hover:text-gray-600" />
+          </button>
+        </div>
+
+        {/* Search Bar & Filters Controls */}
+        <div className="p-4 border-b border-gray-100 bg-gray-50/50 space-y-3">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            {/* Search Input */}
+            <div className="flex-1">
+              <input
+                type="text"
+                placeholder="Search by machine, description, staff..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all shadow-sm"
+              />
+            </div>
+            
+            {/* Export CSV Button */}
+            <button
+              onClick={handleExportCSV}
+              disabled={filtered.length === 0}
+              className="flex items-center justify-center gap-2 px-5 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white text-sm font-bold rounded-xl transition-all shadow-md active:scale-95 whitespace-nowrap"
+            >
+              <Download className="h-4 w-4" /> Export CSV
+            </button>
+          </div>
+
+          {/* Mobile Filter Toggle */}
+          <button 
+            onClick={() => setShowMobileFilters(!showMobileFilters)}
+            className="sm:hidden flex items-center justify-between w-full px-4 py-2.5 bg-purple-50 text-purple-700 rounded-xl border border-purple-100 font-bold shadow-sm transition-all active:scale-95"
+          >
+            <div className="flex items-center gap-2">
+              <Filter size={16} className="text-purple-500" />
+              <span className="text-xs uppercase tracking-wider">
+                {showMobileFilters ? 'Hide Filter Options' : 'Show Filter Options'}
+              </span>
+            </div>
+            {showMobileFilters ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+          </button>
+
+          {/* Filters Row */}
+          <div className={`${showMobileFilters ? 'grid' : 'hidden sm:grid'} grid-cols-1 sm:grid-cols-3 gap-3 animate-in fade-in slide-in-from-top-2 duration-200`}>
+            {/* Machine Name Filter */}
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Machine Name</label>
+              <select
+                value={machineFilter}
+                onChange={(e) => setMachineFilter(e.target.value)}
+                className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-700 shadow-sm"
+              >
+                <option value="all">All Machines ({machineNameOptions.length})</option>
+                {machineNameOptions.map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Assigned To Filter */}
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Assigned To</label>
+              <select
+                value={assignedFilter}
+                onChange={(e) => setAssignedFilter(e.target.value)}
+                className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-700 shadow-sm"
+              >
+                <option value="all">All Staff ({assignedToOptions.length})</option>
+                {assignedToOptions.map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Frequency Filter */}
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Frequency</label>
+              <select
+                value={frequencyFilter}
+                onChange={(e) => setFrequencyFilter(e.target.value)}
+                className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-700 shadow-sm"
+              >
+                <option value="all">All Frequencies ({frequencyOptions.length})</option>
+                {frequencyOptions.map(freq => (
+                  <option key={freq} value={freq}>{freq.toUpperCase()}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Modal Content */}
+        <div 
+          onScroll={handleScroll}
+          className="flex-1 overflow-auto p-4 sm:p-6 space-y-6"
+        >
+          {sortedMachines.map((machineName) => {
+            const machineTasks = grouped[machineName];
+            const sampleTask = machineTasks[0] || {};
+            return (
+              <div 
+                key={machineName}
+                className="bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden"
+              >
+                {/* Machine Header */}
+                <div className="p-4 bg-gray-50/70 border-b border-gray-100 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1 bg-purple-100 rounded text-purple-600">
+                      <Settings2 className="h-4 w-4" />
+                    </div>
+                    <span className="font-bold text-gray-900 text-sm sm:text-base">
+                      {machineName}
+                    </span>
+                    <span className="px-2 py-0.5 text-xs font-bold bg-purple-100 text-purple-700 rounded-full">
+                      {machineTasks.length} {machineTasks.length === 1 ? 'task' : 'tasks'}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 text-xs font-medium text-gray-500">
+                    {sampleTask.machine_department && (
+                      <span className="px-2 py-0.5 rounded bg-gray-200 text-gray-700">
+                        Dept: {sampleTask.machine_department}
+                      </span>
+                    )}
+                    {sampleTask.machine_division && (
+                      <span className="px-2 py-0.5 rounded bg-gray-200 text-gray-700">
+                        Div: {sampleTask.machine_division}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Machine Tasks List */}
+                {/* Desktop View: Table layout */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-100 text-sm text-left">
+                    <thead className="bg-gray-50/30 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      <tr>
+                        <th className="px-4 py-2.5">Part Name</th>
+                        <th className="px-4 py-2.5">Task Description</th>
+                        <th className="px-4 py-2.5">Assigned To</th>
+                        <th className="px-4 py-2.5">Planned Date</th>
+                        <th className="px-4 py-2.5">Freq</th>
+                        <th className="px-4 py-2.5">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 text-gray-700 font-medium">
+                      {machineTasks.map((task, idx) => (
+                        <tr key={task.task_id || task.id || idx} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="px-4 py-3 text-xs text-gray-500 max-w-[150px] truncate">
+                            {getPartNameDisplay(task.part_name)}
+                          </td>
+                          <td className="px-4 py-3 text-gray-800 break-words max-w-[200px]">
+                            {task.task_description || '-'}
+                          </td>
+                          <td className="px-4 py-3 text-xs text-gray-600">
+                            {task.name || '-'}
+                          </td>
+                          <td className="px-4 py-3 text-xs whitespace-nowrap text-gray-600">
+                            {formatDateDisplay(task.planned_date || task.task_start_date)}
+                          </td>
+                          <td className="px-4 py-3 text-xs uppercase tracking-tight text-gray-500">
+                            {task.frequency || '-'}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            {getStatusBadge(task)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Tablet & Mobile View: Single column card list */}
+                <div className="block md:hidden divide-y divide-gray-100">
+                  {machineTasks.map((task, idx) => (
+                    <div 
+                      key={task.task_id || task.id || idx} 
+                      className="p-4 space-y-3 hover:bg-gray-50/50 transition-colors text-sm"
+                    >
+                      {/* Part Name & Status Badge */}
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs text-gray-500 font-bold tracking-wide truncate max-w-[70%]">
+                          {getPartNameDisplay(task.part_name)}
+                        </span>
+                        {getStatusBadge(task)}
+                      </div>
+
+                      {/* Description */}
+                      <p className="text-gray-800 font-bold leading-relaxed break-words">
+                        {task.task_description || '-'}
+                      </p>
+
+                      {/* Details Grid */}
+                      <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 border-t border-gray-50 pt-2.5 mt-2.5">
+                        <div className="space-y-0.5">
+                          <span className="text-gray-400 block text-[10px] uppercase font-semibold">Assigned To</span>
+                          <span className="font-semibold text-gray-700 block truncate">{task.name || '-'}</span>
+                        </div>
+                        <div className="space-y-0.5">
+                          <span className="text-gray-400 block text-[10px] uppercase font-semibold">Frequency</span>
+                          <span className="font-semibold text-gray-700 block uppercase">{task.frequency || '-'}</span>
+                        </div>
+                        <div className="col-span-2 space-y-0.5">
+                          <span className="text-gray-400 block text-[10px] uppercase font-semibold">Planned Date</span>
+                          <span className="font-semibold text-gray-700 block">
+                            {formatDateDisplay(task.planned_date || task.task_start_date)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+
+          {sortedMachines.length === 0 && (
+            <div className="py-20 text-center space-y-3">
+              <div className="inline-block p-4 bg-purple-50 rounded-full text-purple-400">
+                <ClipboardList className="h-8 w-8" />
+              </div>
+              <p className="text-gray-500 font-medium">No tasks found matching your search</p>
+            </div>
+          )}
+
+          {visibleCount < filtered.length && (
+            <div className="flex justify-center py-4">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-500"></div>
+            </div>
+          )}
+        </div>
+
+        {/* Modal Footer */}
+        <div className="p-4 bg-gray-50 border-t border-gray-100 flex justify-end">
+          <button 
+            onClick={onClose}
+            className="px-6 py-2 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all shadow-sm active:scale-95 text-sm"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+};
+
 const MaintenanceView = ({ 
   startDate = "", 
   endDate = "", 
@@ -125,6 +633,8 @@ const MaintenanceView = ({
   const userDivision = localStorage.getItem("division")?.toLowerCase() || '';
   const userDepartment = localStorage.getItem("department")?.toLowerCase() || '';
   const [isMachineModalOpen, setIsMachineModalOpen] = useState(false);
+  const [isTasksModalOpen, setIsTasksModalOpen] = useState(false);
+  const [selectedCardType, setSelectedCardType] = useState(null);
   
   const { 
     maintenance, 
@@ -177,7 +687,8 @@ const MaintenanceView = ({
       departmentFilter, 
       unitFilter, 
       division: divisionFilter,
-      limit: 1000
+      limit: 1000,
+      usePlannedDate: true
     }));
     dispatch(fetchMachinePartsData());
   }, [dispatch, startDate, endDate, dashboardStaffFilter, departmentFilter, unitFilter, divisionFilter, historyStartDate, historyEndDate]);
@@ -219,7 +730,22 @@ const MaintenanceView = ({
       const id = task.task_id || task.id;
       if (id) uniqueMap.set(id, task);
     });
-    return Array.from(uniqueMap.values());
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return Array.from(uniqueMap.values()).filter(task => {
+      const isCompleted = task.submission_date !== null && task.submission_date !== undefined;
+      if (isCompleted) return true;
+
+      const dStr = task.planned_date || task.dueDate || task.task_start_date;
+      const taskDate = parseDate(dStr);
+      if (isNaN(taskDate.getTime())) return true;
+
+      const compareDate = new Date(taskDate);
+      compareDate.setHours(0, 0, 0, 0);
+      return compareDate <= today; // Show only today or past tasks (exclude upcoming)
+    });
   }, [maintenance, history]);
 
   // --- Filtered Machine Data based on Role/Division/Dept ---
@@ -257,6 +783,63 @@ const MaintenanceView = ({
       overdueTasks: reduxOverdueCount || 0
     };
   }, [filteredMachines, historyTotalCount, todayCount, reduxOverdueCount]);
+
+  const modalTasks = useMemo(() => {
+    if (!selectedCardType) return [];
+    
+    return allMaintenanceTasks.filter(task => {
+      const isCompleted = task.submission_date !== null && task.submission_date !== undefined;
+      
+      const dStr = task.planned_date || task.dueDate || task.task_start_date;
+      const taskDate = parseDate(dStr);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      let isOverdue = false;
+      let isTodayPending = false;
+      
+      if (!isCompleted && !isNaN(taskDate.getTime())) {
+        const compareDate = new Date(taskDate);
+        compareDate.setHours(0, 0, 0, 0);
+        if (compareDate < today) {
+          isOverdue = true;
+        } else if (compareDate.getFullYear() === today.getFullYear() &&
+                   compareDate.getMonth() === today.getMonth() &&
+                   compareDate.getDate() === today.getDate()) {
+          isTodayPending = true;
+        }
+      }
+      
+      if (selectedCardType === 'total_tasks') return true;
+      if (selectedCardType === 'completed') return isCompleted;
+      if (selectedCardType === 'pending') return !isCompleted && isTodayPending;
+      if (selectedCardType === 'overdue') return !isCompleted && isOverdue;
+      
+      return false;
+    });
+  }, [selectedCardType, allMaintenanceTasks]);
+
+  const modalTitle = useMemo(() => {
+    switch (selectedCardType) {
+      case 'total_tasks': return 'Total Maintenance Tasks';
+      case 'completed': return 'Completed Maintenance Tasks';
+      case 'pending': return 'Pending Maintenance Tasks';
+      case 'overdue': return 'Overdue Maintenance Tasks';
+      default: return 'Maintenance Tasks';
+    }
+  }, [selectedCardType]);
+
+  const modalCardCount = useMemo(() => {
+    switch (selectedCardType) {
+      case 'total_tasks': return stats.totalTasks;
+      case 'completed': return stats.completedTasks;
+      case 'pending': return stats.pendingTasks;
+      case 'overdue': return stats.overdueTasks;
+      default: return 0;
+    }
+  }, [selectedCardType, stats]);
+
+
 
   // --- Derive Department Data ---
   const deptData = useMemo(() => {
@@ -351,16 +934,20 @@ const MaintenanceView = ({
         setIsMachineModalOpen(true);
         break;
       case 'total_tasks':
+        setSelectedCardType('total_tasks');
+        setIsTasksModalOpen(true);
+        break;
       case 'pending':
+        setSelectedCardType('pending');
+        setIsTasksModalOpen(true);
+        break;
       case 'overdue':
-        navigate('/dashboard/data/sales?view=maintenance');
+        setSelectedCardType('overdue');
+        setIsTasksModalOpen(true);
         break;
       case 'completed':
-        if (userRole === 'user' || 'admin' ||!hasPageAccess('admin_approval')) {
-          navigate('/dashboard/data/sales?view=maintenance');
-        } else {
-          navigate('/dashboard/history?tab=maintenance');
-        }
+        setSelectedCardType('completed');
+        setIsTasksModalOpen(true);
         break;
       default:
         break;
@@ -394,7 +981,8 @@ const MaintenanceView = ({
       departmentFilter, 
       unitFilter, 
       division: divisionFilter,
-      limit: 1000
+      limit: 1000,
+      usePlannedDate: true
     }));
   };
 
@@ -420,6 +1008,15 @@ const MaintenanceView = ({
         isOpen={isMachineModalOpen} 
         onClose={() => setIsMachineModalOpen(false)} 
         machines={filteredMachines} 
+      />
+
+      {/* Tasks By Machine Modal */}
+      <TasksByMachineModal
+        isOpen={isTasksModalOpen}
+        onClose={() => setIsTasksModalOpen(false)}
+        title={modalTitle}
+        tasks={modalTasks}
+        cardCount={modalCardCount}
       />
 
       {/* Stats Cards */}
