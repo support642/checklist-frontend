@@ -97,8 +97,9 @@ function AccountDataPage() {
   // Track search for API calls
   const [debouncedSearch, setDebouncedSearch] = useState('')
 
-  // Sentinel for infinite scroll
+  // Sentinels for infinite scroll
   const loaderRef = useRef(null);
+  const maintLoaderRef = useRef(null);
 
   // Debounce search term update
   useEffect(() => {
@@ -147,52 +148,65 @@ function AccountDataPage() {
     }
   }, [debouncedSearch, activeView, statusFilter, frequencyFilter, nameFilter, divisionFilter, departmentFilter, dispatch]);
 
-  // Infinite Scroll Observer
+  // Infinite Scroll Observer - Checklist
   useEffect(() => {
+    if (activeView !== 'checklist') return;
     const currentLoader = loaderRef.current;
-    if (!currentLoader) return;
+    const container = tableContainerRef.current;
+    if (!currentLoader || !container) return;
 
     const observer = new IntersectionObserver((entries) => {
       const target = entries[0];
-      if (target.isIntersecting) {
-        if (activeView === 'checklist' && hasMore && !loading && !error) {
-          dispatch(checklistData({
-            page: currentPage + 1,
-            search: debouncedSearch,
-            status: statusFilter,
-            frequency: frequencyFilter,
-            name: nameFilter,
-            division: divisionFilter,
-            departmentFilter: departmentFilter
-          }));
-        } else if (activeView === 'maintenance' && maintHasMore && !maintLoading && !maintError) {
-          dispatch(maintenanceData({
-            page: maintCurrentPage + 1,
-            search: debouncedSearch,
-            status: statusFilter,
-            frequency: frequencyFilter,
-            name: nameFilter,
-            division: divisionFilter,
-            departmentFilter: departmentFilter
-          }));
-        }
+      if (target.isIntersecting && hasMore && !loading && !error) {
+        dispatch(checklistData({
+          page: currentPage + 1,
+          search: debouncedSearch,
+          status: statusFilter,
+          frequency: frequencyFilter,
+          name: nameFilter,
+          division: divisionFilter,
+          departmentFilter: departmentFilter
+        }));
       }
-    }, { threshold: 0.1 });
+    }, { threshold: 0.1, root: container });
 
     observer.observe(currentLoader);
     return () => observer.disconnect();
   }, [
-    activeView, hasMore, loading, currentPage, 
-    maintHasMore, maintLoading, maintCurrentPage,
+    activeView, hasMore, loading, currentPage,
     debouncedSearch, statusFilter, frequencyFilter, nameFilter, divisionFilter, departmentFilter,
     dispatch
   ]);
 
+  // Infinite Scroll Observer - Maintenance
   useEffect(() => {
-    if (activeView === 'maintenance' && maintenance?.length === 0) {
-      dispatch(maintenanceData({ page: 1, search: debouncedSearch }));
-    }
-  }, [activeView, dispatch, maintenance?.length, debouncedSearch]);
+    if (activeView !== 'maintenance') return;
+    const currentLoader = maintLoaderRef.current;
+    const container = maintTableContainerRef.current;
+    if (!currentLoader || !container) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      const target = entries[0];
+      if (target.isIntersecting && maintHasMore && !maintLoading) {
+        dispatch(maintenanceData({
+          page: maintCurrentPage + 1,
+          search: debouncedSearch,
+          status: statusFilter,
+          frequency: frequencyFilter,
+          name: nameFilter,
+          division: divisionFilter,
+          departmentFilter: departmentFilter
+        }));
+      }
+    }, { threshold: 0.1, root: container });
+
+    observer.observe(currentLoader);
+    return () => observer.disconnect();
+  }, [
+    activeView, maintHasMore, maintLoading, maintCurrentPage,
+    debouncedSearch, statusFilter, frequencyFilter, nameFilter, divisionFilter, departmentFilter,
+    dispatch
+  ]);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -2311,12 +2325,15 @@ const handleSubmit = async () => {
                 </tbody>
               </table>
 
-              <div ref={loaderRef} className="h-10 flex items-center justify-center bg-gray-50 border-t border-gray-100">
+              <div ref={maintLoaderRef} className="h-10 flex items-center justify-center bg-gray-50 border-t border-gray-100">
                 {maintLoading && (
                   <div className="flex items-center gap-2 text-purple-600">
                     <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-purple-500"></div>
-                    <span className="text-xs font-medium ml-1">Loading more maintenance...</span>
+                    <span className="text-xs font-medium ml-1">Loading more maintenance tasks...</span>
                   </div>
+                )}
+                {!maintLoading && !maintHasMore && maintenance?.length > 0 && (
+                  <span className="text-xs text-gray-400">All maintenance tasks loaded ({maintenance.length})</span>
                 )}
               </div>
             </div>
