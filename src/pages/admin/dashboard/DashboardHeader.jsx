@@ -181,6 +181,12 @@ function ExportDropdown({ onExport, isMobile, isExporting, dashboardType }) {
             >
               Overdue
             </button>
+            <button
+              onClick={() => { onExport("leave"); setIsOpen(false); }}
+              className="w-full text-left px-3 py-2 text-xs font-bold uppercase tracking-wider text-purple-600 hover:bg-purple-50 hover:text-purple-800 transition-colors"
+            >
+              Leave Report
+            </button>
           </div>
         )}
       </div>
@@ -240,6 +246,12 @@ function ExportDropdown({ onExport, isMobile, isExporting, dashboardType }) {
             className="w-full text-left px-4 py-2 text-xs font-bold uppercase tracking-wider text-red-600 hover:bg-red-50 hover:text-red-800 transition-colors"
           >
             Overdue
+          </button>
+          <button
+            onClick={() => { onExport("leave"); setIsOpen(false); }}
+            className="w-full text-left px-4 py-2 text-xs font-bold uppercase tracking-wider text-purple-600 hover:bg-purple-50 hover:text-purple-800 transition-colors"
+          >
+            Leave Report
           </button>
         </div>
       )}

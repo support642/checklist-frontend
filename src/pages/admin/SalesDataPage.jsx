@@ -118,6 +118,10 @@ function AccountDataPage() {
     if (view === 'maintenance') {
       setActiveView('maintenance');
     }
+    const status = searchParams.get('status');
+    if (status) {
+      setStatusFilter(status);
+    }
   }, [dispatch, searchParams])
 
   // Re-fetch unique doer names when division or department filters change

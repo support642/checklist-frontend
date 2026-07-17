@@ -12,7 +12,7 @@ import {
 import StatsCards from './StatsCards';
 import MaintenanceCharts from './MaintenanceCharts';
 import MaintenanceTable from './MaintenanceTable';
-import { RefreshCw, ClipboardList, X, Settings2, MapPin, Cog, CheckCircle2, AlertCircle, Clock, Download, Filter, ChevronUp, ChevronDown } from 'lucide-react';
+import { RefreshCw, ClipboardList, X, Settings2, MapPin, Cog, CheckCircle2, AlertCircle, Clock, Download, Filter, ChevronUp, ChevronDown, ArrowRight } from 'lucide-react';
 
 const MachineModal = ({ isOpen, onClose, machines }) => {
   if (!isOpen) return null;
@@ -111,7 +111,8 @@ const MachineModal = ({ isOpen, onClose, machines }) => {
   );
 };
 
-const TasksByMachineModal = ({ isOpen, onClose, title, tasks, cardCount }) => {
+const TasksByMachineModal = ({ isOpen, onClose, title, tasks, cardCount, cardType }) => {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [assignedFilter, setAssignedFilter] = useState('all');
   const [machineFilter, setMachineFilter] = useState('all');
@@ -605,7 +606,19 @@ const TasksByMachineModal = ({ isOpen, onClose, title, tasks, cardCount }) => {
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 bg-gray-50 border-t border-gray-100 flex justify-end">
+        <div className="p-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+          {(cardType === 'pending' || cardType === 'overdue') && (
+            <button
+              onClick={() => {
+                const targetStatus = cardType === 'pending' ? 'today' : 'overdue';
+                navigate(`/dashboard/data/sales?view=maintenance&status=${targetStatus}`);
+              }}
+              className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl transition-all shadow-sm active:scale-95 text-sm flex items-center gap-2"
+            >
+              Go to Maintenance Tasks
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          )}
           <button 
             onClick={onClose}
             className="px-6 py-2 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all shadow-sm active:scale-95 text-sm"
@@ -1017,6 +1030,7 @@ const MaintenanceView = ({
         title={modalTitle}
         tasks={modalTasks}
         cardCount={modalCardCount}
+        cardType={selectedCardType}
       />
 
       {/* Stats Cards */}

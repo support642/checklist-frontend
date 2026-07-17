@@ -185,6 +185,7 @@ const dashboardSlice = createSlice({
     completedRatingOne: 0,
     completedRatingTwo: 0,
     completedRatingThreePlus: 0,
+    completedOnTime: 0,
     error: null,
     loading: false,
   },
@@ -201,6 +202,7 @@ const dashboardSlice = createSlice({
       state.completedRatingOne = 0;
       state.completedRatingTwo = 0;
       state.completedRatingThreePlus = 0;
+      state.completedOnTime = 0;
       state.error = null;
       state.loading = false;
     },
@@ -324,6 +326,7 @@ const dashboardSlice = createSlice({
         state.completedRatingOne = data.completedRatingOne || 0;
         state.completedRatingTwo = data.completedRatingTwo || 0;
         state.completedRatingThreePlus = data.completedRatingThreePlus || 0;
+        state.completedOnTime = data.completedOnTime || 0;
       })
       .addCase(fetchDashboardSummaryCounts.rejected, (state, action) => {
         state.loading = false;

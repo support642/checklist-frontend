@@ -106,6 +106,7 @@ export default function AdminDashboard() {
     completedRatingOne,
     completedRatingTwo,
     completedRatingThreePlus,
+    completedOnTime,
   } = useSelector((state) => state.dashBoard)
   const { profile } = useSelector((state) => state.userProfile)
   const dispatch = useDispatch()
@@ -221,7 +222,7 @@ useEffect(() => {
         dashboardStaffFilter,
         1,
         10000,
-        "all",
+        statusType === "leave" ? "leave" : "all",
         departmentFilter,
         unitFilter,
         divisionFilter,
@@ -267,7 +268,11 @@ useEffect(() => {
           const completionDate = task.submission_date ? parseTaskStartDate(task.submission_date) : null;
 
           let status = "pending";
-          if (completionDate) {
+          if (task.status?.toLowerCase() === 'leave') {
+            status = "leave";
+          } else if (task.status?.toLowerCase() === 'inactive') {
+            status = "week off";
+          } else if (completionDate) {
             status = "completed";
           } else if (taskStartDate && isDateInPast(taskStartDate)) {
             status = "overdue";
@@ -281,7 +286,9 @@ useEffect(() => {
           const shouldCountForCards = 
             (taskStartDate && taskStartDate <= today) || 
             (dashboardType === "delegation") ||
-            (status === "completed");
+            (status === "completed") ||
+            (status === "leave") ||
+            (status === "week off");
 
           if (!shouldCountForCards) {
             return null;
@@ -599,7 +606,11 @@ useEffect(() => {
       // =====================================================
       const exportedTasks = processedTasks.filter((task) => {
         // Status filter (statusType)
-        if (statusType !== "all" && task.status !== statusType) return false;
+        if (statusType === "leave") {
+          if (task.status !== "leave" && task.status !== "week off") return false;
+        } else if (statusType !== "all" && task.status !== statusType) {
+          return false;
+        }
         
         // Local staff filter
         if (filterStaff !== "all" && task.assignedTo.toLowerCase() !== filterStaff.toLowerCase()) {
@@ -791,6 +802,7 @@ useEffect(() => {
           status,
           frequency: task.frequency || "one-time",
           rating: task.color_code_for || 0,
+          is_on_time: task.is_on_time,
         };
       })
       .filter(Boolean);
@@ -829,20 +841,7 @@ useEffect(() => {
       pieChartData,
     }));
 
-    // Update filtered stats for StatisticsCards
-    setFilteredDateStats({
-      totalTasks: finalStats.totalTasks,
-      completedTasks: finalStats.completedTasks,
-      pendingTasks: finalStats.pendingTasks,
-      overdueTasks: finalStats.overdueTasks,
-      completionRate: finalStats.completionRate,
-      pendingToday: dashboardType === "delegation" ? (finalStats.pendingToday || 0) : 0,
-      pendingUpcoming: dashboardType === "delegation" ? (finalStats.pendingUpcoming || 0) : 0,
-      pendingOverdue: dashboardType === "delegation" ? (finalStats.pendingOverdue || 0) : 0,
-      completedRatingOne: finalStats.completedRatingOne || 0,
-      completedRatingTwo: finalStats.completedRatingTwo || 0,
-      completedRatingThreePlus: finalStats.completedRatingThreePlus || 0,
-    });
+    // (Local state filteredDateStats was removed in favor of Redux completedOnTime implementation)
   };
 
   const fetchDepartmentDataWithDateRange = async (startDate, endDate, page = 1, append = false) => {
@@ -1694,6 +1693,7 @@ useEffect(() => {
     completedRatingOne: completedRatingOne || 0,
     completedRatingTwo: completedRatingTwo || 0,
     completedRatingThreePlus: completedRatingThreePlus || 0,
+    completedOnTime: completedOnTime || 0,
     notDoneTasks: notDoneTask || 0,
   };
 
@@ -1868,6 +1868,7 @@ useEffect(() => {
                 completedRatingOne={displayStats.completedRatingOne}
                 completedRatingTwo={displayStats.completedRatingTwo}
                 completedRatingThreePlus={displayStats.completedRatingThreePlus}
+                completedOnTime={displayStats.completedOnTime}
                 isLoading={isLoadingMore}
               />
 
