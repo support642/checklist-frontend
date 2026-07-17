@@ -1,6 +1,6 @@
 import { ListTodo, CheckCircle2, Clock, AlertTriangle, BarChart3, XCircle, Calendar } from "lucide-react"
 import { useNavigate } from "react-router-dom"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { createPortal } from "react-dom"
 import { hasPageAccess } from "../../../utils/permissionUtils"
 
@@ -20,6 +20,7 @@ export default function StatisticsCards({
   completedRatingOne = 0,
   completedRatingTwo = 0,
   completedRatingThreePlus = 0,
+  completedOnTime = 0,
   isLoading = false,
 }) {
   const [modalOpen, setModalOpen] = useState(false);
@@ -52,32 +53,11 @@ export default function StatisticsCards({
   const completedDash = (completedRatingOne > 0 ? ratingOneRate : completionRate) * circumference / 100;
 
   // --- On-Time Performance Calculations (Out of Completed Tasks) ---
-  const today = new Date();
-  today.setHours(23, 59, 59, 999);
+  const completedTasksInList = dashboardType === "delegation"
+    ? completedRatingOne + completedRatingTwo + completedRatingThreePlus
+    : completeTask;
 
-  const parseTaskDate = (dateStr) => {
-    if (!dateStr) return null;
-    const d = new Date(dateStr);
-    return isNaN(d.getTime()) ? null : d;
-  };
-
-  const filteredTasksForOnTime = allStaffTasks.filter(t => {
-    const taskDate = parseTaskDate(t.originalTaskStartDate);
-    if (!taskDate) return false;
-    return (
-      taskDate <= today || 
-      dashboardType === "delegation" ||
-      t.status === "completed"
-    );
-  });
-
-  const completedTasksInList = filteredTasksForOnTime.filter(t => t.status === "completed").length;
-
-  const completedOnTimeCount = filteredTasksForOnTime.filter(t => 
-    t.status === "completed" && (t.is_on_time || t.rating === 1 || t.rating === "1" || t.rating === 1.0)
-  ).length;
-
-  const onTimeRate = completedTasksInList > 0 ? (completedOnTimeCount / completedTasksInList) * 100 : 0;
+  const onTimeRate = completedTasksInList > 0 ? (completedOnTime / completedTasksInList) * 100 : 0;
   const completedLateRate = completedTasksInList > 0 ? (100 - onTimeRate) : 0;
 
   const onTimeDash = onTimeRate * circumference / 100;
@@ -565,12 +545,12 @@ export default function StatisticsCards({
                 <div className="flex items-center space-x-1 xs:space-x-2">
                   <div className="w-2 h-2 xs:w-3 xs:h-3 sm:w-4 sm:h-4 rounded-full bg-green-500 flex-shrink-0"></div>
                   <span className="font-medium">On-Time:</span>
-                  <span className="text-gray-700">{onTimeRate.toFixed(1)}%</span>
+                  <span className="text-gray-700">{`${onTimeRate.toFixed(1)}%`}</span>
                 </div>
                 <div className="flex items-center space-x-1 xs:space-x-2">
                   <div className="w-2 h-2 xs:w-3 xs:h-3 sm:w-4 sm:h-4 rounded-full bg-amber-500 flex-shrink-0"></div>
                   <span className="font-medium">Late:</span>
-                  <span className="text-gray-700">{completedLateRate.toFixed(1)}%</span>
+                  <span className="text-gray-700">{`${completedLateRate.toFixed(1)}%`}</span>
                 </div>
               </div>
             </div>
