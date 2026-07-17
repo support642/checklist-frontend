@@ -15,6 +15,59 @@ import MaintenanceTable from './MaintenanceTable';
 import { RefreshCw, ClipboardList, X, Settings2, MapPin, Cog, CheckCircle2, AlertCircle, Clock, Download, Filter, ChevronUp, ChevronDown, ArrowRight } from 'lucide-react';
 
 const MachineModal = ({ isOpen, onClose, machines }) => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedDivision, setSelectedDivision] = useState("all");
+  const [selectedDepartment, setSelectedDepartment] = useState("all");
+
+  useEffect(() => {
+    if (!isOpen) {
+      setSearchTerm("");
+      setSelectedDivision("all");
+      setSelectedDepartment("all");
+    }
+  }, [isOpen]);
+
+  const uniqueDivisions = useMemo(() => {
+    const divs = new Set();
+    machines.forEach(m => {
+      if (m.machine_division) divs.add(m.machine_division.trim());
+    });
+    return Array.from(divs).sort();
+  }, [machines]);
+
+  const uniqueDepartments = useMemo(() => {
+    const depts = new Set();
+    machines.forEach(m => {
+      if (m.machine_department) depts.add(m.machine_department.trim());
+    });
+    return Array.from(depts).sort();
+  }, [machines]);
+
+  const filtered = useMemo(() => {
+    return machines.filter(m => {
+      // Division filter
+      if (selectedDivision !== "all" && m.machine_division?.trim() !== selectedDivision) return false;
+      
+      // Department filter
+      if (selectedDepartment !== "all" && m.machine_department?.trim() !== selectedDepartment) return false;
+
+      // Search term filter (match machine_name, part_name, machine_area, machine_department, machine_division)
+      if (searchTerm.trim() !== "") {
+        const query = searchTerm.toLowerCase().trim();
+        const partsText = Array.isArray(m.part_name) ? m.part_name.join(' ') : (m.part_name || '');
+        const match = 
+          (m.machine_name && m.machine_name.toLowerCase().includes(query)) ||
+          (partsText && partsText.toLowerCase().includes(query)) ||
+          (m.machine_area && m.machine_area.toLowerCase().includes(query)) ||
+          (m.machine_department && m.machine_department.toLowerCase().includes(query)) ||
+          (m.machine_division && m.machine_division.toLowerCase().includes(query));
+        
+        return match;
+      }
+      return true;
+    });
+  }, [machines, searchTerm, selectedDivision, selectedDepartment]);
+
   if (!isOpen) return null;
 
   return createPortal(
@@ -28,7 +81,11 @@ const MachineModal = ({ isOpen, onClose, machines }) => {
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-900">Machine Inventory</h2>
-              <p className="text-sm text-gray-500">Total {machines.length} registered assets</p>
+              <p className="text-sm text-gray-500">
+                {searchTerm || selectedDivision !== "all" || selectedDepartment !== "all" 
+                  ? `Showing ${filtered.length} of ${machines.length} registered assets` 
+                  : `Total ${machines.length} registered assets`}
+              </p>
             </div>
           </div>
           <button 
@@ -39,10 +96,48 @@ const MachineModal = ({ isOpen, onClose, machines }) => {
           </button>
         </div>
 
+        {/* Filters Bar */}
+        <div className="p-4 border-b border-gray-100 bg-slate-50/50 flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <input
+              type="text"
+              placeholder="Search machines, parts, areas..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all bg-white"
+            />
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            </span>
+          </div>
+
+          <select
+            value={selectedDivision}
+            onChange={(e) => setSelectedDivision(e.target.value)}
+            className="px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 w-full sm:w-48 cursor-pointer"
+          >
+            <option value="all">All Divisions</option>
+            {uniqueDivisions.map(div => (
+              <option key={div} value={div}>{div}</option>
+            ))}
+          </select>
+
+          <select
+            value={selectedDepartment}
+            onChange={(e) => setSelectedDepartment(e.target.value)}
+            className="px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 w-full sm:w-48 cursor-pointer"
+          >
+            <option value="all">All Departments</option>
+            {uniqueDepartments.map(dept => (
+              <option key={dept} value={dept}>{dept}</option>
+            ))}
+          </select>
+        </div>
+
         {/* Modal Content */}
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto p-4 sm:p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {machines.map((machine, index) => (
+            {filtered.map((machine, index) => (
               <div 
                 key={machine.id || index} 
                 className="group p-4 rounded-xl border border-gray-100 bg-gray-50 hover:border-blue-200 hover:bg-white hover:shadow-md transition-all duration-200"
@@ -87,12 +182,12 @@ const MachineModal = ({ isOpen, onClose, machines }) => {
             ))}
           </div>
           
-          {machines.length === 0 && (
+          {filtered.length === 0 && (
             <div className="py-20 text-center space-y-3">
               <div className="inline-block p-4 bg-gray-50 rounded-full">
                 <Settings2 className="h-8 w-8 text-gray-300" />
               </div>
-              <p className="text-gray-500 font-medium">No machines found in the system</p>
+              <p className="text-gray-500 font-medium">No machines match the selected filters</p>
             </div>
           )}
         </div>
