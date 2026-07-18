@@ -13,6 +13,8 @@ import StatsCards from './StatsCards';
 import MaintenanceCharts from './MaintenanceCharts';
 import MaintenanceTable from './MaintenanceTable';
 import { RefreshCw, ClipboardList, X, Settings2, MapPin, Cog, CheckCircle2, AlertCircle, Clock, Download, Filter, ChevronUp, ChevronDown, ArrowRight } from 'lucide-react';
+import { toast } from 'react-hot-toast';
+
 
 const MachineModal = ({ isOpen, onClose, machines }) => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -67,6 +69,74 @@ const MachineModal = ({ isOpen, onClose, machines }) => {
       return true;
     });
   }, [machines, searchTerm, selectedDivision, selectedDepartment]);
+
+  const handleExportCSV = () => {
+    try {
+      if (filtered.length === 0) {
+        toast.error("No machines to export");
+        return;
+      }
+
+      // Sort/categorize alphabetically by Division, then Department, then Area, then Machine Name
+      const sorted = [...filtered].sort((a, b) => {
+        const divA = (a.machine_division || "").toLowerCase().trim();
+        const divB = (b.machine_division || "").toLowerCase().trim();
+        if (divA !== divB) return divA.localeCompare(divB);
+
+        const deptA = (a.machine_department || "").toLowerCase().trim();
+        const deptB = (b.machine_department || "").toLowerCase().trim();
+        if (deptA !== deptB) return deptA.localeCompare(deptB);
+
+        const areaA = (a.machine_area || "").toLowerCase().trim();
+        const areaB = (b.machine_area || "").toLowerCase().trim();
+        if (areaA !== areaB) return areaA.localeCompare(areaB);
+
+        const nameA = (a.machine_name || "").toLowerCase().trim();
+        const nameB = (b.machine_name || "").toLowerCase().trim();
+        return nameA.localeCompare(nameB);
+      });
+
+      // Helper to escape CSV fields
+      const escapeCSV = (val) => {
+        if (val === null || val === undefined) return "";
+        const str = String(val);
+        if (str.includes(",") || str.includes("\"") || str.includes("\n")) {
+          return `"${str.replace(/"/g, "\"\"")}"`;
+        }
+        return str;
+      };
+
+      const headers = ["Division", "Department", "Area", "Machine Name", "Parts"];
+      const rows = sorted.map(m => {
+        const partsStr = Array.isArray(m.part_name) 
+          ? m.part_name.join(", ") 
+          : (m.part_name || "");
+        
+        return [
+          escapeCSV(m.machine_division || "N/A"),
+          escapeCSV(m.machine_department || "N/A"),
+          escapeCSV(m.machine_area || "N/A"),
+          escapeCSV(m.machine_name || "N/A"),
+          escapeCSV(partsStr || "N/A")
+        ];
+      });
+
+      const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `machine_inventory_${new Date().toLocaleDateString('en-CA')}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.success(`Exported ${sorted.length} machines successfully`);
+    } catch (err) {
+      toast.error(err.message || "Failed to export CSV");
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -132,6 +202,15 @@ const MachineModal = ({ isOpen, onClose, machines }) => {
               <option key={dept} value={dept}>{dept}</option>
             ))}
           </select>
+
+          <button
+            onClick={handleExportCSV}
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm transition-all shadow-sm active:scale-95 w-full sm:w-auto hover:shadow-md cursor-pointer duration-150"
+            title="Export categorized machines list to CSV (Excel)"
+          >
+            <Download className="h-4 w-4" />
+            <span>Export CSV</span>
+          </button>
         </div>
 
         {/* Modal Content */}
