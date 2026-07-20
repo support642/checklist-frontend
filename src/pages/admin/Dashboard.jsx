@@ -1764,6 +1764,43 @@ useEffect(() => {
     }
   };
 
+  const getBgStyle = () => {
+    switch (activeModule) {
+      case "checklist":
+        return {
+          backgroundImage: "radial-gradient(rgba(93, 52, 210, 0.18) 1.2px, transparent 0)",
+          backgroundSize: "20px 20px",
+        };
+      case "delegation":
+        return {
+          backgroundImage: `
+            linear-gradient(to right, rgba(37, 99, 235, 0.08) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(37, 99, 235, 0.08) 1px, transparent 1px)
+          `,
+          backgroundSize: "40px 40px",
+        };
+      case "maintenance":
+        return {
+          backgroundImage: "repeating-linear-gradient(45deg, transparent, transparent 15px, rgba(16, 185, 129, 0.09) 15px, rgba(16, 185, 129, 0.09) 16px)",
+        };
+      default:
+        return {};
+    }
+  };
+
+  const getBgClassName = () => {
+    switch (activeModule) {
+      case "checklist":
+        return "bg-transparent border-purple-100/70 dark:border-purple-950/20";
+      case "delegation":
+        return "bg-transparent border-blue-100/70 dark:border-blue-950/20";
+      case "maintenance":
+        return "bg-transparent border-emerald-100/70 dark:border-emerald-950/20";
+      default:
+        return "bg-transparent border-transparent";
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -1774,13 +1811,17 @@ useEffect(() => {
                {/* Left side empty or logo space */}
             </div>
 
-            <div className="flex w-full p-1 bg-white rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+            <div className={`flex w-full p-1 bg-white rounded-2xl border shadow-sm overflow-hidden transition-all duration-500 ${
+              activeModule === "checklist" ? "border-purple-200 dark:border-purple-950/40" :
+              activeModule === "delegation" ? "border-blue-200 dark:border-blue-950/40" :
+              "border-emerald-200 dark:border-emerald-950/40"
+            }`}>
               {canAccessModule("checklist") && (
                 <button
                   onClick={() => handleModuleChange("checklist")}
                   className={`flex-1 flex items-center justify-center gap-2 px-2 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 min-w-0 ${
                     activeModule === "checklist"
-                      ? "bg-blue-600 text-white shadow-lg scale-105 z-10"
+                      ? "bg-[#5D34D2] text-white shadow-lg scale-105 z-10"
                       : "text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/20"
                   }`}
                 >
@@ -1794,7 +1835,7 @@ useEffect(() => {
                   className={`flex-1 flex items-center justify-center gap-2 px-2 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 min-w-0 ${
                     activeModule === "delegation"
                       ? "bg-blue-600 text-white shadow-lg scale-105 z-10"
-                      : "text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/20"
+                      : "text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/20"
                   }`}
                 >
                   <i className="fas fa-handshake h-4 w-4 shrink-0" />
@@ -1806,8 +1847,8 @@ useEffect(() => {
                   onClick={() => handleModuleChange("maintenance")}
                   className={`flex-1 flex items-center justify-center gap-2 px-2 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 min-w-0 ${
                     activeModule === "maintenance"
-                      ? "bg-blue-600 text-white shadow-lg scale-105 z-10"
-                      : "text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/20"
+                      ? "bg-emerald-600 text-white shadow-lg scale-105 z-10"
+                      : "text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
                   }`}
                 >
                   <i className="fas fa-tools h-4 w-4 shrink-0" />
@@ -1823,7 +1864,10 @@ useEffect(() => {
         )}
 
 
-        <div className="space-y-6 animate-in fade-in duration-500">
+        <div 
+          style={getBgStyle()} 
+          className={`p-4 md:p-6 rounded-2xl border transition-all duration-500 space-y-6 animate-in fade-in duration-500 ${getBgClassName()}`}
+        >
           <DashboardHeader
             dashboardType={dashboardType}
             setDashboardType={setDashboardType}
