@@ -1553,7 +1553,7 @@ useEffect(() => {
                         className="w-full rounded-md border border-purple-200 p-2 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
                       >
                         {frequencies
-                          .filter(f => f.value !== 'one-time')
+                          .filter(f => taskType === 'maintenance' ? true : f.value !== 'one-time')
                           .map((freq) => (
                             <option key={freq.value} value={freq.value}>
                               {freq.label}
@@ -1652,7 +1652,9 @@ useEffect(() => {
                         >
                           <span className="font-medium">
                             {generatedTasks.length} Tasks Generated
-                            {formData.frequency === "one-time"
+                            {taskType === 'maintenance'
+                              ? " (Will be stored in Maintenance sheet)"
+                              : taskType === 'delegation' || formData.frequency === "one-time"
                               ? " (Will be stored in DELEGATION sheet)"
                               : " (Will be stored in Checklist sheet)"
                             }
