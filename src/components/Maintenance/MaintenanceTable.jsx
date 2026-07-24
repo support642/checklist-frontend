@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { 
-  Search, Filter, X, 
+  Search, Filter, X, Download,
   ChevronLeft, ChevronRight, Image as ImageIcon,
   CheckCircle2, AlertCircle, Clock
 } from 'lucide-react';
@@ -97,11 +97,91 @@ const MaintenanceTable = ({
     return new Date(dateStr);
   };
 
+  const [selectedMachine, setSelectedMachine] = useState('all');
+  const [selectedDivision, setSelectedDivision] = useState('all');
+  const [selectedDepartment, setSelectedDepartment] = useState('all');
+  const [selectedPart, setSelectedPart] = useState('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
+  // Extract unique options for dropdowns based on tasks
+  const uniqueMachineNames = useMemo(() => {
+    const names = new Set();
+    tasks.forEach(t => {
+      if (t.machine_name) names.add(t.machine_name.trim());
+    });
+    return Array.from(names).sort();
+  }, [tasks]);
+
+  const uniqueDivisions = useMemo(() => {
+    const divs = new Set();
+    tasks.forEach(t => {
+      if (t.machine_division) divs.add(t.machine_division.trim());
+    });
+    return Array.from(divs).sort();
+  }, [tasks]);
+
+  const uniqueDepartments = useMemo(() => {
+    const depts = new Set();
+    tasks.forEach(t => {
+      if (t.machine_department) depts.add(t.machine_department.trim());
+    });
+    return Array.from(depts).sort();
+  }, [tasks]);
+
+  const uniqueParts = useMemo(() => {
+    const parts = new Set();
+    tasks.forEach(t => {
+      if (Array.isArray(t.part_name)) {
+        t.part_name.forEach(p => p && parts.add(p.trim()));
+      } else if (typeof t.part_name === 'string' && t.part_name.trim()) {
+        t.part_name.split(',').forEach(p => p && parts.add(p.trim()));
+      }
+    });
+    return Array.from(parts).sort();
+  }, [tasks]);
+
   // --- Filtering Logic ---
   const filteredTasks = useMemo(() => {
     let result = [...tasks];
 
-    // Time filter
+    // Dropdown Filters
+    if (selectedMachine !== 'all') {
+      result = result.filter(t => (t.machine_name || '').trim() === selectedMachine);
+    }
+    if (selectedDivision !== 'all') {
+      result = result.filter(t => (t.machine_division || '').trim() === selectedDivision);
+    }
+    if (selectedDepartment !== 'all') {
+      result = result.filter(t => (t.machine_department || '').trim() === selectedDepartment);
+    }
+    if (selectedPart !== 'all') {
+      result = result.filter(t => {
+        if (Array.isArray(t.part_name)) {
+          return t.part_name.some(p => p && p.trim() === selectedPart);
+        }
+        if (typeof t.part_name === 'string') {
+          return t.part_name.split(',').map(s => s.trim()).includes(selectedPart);
+        }
+        return false;
+      });
+    }
+
+    // Custom Date Range Filter (Child date selection)
+    if (startDate || endDate) {
+      result = result.filter(task => {
+        const dStr = task.planned_date || task.dueDate || task.task_start_date;
+        const taskDate = parseDate(dStr);
+        if (isNaN(taskDate.getTime())) return false;
+
+        const taskDayStr = taskDate.toLocaleDateString('en-CA'); // YYYY-MM-DD format
+        if (startDate && taskDayStr < startDate) return false;
+        if (endDate && taskDayStr > endDate) return false;
+        return true;
+      });
+    }
+
+    // Quick Time Filter preset
     if (timeFilter !== 'all') {
       const now = new Date();
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -119,7 +199,6 @@ const MaintenanceTable = ({
         }
         
         if (timeFilter === 'week') {
-          // Current Week: Monday to Sunday
           const monday = new Date(todayStart);
           const day = monday.getDay();
           const diff = (day === 0 ? -6 : 1 - day);
@@ -133,7 +212,6 @@ const MaintenanceTable = ({
         }
 
         if (timeFilter === 'month') {
-          // Current Calendar Month
           return taskDate.getMonth() === now.getMonth() && taskDate.getFullYear() === now.getFullYear();
         }
         
@@ -152,10 +230,7 @@ const MaintenanceTable = ({
       );
     }
 
-    // Status filter removed to allow both pending and history tasks to show up
-    // result = result.filter(task => (task.status || '').toLowerCase() === 'pending');
-
-    // Sort: Earliest first (Ascending) - Current date followed by future tasks
+    // Sort: Earliest first (Ascending)
     result.sort((a, b) => {
       const dStrA = a.planned_date || a.dueDate || a.submission_date || a.task_start_date;
       const dStrB = b.planned_date || b.dueDate || b.submission_date || b.task_start_date;
@@ -167,14 +242,13 @@ const MaintenanceTable = ({
       
       if (timeA !== timeB) return timeA - timeB;
       
-      // Fallback to task_id ascending
       const idA = Number(a.task_id || a.id) || 0;
       const idB = Number(b.task_id || b.id) || 0;
       return idA - idB;
     });
 
     return result;
-  }, [tasks, timeFilter, searchQuery]);
+  }, [tasks, selectedMachine, selectedDivision, selectedDepartment, selectedPart, startDate, endDate, timeFilter, searchQuery]);
 
   // --- Pagination ---
   const paginatedTasks = useMemo(() => {
@@ -184,7 +258,7 @@ const MaintenanceTable = ({
 
   const totalPages = Math.ceil(filteredTasks.length / itemsPerPage);
 
-  // --- Helpers ---
+  // --- Status Badge Helper ---
   const getStatusBadge = (task) => {
     const adminDone = task.admin_done === 'true' || task.admin_done === 'Done' || task.admin_done === true;
     const isSubmitted = !!(task.submission_date || task.status === 'yes' || task.status === 'no');
@@ -203,7 +277,6 @@ const MaintenanceTable = ({
         </span>
       );
     }
-    // Check for Overdue
     const dStr = task.planned_date || task.dueDate || task.task_start_date;
     const taskDate = parseDate(dStr);
     const today = new Date();
@@ -235,22 +308,209 @@ const MaintenanceTable = ({
     );
   };
 
+  // Export Tasks to CSV
+  const handleExportCSV = () => {
+    if (filteredTasks.length === 0) {
+      return;
+    }
+
+    const escapeCSV = (val) => {
+      if (val === null || val === undefined) return "";
+      const str = String(val);
+      if (str.includes(",") || str.includes("\"") || str.includes("\n")) {
+        return `"${str.replace(/"/g, "\"\"")}"`;
+      }
+      return str;
+    };
+
+    const headers = [
+      "Task Seq",
+      "Machine Name",
+      "Part Name",
+      "Part Area",
+      "Department",
+      "Division",
+      "Assign From",
+      "Assigned To",
+      "Task Description",
+      "Start Date & Time",
+      "Frequency",
+      "Status"
+    ];
+
+    const rows = filteredTasks.map((task, index) => {
+      const partsStr = Array.isArray(task.part_name) 
+        ? task.part_name.join(", ") 
+        : (task.part_name || "");
+
+      let statusText = "Pending";
+      const adminDone = task.admin_done === 'true' || task.admin_done === 'Done' || task.admin_done === true;
+      const isSubmitted = !!(task.submission_date || task.status === 'yes' || task.status === 'no');
+      if (adminDone) statusText = "Approved";
+      else if (isSubmitted) statusText = "Completed";
+      else {
+        const dStr = task.planned_date || task.dueDate || task.task_start_date;
+        const taskDate = parseDate(dStr);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (!isNaN(taskDate.getTime())) {
+          const compareDate = new Date(taskDate);
+          compareDate.setHours(0, 0, 0, 0);
+          if (compareDate < today) statusText = "Overdue";
+          else if (compareDate > today) statusText = "Upcoming";
+        }
+      }
+
+      return [
+        index + 1,
+        escapeCSV(task.machine_name || ""),
+        escapeCSV(partsStr || ""),
+        escapeCSV(task.part_area || ""),
+        escapeCSV(task.machine_department || ""),
+        escapeCSV(task.machine_division || ""),
+        escapeCSV(task.givenBy || task.given_by || ""),
+        escapeCSV(task.name || ""),
+        escapeCSV(task.task_description || ""),
+        escapeCSV(task.planned_date || task.dueDate || ""),
+        escapeCSV(task.frequency || ""),
+        escapeCSV(statusText)
+      ];
+    });
+
+    const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `maintenance_tasks_${new Date().toLocaleDateString('en-CA')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const hasActiveFilters = selectedMachine !== 'all' || selectedDivision !== 'all' || selectedDepartment !== 'all' || selectedPart !== 'all' || startDate !== '' || endDate !== '' || searchQuery !== '' || timeFilter !== 'all';
+
+  const resetAllFilters = () => {
+    setSelectedMachine('all');
+    setSelectedDivision('all');
+    setSelectedDepartment('all');
+    setSelectedPart('all');
+    setStartDate('');
+    setEndDate('');
+    setSearchQuery('');
+    setTimeFilter('all');
+    setCurrentPage(1);
+  };
+
   return (
     <div className="space-y-4">
-      {/* Search and Filters Section */}
-      <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-3 md:space-y-0 px-1">
-        <div className="flex flex-col space-y-2">
-          <div className="flex items-center space-x-2">
-            <span className="text-sm font-medium text-gray-700">Filter by Time:</span>
-            <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg">
+      {/* Search, Dropdown Filters and Date Filter Section */}
+      <div className="bg-slate-50/70 p-3.5 rounded-xl border border-purple-100/80 space-y-3">
+        {/* Row 1: Dropdown Filters (Machine Name, Division, Department, Machine Part) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
+          <div>
+            <label className="block text-[11px] font-semibold text-gray-600 mb-1 uppercase tracking-wider">Machine Name</label>
+            <select
+              value={selectedMachine}
+              onChange={(e) => { setSelectedMachine(e.target.value); setCurrentPage(1); }}
+              className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400 cursor-pointer text-gray-700"
+            >
+              <option value="all">All Machines ({uniqueMachineNames.length})</option>
+              {uniqueMachineNames.map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-semibold text-gray-600 mb-1 uppercase tracking-wider">Machine Division</label>
+            <select
+              value={selectedDivision}
+              onChange={(e) => { setSelectedDivision(e.target.value); setCurrentPage(1); }}
+              className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400 cursor-pointer text-gray-700"
+            >
+              <option value="all">All Divisions ({uniqueDivisions.length})</option>
+              {uniqueDivisions.map(d => (
+                <option key={d} value={d}>{d}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-semibold text-gray-600 mb-1 uppercase tracking-wider">Machine Department</label>
+            <select
+              value={selectedDepartment}
+              onChange={(e) => { setSelectedDepartment(e.target.value); setCurrentPage(1); }}
+              className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400 cursor-pointer text-gray-700"
+            >
+              <option value="all">All Departments ({uniqueDepartments.length})</option>
+              {uniqueDepartments.map(dept => (
+                <option key={dept} value={dept}>{dept}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-semibold text-gray-600 mb-1 uppercase tracking-wider">Machine Part</label>
+            <select
+              value={selectedPart}
+              onChange={(e) => { setSelectedPart(e.target.value); setCurrentPage(1); }}
+              className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400 cursor-pointer text-gray-700"
+            >
+              <option value="all">All Parts ({uniqueParts.length})</option>
+              {uniqueParts.map(p => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Row 2: Search, Child Date Range, Time presets, Export CSV & Reset */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-1 border-t border-gray-200/60">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Search Box */}
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search tasks..."
+                className="w-48 sm:w-56 pl-8 pr-3 py-1.5 border border-gray-300 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400"
+                value={searchQuery}
+                onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+              />
+            </div>
+
+            {/* Child Date Range Filter */}
+            <div className="flex items-center gap-1.5 bg-white p-1 rounded-lg border border-gray-300 text-xs">
+              <span className="text-[10px] font-bold uppercase text-gray-500 px-1">Date:</span>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => { setStartDate(e.target.value); setCurrentPage(1); }}
+                className="px-1.5 py-0.5 border border-gray-200 rounded text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-purple-400"
+                title="From Date"
+              />
+              <span className="text-gray-400 text-xs">to</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => { setEndDate(e.target.value); setCurrentPage(1); }}
+                className="px-1.5 py-0.5 border border-gray-200 rounded text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-purple-400"
+                title="To Date"
+              />
+            </div>
+
+            {/* Filter by Time Presets */}
+            <div className="flex items-center gap-1">
               {['today', 'week', 'month', 'all'].map((filter) => (
                 <button
                   key={filter}
                   onClick={() => { setTimeFilter(filter); setCurrentPage(1); }}
-                  className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${
+                  className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${
                     timeFilter === filter 
                     ? 'bg-purple-600 text-white shadow-sm' 
-                    : 'text-gray-500 hover:text-gray-700'
+                    : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
                   }`}
                 >
                   {filter}
@@ -258,25 +518,33 @@ const MaintenanceTable = ({
               ))}
             </div>
           </div>
-          
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search tasks..."
-                className="block w-64 pl-9 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-          </div>
-        </div>
 
-        <div className="flex flex-wrap gap-2">
-           <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-[10px] font-bold uppercase">
+          <div className="flex items-center gap-2 self-end lg:self-auto">
+            {hasActiveFilters && (
+              <button
+                onClick={resetAllFilters}
+                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-gray-200 bg-white"
+                title="Reset all applied filters"
+              >
+                <X className="h-3.5 w-3.5" />
+                <span>Reset Filters</span>
+              </button>
+            )}
+
+            <button
+              onClick={handleExportCSV}
+              disabled={filteredTasks.length === 0}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold rounded-lg text-xs transition-all shadow-sm active:scale-95 cursor-pointer"
+              title="Export filtered maintenance tasks to CSV"
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span>Export CSV</span>
+            </button>
+
+            <span className="px-2.5 py-1 bg-purple-100 text-purple-700 rounded-full text-[10px] font-bold uppercase whitespace-nowrap">
               Showing: {filteredTasks.length} Tasks
-           </span>
+            </span>
+          </div>
         </div>
       </div>
 
@@ -333,7 +601,7 @@ const MaintenanceTable = ({
                     <td className="px-6 py-4 align-top">
                        <PartNameCellDesktop partName={task.part_name} />
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
+                    <td className="px-2 py-4 text-sm text-gray-500">
                        {task.part_area || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
