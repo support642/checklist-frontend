@@ -12,7 +12,7 @@ import autoTable from "jspdf-autotable"
 import EmployeePerformanceReportModal from "../../../components/modals/EmployeePerformanceReportModal"
 import TopPerformersModal from "../../../components/modals/TopPerformersModal"
 import { hasSystemAccess } from "../../../utils/permissionUtils"
-
+import AttendanceReportModal from "../../../components/modals/AttendanceReportModal"
 export default function StaffTasksTable({
   dashboardType,
   dashboardStaffFilter,
@@ -35,13 +35,19 @@ export default function StaffTasksTable({
   })
   const [tillDate, setTillDate] = useState(new Date().toLocaleDateString('en-CA'))
   const [monthYearOptions, setMonthYearOptions] = useState([])
-  
+
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedStaffName, setSelectedStaffName] = useState("")
   const [isTopPerformersModalOpen, setIsTopPerformersModalOpen] = useState(false)
   const [topPerformersData, setTopPerformersData] = useState([])
   const [topPerformersRange, setTopPerformersRange] = useState({ from: "", to: "", isCustom: false, monthLabel: "" })
+
+  // Attendance Report Modal State
+  const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false)
+  const [attendanceData, setAttendanceData] = useState([])
+  const [attendanceRange, setAttendanceRange] = useState({ from: "", to: "", isCustom: false, monthLabel: "" })
+
   const [selectedStaffData, setSelectedStaffData] = useState(null)
   const [staffTaskDetails, setStaffTaskDetails] = useState([])
   const [isModalLoading, setIsModalLoading] = useState(false)
@@ -53,11 +59,11 @@ export default function StaffTasksTable({
     from: startDate || "",
     to: endDate || new Date().toLocaleDateString('en-CA')
   })
-  const [modalRange, setModalRange] = useState({ 
-    from: startDate || "", 
-    to: endDate || new Date().toLocaleDateString('en-CA') 
+  const [modalRange, setModalRange] = useState({
+    from: startDate || "",
+    to: endDate || new Date().toLocaleDateString('en-CA')
   })
-  
+
   // Dashboard Pagination & Search State
   const [dashboardPage, setDashboardPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
@@ -133,26 +139,26 @@ export default function StaffTasksTable({
     const today = new Date()
     const currentMonth = today.getMonth() // 0-11
     const currentYear = today.getFullYear()
-    
+
     // Add current month as default
     const currentMonthYear = `${today.toLocaleString('default', { month: 'long' })} ${currentYear}`
-    
+
     // Generate options for last 12 months (including current)
     for (let i = 11; i >= 0; i--) {
       const date = new Date(currentYear, currentMonth - i, 1)
       const monthName = date.toLocaleString('default', { month: 'long' })
       const year = date.getFullYear()
       const monthYear = `${monthName} ${year}`
-      
+
       options.push({
         value: `${year}-${(date.getMonth() + 1).toString().padStart(2, '0')}`,
         label: monthYear,
         isCurrent: i === 0 // Current month
       })
     }
-    
+
     setMonthYearOptions(options)
-    
+
     // Set default selection to current month
     if (options.length > 0 && !selectedMonthYear) {
       const currentOption = options.find(opt => opt.isCurrent)
@@ -192,11 +198,11 @@ export default function StaffTasksTable({
     setIsModalOpen(true);
     setIsModalLoading(true);
     setStaffTaskDetails([]);
-    
+
     // Use dashboard defaults unless custom dates are provided
     const fromDate = customFrom || startDate;
     const toDate = customTo || endDate;
-    
+
     // Update local modal range state for tracking
     setModalRange({ from: fromDate, to: toDate });
 
@@ -226,7 +232,7 @@ export default function StaffTasksTable({
       setIsModalLoading(false);
     }
   }, [dashboardType, selectedMonthYear, tillDate, startDate, endDate, hasMaintenanceAccess, staffMembers]);
-  
+
   const formatDateForDisplay = (dateStr) => {
     if (!dateStr || dateStr === "N/A" || dateStr === "Range") return dateStr;
     try {
@@ -243,16 +249,16 @@ export default function StaffTasksTable({
 
   const handleDownloadCSV = (customFrom = null, customTo = null, customStaffInfo = null) => {
     if (!staffTaskDetails.length) return;
-    
+
     const defaultStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toLocaleDateString('en-CA');
-    
+
     // Determine the reporting range
     const queryFrom = (typeof customFrom === 'string') ? customFrom : (modalRange.from || startDate || defaultStart);
     const queryTo = (typeof customTo === 'string') ? customTo : (modalRange.to || endDate || new Date().toLocaleDateString('en-CA'));
 
     const fromDateVal = queryFrom;
     const toDateVal = queryTo;
-    
+
     // Categorize and Process Data (Matches UI Modal Logic)
     const checklistTasks = getUniqueTasksCSV(staffTaskDetails.filter(t => t.type === 'checklist'))
       .map(t => ({ taskType: t.is_ledger ? 'Ledger' : 'Checklist', description: t.task_description, frequency: t.frequency || 'N/A' }));
@@ -264,9 +270,9 @@ export default function StaffTasksTable({
     const uniqueDelegation = getUniqueTasksCSV(staffTaskDetails.filter(t => t.type === 'delegation' || t.is_delegated))
       .map(t => ({ taskType: 'Delegation', description: t.task_description, frequency: 'One Time' }));
 
-    const maintenanceTasks = hasMaintenanceAccess 
+    const maintenanceTasks = hasMaintenanceAccess
       ? getUniqueTasksCSV(staffTaskDetails.filter(t => t.type === 'maintenance'))
-          .map(t => ({ taskType: 'Maintenance', description: t.task_description, frequency: t.frequency || 'N/A' }))
+        .map(t => ({ taskType: 'Maintenance', description: t.task_description, frequency: t.frequency || 'N/A' }))
       : [];
 
     const allSortedTasks = [...checklistTasks, ...uniqueDelegation, ...maintenanceTasks];
@@ -290,7 +296,7 @@ export default function StaffTasksTable({
 
     // Build CSV Content as 2D array
     const csvData = [];
-    
+
     // Header
     csvData.push(["RAMA UDYOG PVT LTD."]);
     csvData.push(["EMPLOYEE PERFORMANCE REPORT"]);
@@ -344,10 +350,10 @@ export default function StaffTasksTable({
 
   const handleDownloadPDF = async (customFrom = null, customTo = null, customStaffInfo = null) => {
     if (!staffTaskDetails.length) return;
-    
+
     // Determine the reporting range - matching modal priority logic
     const defaultStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toLocaleDateString('en-CA');
-    
+
     // Ensure we don't accidentally treat event objects as date strings
     const pdfFromDate = formatDateForDisplay((typeof customFrom === 'string') ? customFrom : (modalRange.from || startDate || defaultStart));
     const pdfToDate = formatDateForDisplay((typeof customTo === 'string') ? customTo : (modalRange.to || endDate || new Date().toLocaleDateString('en-CA')));
@@ -357,7 +363,7 @@ export default function StaffTasksTable({
     const marginX = 10;
     const usableW = pageW - 2 * marginX; // 190mm
     const centerX = pageW / 2; // 105mm
-    
+
     // Helper to get unique tasks by description + frequency (matches modal logic)
     const getUniqueTasksPDF = (taskList) => {
       const seen = new Set();
@@ -384,10 +390,10 @@ export default function StaffTasksTable({
       .map(t => ({ taskType: 'Delegation', description: t.task_description, frequency: 'One Time' }))
       .sort(sortByFreqPDF);
 
-    const maintenanceTasks = hasMaintenanceAccess 
+    const maintenanceTasks = hasMaintenanceAccess
       ? getUniqueTasksPDF(staffTaskDetails.filter(t => t.type === 'maintenance'))
-          .map(t => ({ taskType: 'Maintenance', description: t.task_description, frequency: t.frequency || 'N/A' }))
-          .sort(sortByFreqPDF)
+        .map(t => ({ taskType: 'Maintenance', description: t.task_description, frequency: t.frequency || 'N/A' }))
+        .sort(sortByFreqPDF)
       : [];
 
     const allSortedTasks = [...checklistTasks, ...delegationTasks, ...maintenanceTasks];
@@ -404,7 +410,7 @@ export default function StaffTasksTable({
     const checklistTasksAll = staffTaskDetails.filter(t => t.type === 'checklist');
     const ledgerTasksAll = staffTaskDetails.filter(t => t.type === 'checklist' && t.is_ledger);
     const delegationTasksAll = staffTaskDetails.filter(t => t.type === 'delegation' || t.is_delegated);
-    const maintenanceTasksAll = hasMaintenanceAccess 
+    const maintenanceTasksAll = hasMaintenanceAccess
       ? staffTaskDetails.filter(t => t.type === 'maintenance')
       : [];
 
@@ -421,20 +427,20 @@ export default function StaffTasksTable({
     const logoW = 25;
     const logoH = 20;
     const bannerW = usableW - 2 * logoW; // 140mm
-    
+
     // Yellow Banner
-    doc.setFillColor(255, 255, 0); 
+    doc.setFillColor(255, 255, 0);
     doc.rect(marginX + logoW, 10, bannerW, logoH, 'F');
     // Left & Right Borders for logos
     doc.setDrawColor(200);
     doc.rect(marginX, 10, logoW, logoH);
     doc.rect(marginX + logoW + bannerW, 10, logoW, logoH);
-    
+
     // Try to add Logos if available
     try {
       doc.addImage("/Rama_logo_pdf.png", "PNG", marginX + 2, 12, 21, 16);
       doc.addImage("/Rama_logo_pdf.png", "PNG", marginX + logoW + bannerW + 2, 12, 21, 16);
-    } catch(e) {
+    } catch (e) {
       console.warn("Logos could not be loaded into PDF", e);
     }
 
@@ -456,7 +462,7 @@ export default function StaffTasksTable({
     const startY = 38;
     const row1H = 12;
     const row2H = 20;
-    const rightColW = 45; 
+    const rightColW = 45;
     const mainColW = usableW - rightColW;
 
     // Helper: Draw a detail block (Label top, Value bottom)
@@ -466,19 +472,19 @@ export default function StaffTasksTable({
       doc.setDrawColor(200);
       doc.rect(x, y, w, h);
       doc.line(x, y + h / 3, x + w, y + h / 3);
-      
+
       doc.setFontSize(6.5);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(120);
       doc.text(label.toUpperCase(), x + w / 2, y + 2.8, { align: "center" });
-      
+
       doc.setTextColor(0);
       const valStr = String(value || "—");
       const baseFontSize = 8.5;
       const minFontSize = 6;
       let fontSize = valStr.length > 20 ? 7 : baseFontSize;
       doc.setFontSize(fontSize);
-      
+
       let lines = doc.splitTextToSize(valStr, w - 2);
       // If still too many lines, try minor font reduction
       if (lines.length > 2 && fontSize > minFontSize) {
@@ -490,7 +496,7 @@ export default function StaffTasksTable({
       const lineStep = fontSize * 0.3528 * 1.1; // roughly 1.1x font size in mm
       const totalTextH = lines.length * lineStep;
       const startTextY = (y + h / 3) + (2 * h / 3 - totalTextH) / 2 + (lineStep * 0.8);
-      
+
       lines.forEach((line, i) => {
         doc.text(line, x + w / 2, startTextY + (i * lineStep), { align: "center" });
       });
@@ -531,7 +537,7 @@ export default function StaffTasksTable({
     const deptW = 35;
     const divW = 30;
     const idW = 25;
-    
+
     drawDetailBlock(marginX, startY, nameW, row1H, "Name", selectedStaffName);
     drawDetailBlock(marginX + nameW, startY, desgW, row1H, "Designation", staffInfo.designation);
     drawDetailBlock(marginX + nameW + desgW, startY, deptW, row1H, "Department", staffInfo.department || "Account");
@@ -552,13 +558,13 @@ export default function StaffTasksTable({
     const labelW_Date = 12;
     doc.setDrawColor(200);
     doc.rect(marginX + mainColW, dateY, rightColW, row2H);
-    doc.line(marginX + mainColW, dateY + row2H/2, marginX + mainColW + rightColW, dateY + row2H/2);
+    doc.line(marginX + mainColW, dateY + row2H / 2, marginX + mainColW + rightColW, dateY + row2H / 2);
     doc.line(marginX + mainColW + labelW_Date, dateY, marginX + mainColW + labelW_Date, dateY + row2H);
-    
+
     doc.setFontSize(6); doc.setTextColor(120);
     doc.text("FROM", marginX + mainColW + labelW_Date / 2, dateY + row2H / 4 + 1, { align: "center" });
     doc.text("TO", marginX + mainColW + labelW_Date / 2, dateY + 3 * row2H / 4 + 1, { align: "center" });
-    
+
     doc.setFontSize(9); doc.setTextColor(0);
     doc.text(pdfFromDate, marginX + mainColW + labelW_Date + (rightColW - labelW_Date) / 2, dateY + row2H / 4 + 1.5, { align: "center" });
     doc.text(pdfToDate, marginX + mainColW + labelW_Date + (rightColW - labelW_Date) / 2, dateY + 3 * row2H / 4 + 1.5, { align: "center" });
@@ -582,11 +588,11 @@ export default function StaffTasksTable({
     // Column widths: distribute evenly across available data columns
     const tableFoot = [allSortedTasks.length, "TOTAL", "", "Tasks"];
 
-    const columnStyles = { 
+    const columnStyles = {
       0: { halign: 'center', cellWidth: 15 },
       1: { halign: 'center', cellWidth: 25, fontStyle: 'bold' },
-      2: { cellWidth: 'auto' }, 
-      3: { halign: 'center', cellWidth: 25, fontStyle: 'bold' } 
+      2: { cellWidth: 'auto' },
+      3: { halign: 'center', cellWidth: 25, fontStyle: 'bold' }
     };
 
     autoTable(doc, {
@@ -638,31 +644,31 @@ export default function StaffTasksTable({
       doc.setTextColor(124, 58, 237); // Purple-600
       doc.text(brandText, startX + prefixW, footerY);
     }
-    
+
     doc.save(`${selectedStaffName}_Performance_Report_${new Date().toLocaleDateString('en-CA')}.pdf`);
   };
 
   const getVisiblePages = () => {
     const totalPages = Math.ceil(staffTaskDetails.length / pageSize);
     const visibleCount = isMobile ? 2 : 5;
-    
+
     if (totalPages <= visibleCount) {
       return [...Array(totalPages).keys()].map(i => i + 1);
     }
-    
+
     let start = Math.max(1, currentPage - (isMobile ? 0 : 2));
     let end = start + visibleCount - 1;
-    
+
     if (end > totalPages) {
       end = totalPages;
       start = Math.max(1, end - visibleCount + 1);
     }
-    
+
     if (start < 1) {
       start = 1;
       end = Math.min(totalPages, start + visibleCount - 1);
     }
-    
+
     const pages = [];
     for (let i = start; i <= end; i++) {
       pages.push(i);
@@ -677,7 +683,7 @@ export default function StaffTasksTable({
   const startAutoPaginate = (direction) => {
     // Stop any existing timers first
     stopAutoPaginate();
-    
+
     holdTimerRef.current = setTimeout(() => {
       holdIntervalRef.current = setInterval(() => {
         setCurrentPage(prev => {
@@ -707,67 +713,67 @@ export default function StaffTasksTable({
     holdIntervalRef.current = null;
   };
 
-// Function to load staff data from server
-const loadStaffData = useCallback(async () => {
-  if (isLoading) return;
+  // Function to load staff data from server
+  const loadStaffData = useCallback(async () => {
+    if (isLoading) return;
 
-  try {
-    setIsLoading(true)
+    try {
+      setIsLoading(true)
 
-    // Fetch paginated staff data
-    const data = await fetchStaffTasksDataApi(
-      dashboardType,
-      dashboardStaffFilter,
-      dashboardPage,
-      dashboardPageSize,
-      selectedMonthYear,
-      tillDate,
-      startDate,
-      endDate,
-      debouncedSearch,
-      departmentFilter,
-      divisionFilter,
-      unitFilter
-    )
-
-    // Get total counts respecting search and dates
-    const [staffCount, usersCount] = await Promise.all([
-      getStaffTasksCountApi(
-        dashboardType, 
-        dashboardStaffFilter, 
-        debouncedSearch,
+      // Fetch paginated staff data
+      const data = await fetchStaffTasksDataApi(
+        dashboardType,
+        dashboardStaffFilter,
+        dashboardPage,
+        dashboardPageSize,
         selectedMonthYear,
         tillDate,
         startDate,
         endDate,
+        debouncedSearch,
         departmentFilter,
         divisionFilter,
         unitFilter
-      ),
-      getTotalUsersCountApi()
-    ]);
-    setTotalStaffCount(typeof staffCount === 'number' ? staffCount : 0)
-    if (typeof usersCount === 'number') {
-      setTotalUsersCount(usersCount)
-    } else if (usersCount && typeof usersCount === 'object' && 'count' in usersCount) {
-      setTotalUsersCount(Number(usersCount.count) || 0)
-    } else {
-      setTotalUsersCount(0)
+      )
+
+      // Get total counts respecting search and dates
+      const [staffCount, usersCount] = await Promise.all([
+        getStaffTasksCountApi(
+          dashboardType,
+          dashboardStaffFilter,
+          debouncedSearch,
+          selectedMonthYear,
+          tillDate,
+          startDate,
+          endDate,
+          departmentFilter,
+          divisionFilter,
+          unitFilter
+        ),
+        getTotalUsersCountApi()
+      ]);
+      setTotalStaffCount(typeof staffCount === 'number' ? staffCount : 0)
+      if (typeof usersCount === 'number') {
+        setTotalUsersCount(usersCount)
+      } else if (usersCount && typeof usersCount === 'object' && 'count' in usersCount) {
+        setTotalUsersCount(Number(usersCount.count) || 0)
+      } else {
+        setTotalUsersCount(0)
+      }
+
+      if (!Array.isArray(data) || data.length === 0) {
+        setStaffMembers([])
+        return
+      }
+
+      setStaffMembers(data)
+
+    } catch (error) {
+      console.error('Error loading staff data:', error)
+    } finally {
+      setIsLoading(false)
     }
-
-    if (!Array.isArray(data) || data.length === 0) {
-      setStaffMembers([])
-      return
-    }
-
-    setStaffMembers(data)
-
-  } catch (error) {
-    console.error('Error loading staff data:', error)
-  } finally {
-    setIsLoading(false)
-  }
-}, [dashboardType, dashboardStaffFilter, departmentFilter, divisionFilter, unitFilter, selectedMonthYear, tillDate, startDate, endDate, dashboardPage, debouncedSearch])
+  }, [dashboardType, dashboardStaffFilter, departmentFilter, divisionFilter, unitFilter, selectedMonthYear, tillDate, startDate, endDate, dashboardPage, debouncedSearch])
 
   // Initial load when component mounts or dependencies change
   useEffect(() => {
@@ -777,11 +783,11 @@ const loadStaffData = useCallback(async () => {
   const handleOpenTopPerformers = async () => {
     try {
       setIsLoading(true);
-      
+
       const isCustom = !!(startDate && endDate);
       let queryFrom = "";
       let queryTo = "";
-      
+
       if (isCustom) {
         queryFrom = startDate;
         queryTo = endDate;
@@ -791,14 +797,14 @@ const loadStaffData = useCallback(async () => {
           const [year, month] = selectedMonthYear.split('-').map(Number);
           const startOfMonth = new Date(year, month - 1, 1);
           const endOfMonth = new Date(year, month, 0);
-          
+
           const formatYMD = (d) => {
             const y = d.getFullYear();
             const m = String(d.getMonth() + 1).padStart(2, '0');
             const day = String(d.getDate()).padStart(2, '0');
             return `${y}-${m}-${day}`;
           };
-          
+
           queryFrom = formatYMD(startOfMonth);
           let tempTo = formatYMD(endOfMonth);
           if (tillDate) {
@@ -821,7 +827,7 @@ const loadStaffData = useCallback(async () => {
         dashboardType,
         dashboardStaffFilter,
         1,
-        10000, 
+        10000,
         isCustom ? "" : selectedMonthYear,
         isCustom ? "" : tillDate,
         isCustom ? queryFrom : "",
@@ -837,11 +843,11 @@ const loadStaffData = useCallback(async () => {
       const monthLabel = activeMonthOption ? activeMonthOption.label : selectedMonthYear;
 
       setTopPerformersData(allData);
-      setTopPerformersRange({ 
-        from: queryFrom, 
-        to: queryTo, 
-        isCustom, 
-        monthLabel: monthLabel || "this month" 
+      setTopPerformersRange({
+        from: queryFrom,
+        to: queryTo,
+        isCustom,
+        monthLabel: monthLabel || "this month"
       });
       setIsTopPerformersModalOpen(true);
     } catch (error) {
@@ -852,11 +858,92 @@ const loadStaffData = useCallback(async () => {
     }
   };
 
+  const handleOpenAttendanceReport = async () => {
+    try {
+      setIsLoading(true);
+
+      const isCustom = !!(startDate && endDate);
+      let queryFrom = "";
+      let queryTo = "";
+
+      if (isCustom) {
+        queryFrom = startDate;
+        queryTo = endDate;
+      } else {
+        if (selectedMonthYear) {
+          const [year, month] = selectedMonthYear.split('-').map(Number);
+          const startOfMonth = new Date(year, month - 1, 1);
+          const endOfMonth = new Date(year, month, 0);
+
+          const formatYMD = (d) => {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+          };
+
+          queryFrom = formatYMD(startOfMonth);
+          let tempTo = formatYMD(endOfMonth);
+          if (tillDate) {
+            const tillDateObj = new Date(tillDate);
+            if (tillDateObj < endOfMonth) {
+              tempTo = tillDate;
+            }
+          }
+          queryTo = tempTo;
+        } else {
+          const defaultStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toLocaleDateString('en-CA');
+          queryFrom = defaultStart;
+          queryTo = tillDate || new Date().toLocaleDateString('en-CA');
+        }
+      }
+
+      const allData = await fetchStaffTasksDataApi(
+        dashboardType,
+        dashboardStaffFilter,
+        1,
+        10000,
+        isCustom ? "" : selectedMonthYear,
+        isCustom ? "" : tillDate,
+        isCustom ? queryFrom : "",
+        isCustom ? queryTo : ""
+      );
+
+      if (!Array.isArray(allData) || allData.length === 0) {
+        alert("No attendance data available.");
+        return;
+      }
+
+      const activeMonthOption = monthYearOptions.find(opt => opt.value === selectedMonthYear);
+      const monthLabel = activeMonthOption ? activeMonthOption.label : selectedMonthYear;
+
+      // Map present/absent from existing task counts (swap to real attendance fields once backend adds them)
+      const mapped = allData.map(staff => ({
+        ...staff,
+        present: staff.completedTasks,
+        absent: staff.pendingTasks,
+      }));
+
+      setAttendanceData(mapped);
+      setAttendanceRange({
+        from: queryFrom,
+        to: queryTo,
+        isCustom,
+        monthLabel: monthLabel || "this month"
+      });
+      setIsAttendanceModalOpen(true);
+    } catch (error) {
+      console.error("Error generating attendance report:", error);
+      alert("Failed to load attendance report.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const renderOnTimeScore = (score) => {
     let bgColor = "bg-red-100"
     let textColor = "text-red-800"
-    
+
     if (score >= 80) {
       bgColor = "bg-green-100"
       textColor = "text-green-800"
@@ -864,7 +951,7 @@ const loadStaffData = useCallback(async () => {
       bgColor = "bg-yellow-100"
       textColor = "text-yellow-800"
     }
-    
+
     return (
       <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${bgColor} ${textColor}`}>
         {score}%
@@ -888,7 +975,7 @@ const loadStaffData = useCallback(async () => {
         dashboardType,
         dashboardStaffFilter,
         1,
-        10000, 
+        10000,
         selectedMonthYear,
         tillDate,
         exportFrom,
@@ -901,7 +988,7 @@ const loadStaffData = useCallback(async () => {
 
       // Define CSV headers
       const headers = ["SEQ NO.", "NAME", "DESIGNATION", "DIVISION", "DEPARTMENT", "TOTAL TASKS", "COMPLETED", "PENDING", "OVERDUE", "DONE ON TIME", "DONE ON TIME SCORE (%)", "WORK DONE SCORE"];
-      
+
       // Map data to rows
       const rows = allData.map((staff, index) => {
         const score = staff.completedTasks > 0 ? Math.round((staff.completedTasks / staff.totalTasks) * 100) : 0;
@@ -957,7 +1044,7 @@ const loadStaffData = useCallback(async () => {
         dashboardType,
         dashboardStaffFilter,
         1,
-        10000, 
+        10000,
         selectedMonthYear,
         tillDate,
         exportFrom,
@@ -968,21 +1055,21 @@ const loadStaffData = useCallback(async () => {
         return;
       }
 
-      const doc = new jsPDF('l', 'mm', 'a4'); 
-      
+      const doc = new jsPDF('l', 'mm', 'a4');
+
       // Header
       doc.setFontSize(18);
       doc.setTextColor(37, 99, 235); // Blue-600
       doc.text(`Work Done Summary Report - ${dashboardType.toUpperCase()}`, 14, 15);
-      
+
       doc.setFontSize(10);
       doc.setTextColor(100);
       doc.text(`Period: ${selectedMonthYear || 'All Months'} (Till: ${formatDateForDisplay(tillDate) || 'N/A'})`, 14, 22);
       doc.text(`${new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })} ${new Date().toLocaleTimeString()}`, 14, 27);
-      
+
       // Define table headers
       const tableColumn = ["Seq", "Name", "Designation", "Division", "Department", "Total", "Done", "Pending", "Overdue", "On Time", "On Time Score", "Score"];
-      
+
       // Map data to rows
       const tableRows = allData.map((staff, index) => {
         const score = staff.completedTasks > 0 ? Math.round((staff.completedTasks / staff.totalTasks) * 100) : 0;
@@ -1044,7 +1131,7 @@ const loadStaffData = useCallback(async () => {
         doc.setTextColor(124, 58, 237); // Purple-600
         doc.text(brandText, startX + prefixW, footerY);
       }
-      
+
       const filenameDate = new Date().toLocaleDateString('en-US').replace(/\//g, '-');
       doc.save(`Work_Done_Report_${dashboardType}_${filenameDate}.pdf`);
     } catch (error) {
@@ -1058,96 +1145,104 @@ const loadStaffData = useCallback(async () => {
   return (
     <div ref={dashboardTopRef} className="space-y-4">
       {/* Show total count and active filters */}
-      <div className="flex flex-col md:flex-row md:justify-between md:items-start space-y-4 md:space-y-0">
-        <div className="flex flex-col space-y-4 w-full md:w-auto">
-          {/* Filters Group */}
-          <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-3 sm:gap-4">
-            {/* Month-Year Dropdown */}
-            <div className="flex items-center space-x-2 w-full sm:w-auto">
-              <label htmlFor="monthYearFilter" className="text-sm font-medium text-gray-700 min-w-[50px]">Month:</label>
-              <select
-                id="monthYearFilter"
-                value={selectedMonthYear}
-                onChange={(e) => setSelectedMonthYear(e.target.value)}
-                className="block w-full sm:w-40 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              >
-                <option value="">All Months</option>
-                {monthYearOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label} {option.isCurrent && "(Current)"}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Till Date Filter */}
-            <div className="flex items-center space-x-2 w-full sm:w-auto">
-              <label htmlFor="tillDateFilter" className="text-sm font-medium text-gray-700 min-w-[50px]">Till:</label>
-              <input
-                type="date"
-                id="tillDateFilter"
-                value={tillDate}
-                onChange={(e) => setTillDate(e.target.value)}
-                className="block w-full sm:w-40 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              />
-            </div>
-
-            {/* Name Search Box */}
-            <div className="relative group w-full sm:min-w-[200px] sm:w-auto">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-blue-500 transition-colors">
-                <Search size={16} />
-              </div>
-              <input
-                type="text"
-                value={searchQuery}
-                onKeyDown={(e) => e.stopPropagation()}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search staff by name..."
-                className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 sm:text-sm placeholder-gray-400"
-              />
-              {searchQuery && (
-                <button 
-                  onClick={() => setSearchQuery("")}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </div>
+      <div className="flex flex-col space-y-3">
+        {/* Row 1: Filters (Month, Till) + Action Buttons (Attendance, Top Performers, Work Done) */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Month-Year Dropdown */}
+          <div className="flex items-center space-x-2 w-full sm:w-auto">
+            <label htmlFor="monthYearFilter" className="text-sm font-medium text-gray-700 min-w-[50px]">Month:</label>
+            <select
+              id="monthYearFilter"
+              value={selectedMonthYear}
+              onChange={(e) => setSelectedMonthYear(e.target.value)}
+              className="block w-full sm:w-40 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white"
+            >
+              <option value="">All Months</option>
+              {monthYearOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label} {option.isCurrent && "(Current)"}
+                </option>
+              ))}
+            </select>
           </div>
-          
-          {totalStaffCount > 0 && (
-            <div className="text-xs text-gray-500 font-medium">
-              Total staff found: {totalStaffCount} | Showing {staffMembers.length} on this page
-            </div>
-          )}
-        </div>
 
-        <div className="flex flex-col items-end gap-3">
+          {/* Till Date Filter */}
+          <div className="flex items-center space-x-2 w-full sm:w-auto">
+            <label htmlFor="tillDateFilter" className="text-sm font-medium text-gray-700 min-w-[50px]">Till:</label>
+            <input
+              type="date"
+              id="tillDateFilter"
+              value={tillDate}
+              onChange={(e) => setTillDate(e.target.value)}
+              className="block w-full sm:w-40 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white"
+            />
+          </div>
+
+          {/* Action Buttons next to Labels */}
           {canExportReport && (
             <div className="flex flex-wrap items-center gap-2">
               <button
                 disabled={isLoading}
-                onClick={handleOpenTopPerformers}
-                className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 transition-colors shadow-sm text-sm font-medium disabled:opacity-50"
+                onClick={handleOpenAttendanceReport}
+                className="flex items-center gap-2 px-3 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 transition-colors shadow-sm text-sm font-medium disabled:opacity-50"
               >
-                <Trophy size={18} />
+                <User size={16} />
+                Attendance Report
+              </button>
+
+              <button
+                disabled={isLoading}
+                onClick={handleOpenTopPerformers}
+                className="flex items-center gap-2 px-3 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 transition-colors shadow-sm text-sm font-medium disabled:opacity-50"
+              >
+                <Trophy size={16} />
                 Top Performers
               </button>
 
               <button
                 disabled={isLoading}
                 onClick={() => setIsReportModalOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors shadow-sm text-sm font-medium disabled:opacity-50"
+                className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors shadow-sm text-sm font-medium disabled:opacity-50"
               >
-                <Download size={18} />
+                <Download size={16} />
                 Work done report
               </button>
             </div>
           )}
+        </div>
 
-          {/* Show active filters */}
-          <div className="flex flex-wrap gap-2 justify-end">
+        {/* Row 2: Search Box + Total Count & Active Filter Badges */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+          {/* Name Search Box */}
+          <div className="relative group w-full sm:w-72">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-blue-500 transition-colors">
+              <Search size={16} />
+            </div>
+            <input
+              type="text"
+              value={searchQuery}
+              onKeyDown={(e) => e.stopPropagation()}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search staff by name..."
+              className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 sm:text-sm placeholder-gray-400"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {totalStaffCount > 0 && (
+              <span className="text-xs text-gray-500 font-medium mr-2">
+                Total staff found: {totalStaffCount} | Showing {staffMembers.length} on this page
+              </span>
+            )}
+            {/* Show active filters */}
             {dashboardStaffFilter !== "all" && (
               <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs">
                 Staff: {dashboardStaffFilter}
@@ -1230,7 +1325,7 @@ const loadStaffData = useCallback(async () => {
                 <tr key={`${staff.name}-${index}`} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{index + 1}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div 
+                    <div
                       className={`${isSuperAdmin ? 'cursor-pointer group' : ''} flex items-center gap-2`}
                       onClick={() => isSuperAdmin && handleOpenModal(staff)}
                     >
@@ -1275,59 +1370,59 @@ const loadStaffData = useCallback(async () => {
             {staffMembers.map((staff, index) => (
               <div key={`mobile-${staff.name}-${index}`} className="p-3 border rounded-lg shadow-sm bg-white border-gray-200">
                 <div className="flex justify-between items-center mb-2">
-                   <div className="flex items-center gap-2">
-                     <span className="text-xs font-bold text-gray-400">#{index + 1}</span>
-                   </div>
-                   <div>
-                     {renderOnTimeScore(staff.completedTasks > 0 ? Math.round((staff.completedTasks / staff.totalTasks) * 100) : 0)}
-                   </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-gray-400">#{index + 1}</span>
+                  </div>
+                  <div>
+                    {renderOnTimeScore(staff.completedTasks > 0 ? Math.round((staff.completedTasks / staff.totalTasks) * 100) : 0)}
+                  </div>
                 </div>
-                
-                <div 
+
+                <div
                   className={`text-sm font-medium mb-1 flex items-center gap-1 ${isSuperAdmin ? 'text-gray-800 cursor-pointer hover:text-purple-700' : 'text-gray-500'}`}
                   onClick={() => isSuperAdmin && handleOpenModal(staff)}
                 >
                   <User size={12} className={isSuperAdmin ? 'text-purple-600' : 'text-gray-400'} />
-                  {staff.name} 
+                  {staff.name}
                   <span className="text-[10px] text-gray-500 font-normal ml-1">
                     {(!staff.designation || staff.designation === "—") ? "" : `${staff.designation} • `}({staff.division || "N/A"} - {staff.department || "N/A"})
                   </span>
                   {isSuperAdmin && <ExternalLink size={10} className="text-gray-400 ml-auto" />}
                 </div>
-                
+
                 {staff.email && !staff.email.includes('example.com') && (
                   <div className="text-[10px] text-gray-500 mb-2 truncate">{staff.email}</div>
                 )}
 
                 <div className="flex justify-between text-[10px] text-gray-600 mt-2 bg-gray-50 p-2 rounded">
-                   <div className="text-center">
-                      <div className="font-semibold text-gray-800">{staff.totalTasks}</div>
-                      <div>Total</div>
-                   </div>
-                   <div className="text-center">
-                      <div className="font-semibold text-green-600">{staff.completedTasks}</div>
-                      <div>Completed</div>
-                   </div>
-                   <div className="text-center">
-                      <div className="font-semibold text-yellow-600">{staff.pendingTasks}</div>
-                      <div>Pending</div>
-                   </div>
-                   <div className="text-center">
-                      <div className="font-semibold text-red-500">{staff.overdueTasks || 0}</div>
-                      <div>Overdue</div>
-                   </div>
+                  <div className="text-center">
+                    <div className="font-semibold text-gray-800">{staff.totalTasks}</div>
+                    <div>Total</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="font-semibold text-green-600">{staff.completedTasks}</div>
+                    <div>Completed</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="font-semibold text-yellow-600">{staff.pendingTasks}</div>
+                    <div>Pending</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="font-semibold text-red-500">{staff.overdueTasks || 0}</div>
+                    <div>Overdue</div>
+                  </div>
                 </div>
-                
+
                 <div className="flex justify-between text-[10px] mt-2 px-1">
-                   <span className="text-gray-600">Done on Time:</span>
-                   <span className="font-medium text-gray-800">
-                      {staff.doneOnTime || 0}
-                      {staff.completedTasks > 0 && (
-                        <span className="text-gray-500 ml-1 whitespace-nowrap">
-                          ({Math.round((staff.doneOnTime / staff.completedTasks) * 100)}%)
-                        </span>
-                      )}
-                   </span>
+                  <span className="text-gray-600">Done on Time:</span>
+                  <span className="font-medium text-gray-800">
+                    {staff.doneOnTime || 0}
+                    {staff.completedTasks > 0 && (
+                      <span className="text-gray-500 ml-1 whitespace-nowrap">
+                        ({Math.round((staff.doneOnTime / staff.completedTasks) * 100)}%)
+                      </span>
+                    )}
+                  </span>
                 </div>
               </div>
             ))}
@@ -1383,25 +1478,24 @@ const loadStaffData = useCallback(async () => {
               >
                 <ChevronLeft size={16} />
               </button>
-              
+
               {(() => {
                 const totalPages = Math.ceil(totalStaffCount / dashboardPageSize);
                 let start = Math.max(1, dashboardPage - 2);
                 let end = Math.min(totalPages, start + 4);
                 if (end - start < 4) start = Math.max(1, end - 4);
                 if (start < 1) start = 1;
-                
+
                 const pages = [];
                 for (let i = start; i <= end; i++) pages.push(i);
                 return pages.map(p => (
                   <button
                     key={p}
                     onClick={() => setDashboardPage(p)}
-                    className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                      p === dashboardPage 
-                        ? 'z-10 bg-blue-50 border-blue-500 text-blue-600' 
+                    className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${p === dashboardPage
+                        ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
                         : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                    }`}
+                      }`}
                   >
                     {p}
                   </button>
@@ -1442,17 +1536,17 @@ const loadStaffData = useCallback(async () => {
                   <p className="text-xs text-gray-500 font-medium">Configure your work done report</p>
                 </div>
               </div>
-              <button 
+              <button
                 onClick={() => setIsReportModalOpen(false)}
                 className="p-2 hover:bg-red-50 hover:text-red-600 rounded-full transition-all text-gray-400 active:scale-95"
               >
                 <X size={20} />
               </button>
             </div>
-            
+
             <div className="p-6 space-y-4">
               <p className="text-sm text-gray-600">Select the date range for your report calculations.</p>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label htmlFor="reportFrom" className="text-xs font-bold text-gray-500 uppercase">From</label>
@@ -1548,6 +1642,20 @@ const loadStaffData = useCallback(async () => {
           endDate={topPerformersRange.to}
           isCustomRange={topPerformersRange.isCustom}
           monthLabel={topPerformersRange.monthLabel}
+        />,
+        document.body
+      )}
+
+      {/* Attendance Report Modal */}
+      {isAttendanceModalOpen && createPortal(
+        <AttendanceReportModal
+          isOpen={isAttendanceModalOpen}
+          onClose={() => setIsAttendanceModalOpen(false)}
+          performers={attendanceData}
+          startDate={attendanceRange.from}
+          endDate={attendanceRange.to}
+          isCustomRange={attendanceRange.isCustom}
+          monthLabel={attendanceRange.monthLabel}
         />,
         document.body
       )}

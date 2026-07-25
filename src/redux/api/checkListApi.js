@@ -13,7 +13,7 @@ export const fetchChechListDataSortByDate = async (page = 1, search = '', status
   const unit = localStorage.getItem("unit");
   const divisionLocal = localStorage.getItem("division");
 
-  let url = `${BASE_URL}/pending?page=${page}&username=${username}&role=${role}&department=${department}&unit=${unit}&division=${divisionLocal}&search=${encodeURIComponent(search)}`;
+  let url = `${BASE_URL}/pending?page=${page}&username=${encodeURIComponent(username || '')}&role=${encodeURIComponent(role || '')}&department=${encodeURIComponent(department || '')}&unit=${encodeURIComponent(unit || '')}&division=${encodeURIComponent(divisionLocal || '')}&search=${encodeURIComponent(search)}`;
 
   if (status !== 'all') url += `&status=${status}`;
   if (frequency !== 'all') url += `&frequency=${frequency}`;
@@ -53,7 +53,7 @@ export const fetchChechListDataForHistory = async (page = 1, search = "", startD
   const divisionLocal = localStorage.getItem("division");
   const limit = 50;
 
-  let url = `${BASE_URL}/history?page=${page}&limit=${limit}&username=${username}&role=${role}&department=${department}&unit=${unit}&division=${divisionLocal}&search=${encodeURIComponent(search)}`;
+  let url = `${BASE_URL}/history?page=${page}&limit=${limit}&username=${encodeURIComponent(username || '')}&role=${encodeURIComponent(role || '')}&department=${encodeURIComponent(department || '')}&unit=${encodeURIComponent(unit || '')}&division=${encodeURIComponent(divisionLocal || '')}&search=${encodeURIComponent(search)}`;
 
   if (name !== 'all') url += `&nameFilter=${encodeURIComponent(name)}`;
   if (division !== 'all') url += `&divisionFilter=${encodeURIComponent(division)}`;
