@@ -1691,6 +1691,11 @@ const handleSubmit = async () => {
                           <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                             Freq
                           </th>
+                          {activeView === 'maintenance' && (
+                            <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                              Manpower
+                            </th>
+                          )}
                           <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                             Reminders
                           </th>
@@ -1773,6 +1778,11 @@ const handleSubmit = async () => {
                               <td className="px-2 sm:px-3 py-2 sm:py-4">
                                 <div className="text-xs sm:text-sm text-gray-900 break-words">{history.frequency || "—"}</div>
                               </td>
+                              {activeView === 'maintenance' && (
+                                <td className="px-2 sm:px-3 py-2 sm:py-4">
+                                  <div className="text-xs sm:text-sm font-semibold text-purple-700 break-words">{history.manpower ?? 0}</div>
+                                </td>
+                              )}
                               <td className="px-2 sm:px-3 py-2 sm:py-4">
                                 <div className="text-xs sm:text-sm text-gray-900 break-words">{history.enable_reminder || "—"}</div>
                               </td>
@@ -1850,7 +1860,7 @@ const handleSubmit = async () => {
                           ))
                         ) : (
                           <tr>
-                            <td colSpan={(userRole === "admin" || userRole === "div_admin" || userRole === "super_admin") ? 17 : 16} className="px-4 sm:px-6 py-4 text-center text-gray-500 text-xs sm:text-sm">
+                            <td colSpan={(userRole === "admin" || userRole === "div_admin" || userRole === "super_admin") ? (activeView === 'maintenance' ? 18 : 17) : (activeView === 'maintenance' ? 17 : 16)} className="px-4 sm:px-6 py-4 text-center text-gray-500 text-xs sm:text-sm">
                               {searchTerm || selectedMembers.length > 0 || startDate || endDate
                                 ? "No historical records matching your filters"
                                 : "No completed records found"}
@@ -1986,6 +1996,7 @@ const handleSubmit = async () => {
                             })()}
                           </div>
                           <div><span className="text-gray-500">Area:</span> <span className="font-medium">{item.part_area || "—"}</span></div>
+                          <div><span className="text-gray-500">Manpower:</span> <span className="font-semibold text-purple-700">{item.manpower ?? 0}</span></div>
                           <div><span className="text-gray-500">Planned Date:</span> <span className="font-medium">{item.planned_date || "—"}</span></div>
                           <div><span className="text-gray-500">Frequency:</span> <span className="font-medium">{item.frequency || "—"}</span></div>
                         </div>
@@ -2126,6 +2137,7 @@ const handleSubmit = async () => {
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[180px] border-b">Given By</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap border-b">Dept</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap border-b">Division</th>
+                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-purple-700 uppercase tracking-wider whitespace-nowrap border-b">Manpower</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[150px] border-b bg-orange-50">Remark</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap border-b bg-yellow-50">Planned</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap border-b bg-yellow-50">Status</th>
@@ -2203,6 +2215,7 @@ const handleSubmit = async () => {
                           </td>
                           <td className="px-2 sm:px-3 py-2 sm:py-4 border-b whitespace-nowrap"><div className="text-xs sm:text-sm text-gray-900">{item.department || "—"}</div></td>
                           <td className="px-2 sm:px-3 py-2 sm:py-4 border-b whitespace-nowrap"><div className="text-xs sm:text-sm text-gray-900">{item.division || "—"}</div></td>
+                          <td className="px-2 sm:px-3 py-2 sm:py-4 border-b whitespace-nowrap"><div className="text-xs sm:text-sm font-semibold text-purple-700 text-center">{item.manpower ?? 0}</div></td>
                           <td className="px-2 sm:px-3 py-2 sm:py-4 bg-orange-50 min-w-[150px] border-b">
                             <input
                               type="text"
@@ -2321,7 +2334,7 @@ const handleSubmit = async () => {
                     })
                   ) : (
                     <tr>
-                      <td colSpan={22} className="px-4 sm:px-6 py-4 text-center text-gray-500 text-xs sm:text-sm">
+                      <td colSpan={23} className="px-4 sm:px-6 py-4 text-center text-gray-500 text-xs sm:text-sm">
                         {searchTerm ? "No maintenance tasks matching your search" : "No pending maintenance tasks found"}
                       </td>
                     </tr>

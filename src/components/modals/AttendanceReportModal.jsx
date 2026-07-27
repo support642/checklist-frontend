@@ -133,8 +133,8 @@ const AttendanceReportModal = ({
                 (!staff.designation || staff.designation === "—") ? "" : staff.designation,
                 staff.department || "N/A",
                 staff.division || "N/A",
-                staff.present ?? staff.completedTasks ?? 0,
-                staff.absent ?? staff.pendingTasks ?? 0,
+                staff.present ?? staff.presentDays ?? staff.completedTasks ?? 0,
+                staff.absent ?? staff.absentDays ?? staff.pendingTasks ?? 0,
                 badgeText
             ];
         });
@@ -344,8 +344,8 @@ const AttendanceReportModal = ({
                                 {performers.length > 0 ? (
                                     performers.map((staff, idx) => {
                                         const rank = idx + 1;
-                                        const present = staff.present ?? staff.completedTasks ?? 0;
-                                        const absent = staff.absent ?? staff.pendingTasks ?? 0;
+                                        const present = staff.present ?? staff.presentDays ?? staff.completedTasks ?? 0;
+                                        const absent = staff.absent ?? staff.absentDays ?? staff.pendingTasks ?? 0;
 
                                         // Row background tint for top 3
                                         const rowBg =

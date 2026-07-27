@@ -267,6 +267,7 @@ export default function AssignTask() {
     partName: [],
     partArea: "",
     duration: "",
+    manpower: "",
     machinePartId: null,
     machineDepartment: "",
     machineDivision: "",
@@ -574,6 +575,7 @@ useEffect(() => {
           partName: formData.partName,
           machineArea: formData.partArea,
           duration: formData.duration,
+          manpower: formData.manpower ? parseInt(formData.manpower, 10) : 0,
           machine_department: formData.machineDepartment,
           machine_division: formData.machineDivision
         })
@@ -689,6 +691,7 @@ useEffect(() => {
             partName: formData.partName,
             machineArea: formData.partArea,
             duration: formData.duration,
+            manpower: formData.manpower ? parseInt(formData.manpower, 10) : 0,
             machine_department: formData.machineDepartment,
             machine_division: formData.machineDivision
           })
@@ -773,6 +776,7 @@ useEffect(() => {
             partName: formData.partName,
             partArea: formData.partArea,
             duration: formData.duration,
+            manpower: formData.manpower ? parseInt(formData.manpower, 10) : 0,
             time: time,
             machine_department: formData.machineDepartment,
             machine_division: formData.machineDivision
@@ -879,6 +883,7 @@ useEffect(() => {
               partName: formData.partName,
               partArea: formData.partArea,
               duration: formData.duration,
+              manpower: formData.manpower ? parseInt(formData.manpower, 10) : 0,
               time: time,
               machine_department: formData.machineDepartment,
               machine_division: formData.machineDivision
@@ -1438,7 +1443,7 @@ useEffect(() => {
                 )}
 
                 {/* Date, Time and Frequency */}
-                <div className={`grid gap-3 ${taskType === 'delegation' || taskType === 'maintenance' ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
+                <div className={`grid gap-3 ${taskType === 'maintenance' ? 'md:grid-cols-5' : taskType === 'delegation' ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
                   {/* Task Start Date Picker (Delegation only) */}
                   {taskType === 'delegation' && (
                     <div className="space-y-2">
@@ -1527,6 +1532,31 @@ useEffect(() => {
                         value={formData.duration}
                         onChange={handleChange}
                         placeholder="e.g. 2 hours"
+                        className="w-full rounded-md border border-purple-200 p-2 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                      />
+                    </div>
+                  )}
+
+                  {/* NEW: Manpower Field (Maintenance only) */}
+                  {taskType === 'maintenance' && (
+                    <div className="space-y-2">
+                      <label htmlFor="manpower" className="block text-sm font-medium text-purple-700">
+                        Manpower (Labours)
+                      </label>
+                      <input
+                        type="number"
+                        id="manpower"
+                        name="manpower"
+                        min="0"
+                        step="1"
+                        value={formData.manpower}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === '' || /^\d+$/.test(val)) {
+                            handleChange(e);
+                          }
+                        }}
+                        placeholder="e.g. 2"
                         className="w-full rounded-md border border-purple-200 p-2 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
                       />
                     </div>

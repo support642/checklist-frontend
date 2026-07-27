@@ -917,11 +917,11 @@ export default function StaffTasksTable({
       const activeMonthOption = monthYearOptions.find(opt => opt.value === selectedMonthYear);
       const monthLabel = activeMonthOption ? activeMonthOption.label : selectedMonthYear;
 
-      // Map present/absent from existing task counts (swap to real attendance fields once backend adds them)
+      // Map present/absent from real attendance day counts returned by API
       const mapped = allData.map(staff => ({
         ...staff,
-        present: staff.completedTasks,
-        absent: staff.pendingTasks,
+        present: staff.presentDays ?? staff.present ?? staff.completedTasks,
+        absent: staff.absentDays ?? staff.absent ?? staff.pendingTasks,
       }));
 
       setAttendanceData(mapped);

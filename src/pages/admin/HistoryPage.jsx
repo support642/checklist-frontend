@@ -977,6 +977,7 @@ function HistoryPage() {
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task ID</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[250px]">Task/Machine</th>
+                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-purple-700 uppercase tracking-wider whitespace-nowrap">Manpower</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Given By</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit</th>
@@ -1057,6 +1058,9 @@ function HistoryPage() {
                               {item.machine_name}{item.part_name ? ` / ${Array.isArray(item.part_name) ? item.part_name.join(', ') : item.part_name}` : ''}
                             </div>
                           )}
+                        </td>
+                        <td className="px-2 sm:px-3 py-2 sm:py-4 whitespace-nowrap" data-label="Manpower">
+                          <div className="text-xs sm:text-sm font-semibold text-purple-700 text-center">{item.manpower ?? 0}</div>
                         </td>
                         <td className="px-2 sm:px-3 py-2 sm:py-4" data-label="Given By">
                           <div className="text-xs sm:text-sm text-gray-900">{item.given_by || "—"}</div>
@@ -1153,7 +1157,7 @@ function HistoryPage() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={(isSuperAdmin ? 18 : 16) - (approvalStatusFilter === 'approved' ? 0 : 1)} className="px-4 sm:px-6 py-4 text-center text-gray-500 text-xs sm:text-sm">
+                      <td colSpan={(isSuperAdmin ? 19 : 17) - (approvalStatusFilter === 'approved' ? 0 : 1)} className="px-4 sm:px-6 py-4 text-center text-gray-500 text-xs sm:text-sm">
                         {searchTerm || selectedMembers.length > 0 || startDate || endDate
                           ? "No records matching your filters"
                           : "No maintenance records found"}

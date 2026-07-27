@@ -333,6 +333,7 @@ const MaintenanceTable = ({
       "Assign From",
       "Assigned To",
       "Task Description",
+      "Manpower",
       "Start Date & Time",
       "Frequency",
       "Status"
@@ -371,6 +372,7 @@ const MaintenanceTable = ({
         escapeCSV(task.givenBy || task.given_by || ""),
         escapeCSV(task.name || ""),
         escapeCSV(task.task_description || ""),
+        escapeCSV(task.manpower ?? 0),
         escapeCSV(task.planned_date || task.dueDate || ""),
         escapeCSV(task.frequency || ""),
         escapeCSV(statusText)
@@ -565,6 +567,7 @@ const MaintenanceTable = ({
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assign From</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task Description</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Manpower</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Start Date & Time</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Freq</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -574,12 +577,12 @@ const MaintenanceTable = ({
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <tr key={i}>
-                  <td colSpan="12" className="px-6 py-4 animate-pulse bg-gray-50/50"></td>
+                  <td colSpan="13" className="px-6 py-4 animate-pulse bg-gray-50/50"></td>
                 </tr>
               ))
             ) : paginatedTasks.length === 0 ? (
               <tr>
-                <td colSpan="12" className="px-6 py-12 text-center text-gray-500">
+                <td colSpan="13" className="px-6 py-12 text-center text-gray-500">
                    <div className="flex flex-col items-center gap-2">
                      <p className="text-sm font-medium">No maintenance data found for the selected filters.</p>
                    </div>
@@ -618,6 +621,9 @@ const MaintenanceTable = ({
                     </td>
                     <td className="px-6 py-4 max-w-xs">
                       <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">{task.task_description}</p>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-purple-700 text-center">
+                      {task.manpower ?? 0}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {task.planned_date || task.dueDate || '-'}
