@@ -46,7 +46,9 @@ const PartNameCellDesktop = ({ partName }) => {
 const MaintenanceTable = ({ 
   tasks, 
   isLoading,
-  onRefresh
+  onRefresh,
+  onOpenReportModal,
+  onFilterStateChange
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [timeFilter, setTimeFilter] = useState('all');
@@ -249,6 +251,21 @@ const MaintenanceTable = ({
 
     return result;
   }, [tasks, selectedMachine, selectedDivision, selectedDepartment, selectedPart, startDate, endDate, timeFilter, searchQuery]);
+
+  React.useEffect(() => {
+    if (onFilterStateChange) {
+      onFilterStateChange({
+        filteredTasks,
+        startDate,
+        endDate,
+        timeFilter,
+        selectedMachine,
+        selectedDivision,
+        selectedDepartment,
+        selectedPart
+      });
+    }
+  }, [filteredTasks, startDate, endDate, timeFilter, selectedMachine, selectedDivision, selectedDepartment, selectedPart, onFilterStateChange]);
 
   // --- Pagination ---
   const paginatedTasks = useMemo(() => {
@@ -532,16 +549,6 @@ const MaintenanceTable = ({
                 <span>Reset Filters</span>
               </button>
             )}
-
-            <button
-              onClick={handleExportCSV}
-              disabled={filteredTasks.length === 0}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold rounded-lg text-xs transition-all shadow-sm active:scale-95 cursor-pointer"
-              title="Export filtered maintenance tasks to CSV"
-            >
-              <Download className="h-3.5 w-3.5" />
-              <span>Export CSV</span>
-            </button>
 
             <span className="px-2.5 py-1 bg-purple-100 text-purple-700 rounded-full text-[10px] font-bold uppercase whitespace-nowrap">
               Showing: {filteredTasks.length} Tasks

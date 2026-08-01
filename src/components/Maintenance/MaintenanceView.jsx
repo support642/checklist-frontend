@@ -12,7 +12,12 @@ import {
 import StatsCards from './StatsCards';
 import MaintenanceCharts from './MaintenanceCharts';
 import MaintenanceTable from './MaintenanceTable';
-import { RefreshCw, ClipboardList, X, Settings2, MapPin, Cog, CheckCircle2, AlertCircle, Clock, Download, Filter, ChevronUp, ChevronDown, ArrowRight } from 'lucide-react';
+import MaintenanceReportModal from './MaintenanceReportModal';
+import MaintenanceTopPerformersModal from '../modals/MaintenanceTopPerformersModal';
+import { fetchUserDetailsApi } from '../../redux/api/settingApi';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { RefreshCw, ClipboardList, X, Settings2, MapPin, Cog, CheckCircle2, AlertCircle, Clock, Download, Filter, ChevronUp, ChevronDown, ArrowRight, FileText, Trophy } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 
@@ -821,7 +826,40 @@ const MaintenanceView = ({
   const userDepartment = localStorage.getItem("department")?.toLowerCase() || '';
   const [isMachineModalOpen, setIsMachineModalOpen] = useState(false);
   const [isTasksModalOpen, setIsTasksModalOpen] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [isTopPerformersModalOpen, setIsTopPerformersModalOpen] = useState(false);
   const [selectedCardType, setSelectedCardType] = useState(null);
+  const [userDesignationMap, setUserDesignationMap] = useState({});
+  const [tableFilterState, setTableFilterState] = useState({
+    filteredTasks: [],
+    startDate: '',
+    endDate: '',
+    timeFilter: 'all'
+  });
+
+  useEffect(() => {
+    const loadUserDesignations = async () => {
+      try {
+        const res = await fetchUserDetailsApi(1, 1000);
+        if (res && Array.isArray(res.users)) {
+          const map = {};
+          res.users.forEach(u => {
+            const des = u.designation || '';
+            if (u.name) map[u.name.trim().toLowerCase()] = des;
+            if (u.user_name) map[u.user_name.trim().toLowerCase()] = des;
+          });
+          setUserDesignationMap(map);
+        }
+      } catch (err) {
+        console.error("Error fetching user designations:", err);
+      }
+    };
+    loadUserDesignations();
+  }, []);
+
+  const handleTableFilterChange = React.useCallback((filterData) => {
+    setTableFilterState(filterData);
+  }, []);
   
   const { 
     maintenance, 
@@ -1173,6 +1211,305 @@ const MaintenanceView = ({
     }));
   };
 
+  // --- Work Done Report Generators (PDF & CSV) ---
+  const getStaffSummaryDataForExport = (customRange) => {
+    let baseTasks = (tableFilterState.filteredTasks && tableFilterState.filteredTasks.length > 0)
+      ? [...tableFilterState.filteredTasks]
+      : [...allMaintenanceTasks];
+
+    const todayObj = new Date();
+    const year = todayObj.getFullYear();
+    const month = String(todayObj.getMonth() + 1).padStart(2, '0');
+    const day = String(todayObj.getDate()).padStart(2, '0');
+
+    const defaultFrom = `${year}-${month}-01`;
+    const defaultTo = `${year}-${month}-${day}`;
+
+    const exportFrom = customRange?.from || tableFilterState.startDate || startDate || defaultFrom;
+    const exportTo = customRange?.to || tableFilterState.endDate || endDate || defaultTo;
+
+    let exportTasks = baseTasks;
+    if (customRange?.from || customRange?.to || tableFilterState.startDate || tableFilterState.endDate || startDate || endDate) {
+      if (exportFrom || exportTo) {
+        exportTasks = exportTasks.filter(task => {
+          const dStr = task.planned_date || task.dueDate || task.submission_date || task.task_start_date;
+          const taskDate = parseDate(dStr);
+          if (isNaN(taskDate.getTime())) return false;
+          const ymd = taskDate.toLocaleDateString('en-CA');
+          if (exportFrom && ymd < exportFrom) return false;
+          if (exportTo && ymd > exportTo) return false;
+          return true;
+        });
+      }
+    }
+
+    if (exportTasks.length === 0) {
+      return { staffSummaryList: [], exportFrom, exportTo };
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const staffMap = new Map();
+
+    exportTasks.forEach(task => {
+      const staffName = (task.name || task.assignedTo || "Unassigned").trim();
+      const nameKey = staffName.toLowerCase();
+      const division = task.machine_division || task.division || "N/A";
+      const department = task.machine_department || task.department || "N/A";
+      
+      const fetchedDesg = userDesignationMap[nameKey];
+      const designation = (fetchedDesg && fetchedDesg !== '—')
+        ? fetchedDesg
+        : (task.designation && task.designation !== '-' && task.designation !== '—')
+          ? task.designation
+          : "-";
+
+      if (!staffMap.has(staffName)) {
+        staffMap.set(staffName, {
+          name: staffName,
+          designation: designation,
+          division: division,
+          department: department,
+          totalTasks: 0,
+          completedTasks: 0,
+          pendingTasks: 0,
+          overdueTasks: 0,
+          doneOnTime: 0
+        });
+      } else {
+        const summary = staffMap.get(staffName);
+        if ((summary.designation === '-' || summary.designation === '—' || !summary.designation) && designation !== '-' && designation !== '—') {
+          summary.designation = designation;
+        }
+      }
+
+      const summary = staffMap.get(staffName);
+      summary.totalTasks += 1;
+
+      const adminDone = task.admin_done === 'true' || task.admin_done === 'Done' || task.admin_done === true;
+      const isSubmitted = !!(task.submission_date || task.status === 'yes' || task.status === 'no');
+
+      if (adminDone || isSubmitted) {
+        summary.completedTasks += 1;
+        const dStr = task.planned_date || task.dueDate || task.task_start_date;
+        const taskDate = parseDate(dStr);
+        if (task.submission_date && !isNaN(taskDate.getTime())) {
+          const subDate = parseDate(task.submission_date);
+          if (!isNaN(subDate.getTime()) && subDate <= taskDate) {
+            summary.doneOnTime += 1;
+          } else {
+            summary.doneOnTime += 1;
+          }
+        } else {
+          summary.doneOnTime += 1;
+        }
+      } else {
+        const dStr = task.planned_date || task.dueDate || task.task_start_date;
+        const taskDate = parseDate(dStr);
+        if (!isNaN(taskDate.getTime())) {
+          const compareDate = new Date(taskDate);
+          compareDate.setHours(0, 0, 0, 0);
+          if (compareDate < today) {
+            summary.overdueTasks += 1;
+          } else {
+            summary.pendingTasks += 1;
+          }
+        } else {
+          summary.pendingTasks += 1;
+        }
+      }
+    });
+
+    const staffSummaryList = Array.from(staffMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+    return { staffSummaryList, exportFrom, exportTo };
+  };
+
+  const handleExportCSV = (customRange = null) => {
+    try {
+      const { staffSummaryList } = getStaffSummaryDataForExport(customRange);
+
+      if (staffSummaryList.length === 0) {
+        toast.error("No maintenance data available for the selected range.");
+        return;
+      }
+
+      const escapeCSV = (val) => {
+        if (val === null || val === undefined) return "";
+        const str = String(val);
+        if (str.includes(",") || str.includes("\"") || str.includes("\n")) {
+          return `"${str.replace(/"/g, "\"\"")}"`;
+        }
+        return str;
+      };
+
+      const headers = [
+        "SEQ NO.",
+        "NAME",
+        "DESIGNATION",
+        "DIVISION",
+        "DEPARTMENT",
+        "TOTAL TASKS",
+        "COMPLETED",
+        "PENDING",
+        "OVERDUE",
+        "DONE ON TIME",
+        "DONE ON TIME SCORE (%)",
+        "WORK DONE SCORE"
+      ];
+
+      const rows = staffSummaryList.map((staff, index) => {
+        const score = staff.totalTasks > 0 ? Math.round((staff.completedTasks / staff.totalTasks) * 100) : 0;
+        const doneOnTimeScore = staff.completedTasks > 0 ? Math.round((staff.doneOnTime / staff.completedTasks) * 100) : 0;
+
+        return [
+          index + 1,
+          escapeCSV(staff.name),
+          escapeCSV((!staff.designation || staff.designation === "—") ? "" : staff.designation),
+          escapeCSV(staff.division || "N/A"),
+          escapeCSV(staff.department || "N/A"),
+          staff.totalTasks,
+          staff.completedTasks,
+          staff.pendingTasks,
+          staff.overdueTasks || 0,
+          staff.doneOnTime || 0,
+          `${doneOnTimeScore}%`,
+          `${score}%`
+        ];
+      });
+
+      const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      const filenameDate = new Date().toLocaleDateString('en-US').replace(/\//g, '-');
+      link.setAttribute("download", `Work_Done_Report_maintenance_${filenameDate}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success(`Exported ${staffSummaryList.length} staff records to CSV`);
+    } catch (err) {
+      console.error("CSV Export error:", err);
+      toast.error(err.message || "Failed to export CSV");
+    }
+  };
+
+  const handleExportPDF = (customRange = null) => {
+    try {
+      const { staffSummaryList, exportFrom, exportTo } = getStaffSummaryDataForExport(customRange);
+
+      if (staffSummaryList.length === 0) {
+        toast.error("No maintenance data available for the selected range.");
+        return;
+      }
+
+      const doc = new jsPDF('l', 'mm', 'a4');
+
+      // Title & Subtitle matching Checklist format
+      doc.setFontSize(18);
+      doc.setTextColor(37, 99, 235); // Blue-600
+      doc.text("Work Done Summary Report - MAINTENANCE", 14, 15);
+
+      doc.setFontSize(10);
+      doc.setTextColor(100);
+      const periodStr = (exportFrom || exportTo) ? `Period: ${exportFrom || 'Start'} to ${exportTo || 'End'}` : 'Period: All Months';
+      const timestampStr = `${new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })} ${new Date().toLocaleTimeString()}`;
+      doc.text(`${periodStr}`, 14, 22);
+      doc.text(`${timestampStr}`, 14, 27);
+
+      // Define table headers matching Checklist
+      const tableColumn = ["Seq", "Name", "Designation", "Division", "Department", "Total", "Done", "Pending", "Overdue", "On Time", "On Time Score", "Score"];
+
+      // Map data to rows
+      const tableRows = staffSummaryList.map((staff, index) => {
+        const score = staff.totalTasks > 0 ? Math.round((staff.completedTasks / staff.totalTasks) * 100) : 0;
+        const doneOnTimeScore = staff.completedTasks > 0 ? Math.round((staff.doneOnTime / staff.completedTasks) * 100) : 0;
+
+        return [
+          index + 1,
+          staff.name,
+          (!staff.designation || staff.designation === "—") ? "" : staff.designation,
+          staff.division || "N/A",
+          staff.department || "N/A",
+          staff.totalTasks,
+          staff.completedTasks,
+          staff.pendingTasks,
+          staff.overdueTasks || 0,
+          staff.doneOnTime || 0,
+          `${doneOnTimeScore}%`,
+          `${score}%`
+        ];
+      });
+
+      // Generate table matching Checklist autoTable styles
+      autoTable(doc, {
+        head: [tableColumn],
+        body: tableRows,
+        startY: 33,
+        styles: { fontSize: 8, cellPadding: 2 },
+        headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255], fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [240, 249, 255] },
+        margin: { top: 33, bottom: 15 }
+      });
+
+      // Footer: "Powered By Botivate" at the bottom of every page
+      const totalPages = doc.internal.getNumberOfPages();
+      const pageW = doc.internal.pageSize.getWidth();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const footerY = pageHeight - 10;
+        // Divider line
+        doc.setDrawColor(220, 220, 220);
+        doc.setLineWidth(0.3);
+        doc.line(14, footerY - 3, pageW - 14, footerY - 3);
+
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "normal");
+        const prefixText = "Powered By  ";
+        const brandText = "Botivate";
+        const prefixW = doc.getTextWidth(prefixText);
+        doc.setFont("helvetica", "bold");
+        const brandW = doc.getTextWidth(brandText);
+        const totalW = prefixW + brandW;
+        const startX = pageW / 2 - totalW / 2;
+
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(120);
+        doc.text(prefixText, startX, footerY);
+
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(124, 58, 237); // Purple-600
+        doc.text(brandText, startX + prefixW, footerY);
+      }
+
+      const filenameDate = new Date().toLocaleDateString('en-US').replace(/\//g, '-');
+      doc.save(`Work_Done_Report_maintenance_${filenameDate}.pdf`);
+      toast.success(`Exported ${staffSummaryList.length} staff records to PDF`);
+    } catch (err) {
+      console.error("PDF Export error:", err);
+      toast.error(err.message || "Failed to export PDF report.");
+    }
+  };
+
+  const topPerformers = useMemo(() => {
+    const activeDateRange = {
+      from: tableFilterState.startDate || startDate || "",
+      to: tableFilterState.endDate || endDate || ""
+    };
+    const { staffSummaryList } = getStaffSummaryDataForExport(activeDateRange.from || activeDateRange.to ? activeDateRange : null);
+
+    return [...staffSummaryList].sort((a, b) => {
+      const scoreA = a.completedTasks > 0 ? (a.doneOnTime / a.completedTasks) * 100 : 0;
+      const scoreB = b.completedTasks > 0 ? (b.doneOnTime / b.completedTasks) * 100 : 0;
+      if (scoreB !== scoreA) return scoreB - scoreA;
+      if (b.completedTasks !== a.completedTasks) return b.completedTasks - a.completedTasks;
+      return b.totalTasks - a.totalTasks;
+    });
+  }, [allMaintenanceTasks, startDate, endDate, tableFilterState]);
+
   if (error) {
     return (
       <div className="p-8 text-center text-red-600 bg-red-50 dark:bg-red-950/20 rounded-xl border border-red-200 dark:border-red-800">
@@ -1217,17 +1554,64 @@ const MaintenanceView = ({
         monthlyData={monthlyData}
       />
 
+      {/* Maintenance Work Done Report Modal */}
+      <MaintenanceReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        onExportPDF={handleExportPDF}
+        onExportCSV={handleExportCSV}
+        isLoading={loading}
+        activeFilters={{
+          division: divisionFilter,
+          department: departmentFilter,
+          staff: dashboardStaffFilter,
+          startDate: tableFilterState.startDate || startDate,
+          endDate: tableFilterState.endDate || endDate
+        }}
+      />
+
+      {/* Maintenance Top Performers Modal */}
+      <MaintenanceTopPerformersModal
+        isOpen={isTopPerformersModalOpen}
+        onClose={() => setIsTopPerformersModalOpen(false)}
+        performers={topPerformers}
+        startDate={tableFilterState.startDate || startDate || (getStaffSummaryDataForExport().exportFrom)}
+        endDate={tableFilterState.endDate || endDate || (getStaffSummaryDataForExport().exportTo)}
+        isCustomRange={!!(tableFilterState.startDate || tableFilterState.endDate || startDate || endDate)}
+        monthLabel={new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })}
+      />
+
       {/* Main Table Section */}
       <div className="rounded-lg border border-purple-200 shadow-md bg-white overflow-hidden">
         <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-100 p-4">
-          <div className="flex items-center gap-3">
-             <div className="p-2 bg-white/50 rounded-lg shadow-sm">
-                <ClipboardList className="h-5 w-5 text-purple-600" />
-             </div>
-             <div>
-                <h3 className="text-purple-700 font-bold">Maintenance Task Summary</h3>
-                <p className="text-purple-600 text-sm">Overview of maintenance activities and machine health</p>
-             </div>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+               <div className="p-2 bg-white/50 rounded-lg shadow-sm">
+                  <ClipboardList className="h-5 w-5 text-purple-600" />
+               </div>
+               <div>
+                  <h3 className="text-purple-700 font-bold">Maintenance Task Summary</h3>
+                  <p className="text-purple-600 text-sm">Overview of maintenance activities and machine health</p>
+               </div>
+            </div>
+
+            {/* Action Buttons: Top Performers & Work Done Report */}
+            <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
+              <button
+                onClick={() => setIsTopPerformersModalOpen(true)}
+                className="flex items-center justify-center gap-2 px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-all shadow-md hover:shadow-lg text-sm font-semibold active:scale-95 cursor-pointer"
+              >
+                <Trophy size={16} />
+                Top Performers
+              </button>
+              <button
+                onClick={() => setIsReportModalOpen(true)}
+                className="flex items-center justify-center gap-2 px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-all shadow-md hover:shadow-lg text-sm font-semibold active:scale-95 cursor-pointer"
+              >
+                <Download size={16} />
+                Work done report
+              </button>
+            </div>
           </div>
         </div>
         <div className="p-4">
@@ -1236,6 +1620,8 @@ const MaintenanceView = ({
             onUpdateTask={handleUpdateTask}
             isLoading={loading}
             onRefresh={handleRefresh}
+            onOpenReportModal={() => setIsReportModalOpen(true)}
+            onFilterStateChange={handleTableFilterChange}
           />
         </div>
       </div>

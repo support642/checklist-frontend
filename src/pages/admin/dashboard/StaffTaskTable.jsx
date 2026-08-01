@@ -304,7 +304,7 @@ export default function StaffTasksTable({
 
     // Profile Info
     csvData.push(["Name", selectedStaffName, "Emp ID", staffInfo.employee_id || "—", "Designation", staffInfo.designation || "—"]);
-    csvData.push(["Division", staffInfo.division || "Admin", "Department", staffInfo.department || "HR"]);
+    csvData.push(["Division", staffInfo.division || "Admin", "Department", staffInfo.department || "HR", "Phone Number", staffInfo.number || staffInfo.phone_number || staffInfo.mobile || staffInfo.phone || "—"]);
     csvData.push(["From", formatDateForDisplay(fromDateVal), "To", formatDateForDisplay(toDateVal)]);
     csvData.push([]);
 
@@ -532,17 +532,19 @@ export default function StaffTasksTable({
     };
 
     // --- ROW 1: Employee Details (Full Width - Redistributed) ---
-    const nameW = 55;
-    const desgW = 45;
-    const deptW = 35;
-    const divW = 30;
-    const idW = 25;
+    const nameW = 45;
+    const desgW = 35;
+    const deptW = 30;
+    const divW = 25;
+    const phoneW = 35;
+    const idW = 20;
 
     drawDetailBlock(marginX, startY, nameW, row1H, "Name", selectedStaffName);
     drawDetailBlock(marginX + nameW, startY, desgW, row1H, "Designation", staffInfo.designation);
     drawDetailBlock(marginX + nameW + desgW, startY, deptW, row1H, "Department", staffInfo.department || "Account");
     drawDetailBlock(marginX + nameW + desgW + deptW, startY, divW, row1H, "Division", staffInfo.division || "Admin");
-    drawDetailBlock(marginX + nameW + desgW + deptW + divW, startY, idW, row1H, "Emp ID", staffInfo.employee_id);
+    drawDetailBlock(marginX + nameW + desgW + deptW + divW, startY, phoneW, row1H, "Phone Number", staffInfo.number || staffInfo.phone_number || staffInfo.mobile || staffInfo.phone || "—");
+    drawDetailBlock(marginX + nameW + desgW + deptW + divW + phoneW, startY, idW, row1H, "Emp ID", staffInfo.employee_id);
 
     // --- ROW 2: Performance Stats & Range (Split) ---
     const statW = mainColW / (hasMaintenanceAccess ? 4 : 3);

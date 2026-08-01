@@ -144,7 +144,7 @@ const EmployeePerformanceReportModal = ({
           {/* Employee Info Grid - New 2-Row Layout (Optimized) */}
           <div className="bg-white border-b border-gray-300 text-[10px] divide-y divide-gray-300">
             {/* Row 1: All Details (Full Width - Reorganized) */}
-            <div className="grid grid-cols-[1.4fr_1.1fr_1fr_0.8fr_0.7fr] h-14 divide-x divide-gray-300">
+            <div className="grid grid-cols-[1.4fr_1.1fr_1fr_0.8fr_1.1fr_0.7fr] h-14 divide-x divide-gray-300">
               <div className="flex flex-col">
                 <div className="bg-[#F8F9FA] px-2 h-6 flex items-center font-bold uppercase text-gray-500 border-b border-gray-200 text-[9px]">Name</div>
                 <div className="px-2 flex-1 flex items-center font-bold text-gray-800 truncate leading-tight py-1.5 text-xs">{staffName}</div>
@@ -160,6 +160,10 @@ const EmployeePerformanceReportModal = ({
               <div className="flex flex-col">
                 <div className="bg-[#F8F9FA] px-2 h-6 flex items-center font-bold uppercase text-gray-500 border-b border-gray-200 text-[9px]">Division</div>
                 <div className="px-2 flex-1 flex items-center font-bold text-gray-800 truncate leading-tight py-1.5 text-xs">{staffData.division || "Admin"}</div>
+              </div>
+              <div className="flex flex-col">
+                <div className="bg-[#F8F9FA] px-2 h-6 flex items-center font-bold uppercase text-gray-500 border-b border-gray-200 text-[9px]">Phone Number</div>
+                <div className="px-2 flex-1 flex items-center font-bold text-gray-800 truncate leading-tight py-1.5 text-xs">{staffData.number || staffData.phone_number || staffData.mobile || staffData.phone || "—"}</div>
               </div>
               <div className="flex flex-col">
                 <div className="bg-[#F8F9FA] px-2 h-6 flex items-center font-bold uppercase text-gray-500 border-b border-gray-200 text-[9px]">Emp ID</div>
