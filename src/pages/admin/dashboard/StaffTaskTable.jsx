@@ -988,16 +988,33 @@ export default function StaffTasksTable({
         return;
       }
 
+      // Pre-sort data by Division, Department, and Name
+      const sortedData = [...allData].sort((a, b) => {
+        const divA = (a.division || "N/A").toLowerCase().trim();
+        const divB = (b.division || "N/A").toLowerCase().trim();
+        if (divA !== divB) return divA.localeCompare(divB);
+
+        const deptA = (a.department || "N/A").toLowerCase().trim();
+        const deptB = (b.department || "N/A").toLowerCase().trim();
+        if (deptA !== deptB) return deptA.localeCompare(deptB);
+
+        const nameA = (a.name || "").toLowerCase().trim();
+        const nameB = (b.name || "").toLowerCase().trim();
+        return nameA.localeCompare(nameB);
+      });
+
       // Define CSV headers
-      const headers = ["SEQ NO.", "NAME", "DESIGNATION", "DIVISION", "DEPARTMENT", "TOTAL TASKS", "COMPLETED", "PENDING", "OVERDUE", "DONE ON TIME", "DONE ON TIME SCORE (%)", "WORK DONE SCORE"];
+      const headers = ["SEQ NO.", "NAME", "PHONE NO.", "DESIGNATION", "DIVISION", "DEPARTMENT", "TOTAL TASKS", "COMPLETED", "PENDING", "OVERDUE", "DONE ON TIME", "DONE ON TIME SCORE (%)", "WORK DONE SCORE"];
 
       // Map data to rows
-      const rows = allData.map((staff, index) => {
+      const rows = sortedData.map((staff, index) => {
         const score = staff.completedTasks > 0 ? Math.round((staff.completedTasks / staff.totalTasks) * 100) : 0;
         const doneOnTimeScore = staff.completedTasks > 0 ? Math.round((staff.doneOnTime / staff.completedTasks) * 100) : 0;
+        const phone = staff.number || staff.phone_number || staff.mobile || staff.phone || "—";
         return [
           index + 1,
           staff.name,
+          phone === "—" ? "" : phone,
           (!staff.designation || staff.designation === "—") ? "" : staff.designation,
           staff.division || "N/A",
           staff.department || "N/A",
@@ -1057,6 +1074,21 @@ export default function StaffTasksTable({
         return;
       }
 
+      // Pre-sort data by Division, Department, and Name
+      const sortedData = [...allData].sort((a, b) => {
+        const divA = (a.division || "N/A").toLowerCase().trim();
+        const divB = (b.division || "N/A").toLowerCase().trim();
+        if (divA !== divB) return divA.localeCompare(divB);
+
+        const deptA = (a.department || "N/A").toLowerCase().trim();
+        const deptB = (b.department || "N/A").toLowerCase().trim();
+        if (deptA !== deptB) return deptA.localeCompare(deptB);
+
+        const nameA = (a.name || "").toLowerCase().trim();
+        const nameB = (b.name || "").toLowerCase().trim();
+        return nameA.localeCompare(nameB);
+      });
+
       const doc = new jsPDF('l', 'mm', 'a4');
 
       // Header
@@ -1070,15 +1102,17 @@ export default function StaffTasksTable({
       doc.text(`${new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })} ${new Date().toLocaleTimeString()}`, 14, 27);
 
       // Define table headers
-      const tableColumn = ["Seq", "Name", "Designation", "Division", "Department", "Total", "Done", "Pending", "Overdue", "On Time", "On Time Score", "Score"];
+      const tableColumn = ["Seq", "Name", "Phone No.", "Designation", "Division", "Department", "Total", "Done", "Pending", "Overdue", "On Time", "On Time Score", "Score"];
 
       // Map data to rows
-      const tableRows = allData.map((staff, index) => {
+      const tableRows = sortedData.map((staff, index) => {
         const score = staff.completedTasks > 0 ? Math.round((staff.completedTasks / staff.totalTasks) * 100) : 0;
         const doneOnTimeScore = staff.completedTasks > 0 ? Math.round((staff.doneOnTime / staff.completedTasks) * 100) : 0;
+        const phone = staff.number || staff.phone_number || staff.mobile || staff.phone || "—";
         return [
           index + 1,
           staff.name,
+          phone,
           (!staff.designation || staff.designation === "—") ? "" : staff.designation,
           staff.division || "N/A",
           staff.department || "N/A",
@@ -1097,7 +1131,7 @@ export default function StaffTasksTable({
         head: [tableColumn],
         body: tableRows,
         startY: 35,
-        styles: { fontSize: 8, cellPadding: 2 },
+        styles: { fontSize: 7.5, cellPadding: 1.5 },
         headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255], fontStyle: 'bold' },
         alternateRowStyles: { fillColor: [240, 249, 255] },
         margin: { top: 35 }

@@ -830,6 +830,7 @@ const MaintenanceView = ({
   const [isTopPerformersModalOpen, setIsTopPerformersModalOpen] = useState(false);
   const [selectedCardType, setSelectedCardType] = useState(null);
   const [userDesignationMap, setUserDesignationMap] = useState({});
+  const [userPhoneMap, setUserPhoneMap] = useState({});
   const [tableFilterState, setTableFilterState] = useState({
     filteredTasks: [],
     startDate: '',
@@ -843,12 +844,23 @@ const MaintenanceView = ({
         const res = await fetchUserDetailsApi(1, 1000);
         if (res && Array.isArray(res.users)) {
           const map = {};
+          const phoneMap = {};
           res.users.forEach(u => {
             const des = u.designation || '';
-            if (u.name) map[u.name.trim().toLowerCase()] = des;
-            if (u.user_name) map[u.user_name.trim().toLowerCase()] = des;
+            const ph = u.number || u.phone_number || u.mobile || u.phone || '';
+            if (u.name) {
+              const k = u.name.trim().toLowerCase();
+              map[k] = des;
+              if (ph) phoneMap[k] = ph;
+            }
+            if (u.user_name) {
+              const k = u.user_name.trim().toLowerCase();
+              map[k] = des;
+              if (ph) phoneMap[k] = ph;
+            }
           });
           setUserDesignationMap(map);
+          setUserPhoneMap(phoneMap);
         }
       } catch (err) {
         console.error("Error fetching user designations:", err);
@@ -1265,9 +1277,15 @@ const MaintenanceView = ({
           ? task.designation
           : "-";
 
+      const fetchedPhone = userPhoneMap[nameKey];
+      const phone = (fetchedPhone && fetchedPhone !== '—')
+        ? fetchedPhone
+        : (task.number || task.phone_number || task.mobile || task.phone || "—");
+
       if (!staffMap.has(staffName)) {
         staffMap.set(staffName, {
           name: staffName,
+          phone: phone,
           designation: designation,
           division: division,
           department: department,
@@ -1281,6 +1299,9 @@ const MaintenanceView = ({
         const summary = staffMap.get(staffName);
         if ((summary.designation === '-' || summary.designation === '—' || !summary.designation) && designation !== '-' && designation !== '—') {
           summary.designation = designation;
+        }
+        if ((summary.phone === '—' || !summary.phone) && phone !== '—') {
+          summary.phone = phone;
         }
       }
 
@@ -1321,7 +1342,19 @@ const MaintenanceView = ({
       }
     });
 
-    const staffSummaryList = Array.from(staffMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+    const staffSummaryList = Array.from(staffMap.values()).sort((a, b) => {
+      const divA = (a.division || "N/A").toLowerCase().trim();
+      const divB = (b.division || "N/A").toLowerCase().trim();
+      if (divA !== divB) return divA.localeCompare(divB);
+
+      const deptA = (a.department || "N/A").toLowerCase().trim();
+      const deptB = (b.department || "N/A").toLowerCase().trim();
+      if (deptA !== deptB) return deptA.localeCompare(deptB);
+
+      const nameA = (a.name || "").toLowerCase().trim();
+      const nameB = (b.name || "").toLowerCase().trim();
+      return nameA.localeCompare(nameB);
+    });
     return { staffSummaryList, exportFrom, exportTo };
   };
 
@@ -1346,6 +1379,7 @@ const MaintenanceView = ({
       const headers = [
         "SEQ NO.",
         "NAME",
+        "PHONE NO.",
         "DESIGNATION",
         "DIVISION",
         "DEPARTMENT",
@@ -1361,10 +1395,12 @@ const MaintenanceView = ({
       const rows = staffSummaryList.map((staff, index) => {
         const score = staff.totalTasks > 0 ? Math.round((staff.completedTasks / staff.totalTasks) * 100) : 0;
         const doneOnTimeScore = staff.completedTasks > 0 ? Math.round((staff.doneOnTime / staff.completedTasks) * 100) : 0;
+        const phone = staff.phone === "—" ? "" : staff.phone;
 
         return [
           index + 1,
           escapeCSV(staff.name),
+          escapeCSV(phone),
           escapeCSV((!staff.designation || staff.designation === "—") ? "" : staff.designation),
           escapeCSV(staff.division || "N/A"),
           escapeCSV(staff.department || "N/A"),
@@ -1420,7 +1456,7 @@ const MaintenanceView = ({
       doc.text(`${timestampStr}`, 14, 27);
 
       // Define table headers matching Checklist
-      const tableColumn = ["Seq", "Name", "Designation", "Division", "Department", "Total", "Done", "Pending", "Overdue", "On Time", "On Time Score", "Score"];
+      const tableColumn = ["Seq", "Name", "Phone No.", "Designation", "Division", "Department", "Total", "Done", "Pending", "Overdue", "On Time", "On Time Score", "Score"];
 
       // Map data to rows
       const tableRows = staffSummaryList.map((staff, index) => {
@@ -1430,6 +1466,7 @@ const MaintenanceView = ({
         return [
           index + 1,
           staff.name,
+          staff.phone || "—",
           (!staff.designation || staff.designation === "—") ? "" : staff.designation,
           staff.division || "N/A",
           staff.department || "N/A",
@@ -1448,7 +1485,7 @@ const MaintenanceView = ({
         head: [tableColumn],
         body: tableRows,
         startY: 33,
-        styles: { fontSize: 8, cellPadding: 2 },
+        styles: { fontSize: 7.5, cellPadding: 1.5 },
         headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255], fontStyle: 'bold' },
         alternateRowStyles: { fillColor: [240, 249, 255] },
         margin: { top: 33, bottom: 15 }

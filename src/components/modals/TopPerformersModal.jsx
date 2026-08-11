@@ -119,7 +119,7 @@ const TopPerformersModal = ({
     }
 
     // 3. Info Table
-    const tableHeader = ["Rank", "Employee", "Designation", "Department", "Division", "Assigned / Completed", "On-Time Score", "Status Badge"];
+    const tableHeader = ["Rank", "Employee", "Phone No.", "Designation", "Department", "Division", "Assigned / Completed", "On-Time Score", "Status Badge"];
     const tableBody = performers.map((staff, idx) => {
       const rank = idx + 1;
       const onTimePct = staff.completedTasks > 0 ? Math.round((staff.doneOnTime / staff.completedTasks) * 100) : 0;
@@ -128,9 +128,12 @@ const TopPerformersModal = ({
       else if (rank <= 10) badgeText = "Silver Performer";
       else if (rank <= 15) badgeText = "Bronze Performer";
 
+      const phone = staff.number || staff.phone_number || staff.mobile || staff.phone || "—";
+
       return [
         rank,
         staff.name,
+        phone,
         (!staff.designation || staff.designation === "—") ? "" : staff.designation,
         staff.department || "N/A",
         staff.division || "N/A",
@@ -141,14 +144,15 @@ const TopPerformersModal = ({
     });
 
     const columnStyles = {
-      0: { halign: 'center', cellWidth: 12 },
+      0: { halign: 'center', cellWidth: 10 },
       1: { halign: 'left', fontStyle: 'bold' },
       2: { halign: 'left' },
       3: { halign: 'left' },
       4: { halign: 'left' },
-      5: { halign: 'center', cellWidth: 30 },
-      6: { halign: 'center', cellWidth: 20, fontStyle: 'bold' },
-      7: { halign: 'center', cellWidth: 30, fontStyle: 'bold' }
+      5: { halign: 'left' },
+      6: { halign: 'center', cellWidth: 28 },
+      7: { halign: 'center', cellWidth: 18, fontStyle: 'bold' },
+      8: { halign: 'center', cellWidth: 28, fontStyle: 'bold' }
     };
 
     autoTable(doc, {
@@ -156,12 +160,12 @@ const TopPerformersModal = ({
       body: tableBody,
       startY: startDate && endDate ? 47 : 42,
       margin: { left: marginX, right: marginX },
-      styles: { fontSize: 8.5, cellPadding: 2.5, lineWidth: 0.1, lineColor: [200, 200, 200] },
-      headStyles: { fillColor: [233, 242, 233], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center', fontSize: 9 },
+      styles: { fontSize: 8, cellPadding: 2, lineWidth: 0.1, lineColor: [200, 200, 200] },
+      headStyles: { fillColor: [233, 242, 233], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center', fontSize: 8.5 },
       bodyStyles: { textColor: [50, 50, 50], minCellHeight: 8 },
       columnStyles,
       willDrawCell: (data) => {
-        if (data.row.section === 'body' && data.column.index === 7) {
+        if (data.row.section === 'body' && data.column.index === 8) {
           // Save the text for didDrawCell
           data.cell.rawBadgeText = data.cell.text[0];
           // Clear text so autotable doesn't draw it automatically
@@ -169,7 +173,7 @@ const TopPerformersModal = ({
         }
       },
       didDrawCell: (data) => {
-        if (data.row.section === 'body' && data.column.index === 7) {
+        if (data.row.section === 'body' && data.column.index === 8) {
           const text = data.cell.rawBadgeText;
           if (!text) return;
 
@@ -333,6 +337,7 @@ const TopPerformersModal = ({
                 <tr className="bg-[#E9F2E9] border-b border-gray-300">
                   <th className="border border-gray-300 p-3 font-bold w-[80px] text-center">Rank</th>
                   <th className="border border-gray-300 p-3 font-bold text-left">Employee</th>
+                  <th className="border border-gray-300 p-3 font-bold text-left">Phone No.</th>
                   <th className="border border-gray-300 p-3 font-bold text-left">Designation</th>
                   <th className="border border-gray-300 p-3 font-bold text-left">Department</th>
                   <th className="border border-gray-300 p-3 font-bold text-left">Division</th>
@@ -346,6 +351,7 @@ const TopPerformersModal = ({
                   performers.map((staff, idx) => {
                     const rank = idx + 1;
                     const onTimePct = staff.completedTasks > 0 ? Math.round((staff.doneOnTime / staff.completedTasks) * 100) : 0;
+                    const phone = staff.number || staff.phone_number || staff.mobile || staff.phone || "—";
                     
                     // Row background tint for top 3
                     const rowBg = 
@@ -360,6 +366,9 @@ const TopPerformersModal = ({
                         </td>
                         <td className="border border-gray-300 p-3 font-semibold text-gray-900">
                           {staff.name}
+                        </td>
+                        <td className="border border-gray-300 p-3 text-gray-600 font-medium">
+                          {phone}
                         </td>
                         <td className="border border-gray-300 p-3 text-gray-600">
                           {(!staff.designation || staff.designation === "—") ? "" : staff.designation}
@@ -384,7 +393,7 @@ const TopPerformersModal = ({
                   })
                 ) : (
                   <tr>
-                    <td colSpan="8" className="p-8 text-center text-gray-400 italic">
+                    <td colSpan="9" className="p-8 text-center text-gray-400 italic">
                       No employees meet the performance criteria
                     </td>
                   </tr>
