@@ -20,6 +20,7 @@ import HistoryPage from "./pages/admin/HistoryPage"
 import TrainingVideoPage from "./pages/admin/TrainingVideoPage"
 import CalendarPage from "./pages/admin/CalendarPage"
 import HolidayManagementPage from "./pages/admin/HolidayManagementPage"
+import EquipmentHistory from "./pages/admin/EquipmentHistory"
 import RealtimeLogoutListener from "./components/RealtimeLogoutListener"   // ✅ Added listener
 import { hasPageAccess, getDefaultDashboardRoute } from "./utils/permissionUtils"
 
@@ -127,7 +128,7 @@ const AssignTaskRouter = () => {
 
 function App() {
   return (
-    <Router>
+    <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       {/* ✅ Add Toaster for global notifications */}
       <Toaster position="top-center" reverseOrder={false} />
       
@@ -510,6 +511,16 @@ function App() {
           element={
             <ProtectedRoute page="holiday_management">
               <HolidayManagementPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Equipment History Register page route */}
+        <Route
+          path="/dashboard/equipment-history"
+          element={
+            <ProtectedRoute>
+              <AdminLayout><EquipmentHistory /></AdminLayout>
             </ProtectedRoute>
           }
         />

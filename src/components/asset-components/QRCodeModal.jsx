@@ -32,11 +32,6 @@ const QRCodeModal = ({ isOpen, onClose, product }) => {
         }
     };
 
-    const handleCopyUrl = () => {
-        navigator.clipboard.writeText(productUrl);
-        alert('URL copied to clipboard!');
-    };
-
     return (
         <div 
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
@@ -75,14 +70,23 @@ const QRCodeModal = ({ isOpen, onClose, product }) => {
                     <div className="w-full bg-slate-50 rounded-lg p-3 mb-4">
                         <p className="text-xs text-slate-500 mb-1">Scan URL:</p>
                         <div className="flex items-center gap-2">
-                            <code className="text-xs text-blue-600 flex-1 break-all">{productUrl}</code>
-                            <button
-                                onClick={handleCopyUrl}
-                                className="text-slate-500 hover:text-blue-600 p-1"
-                                title="Copy URL"
+                            <a
+                                href={productUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-blue-600 hover:underline flex-1 break-all font-mono"
+                            >
+                                {productUrl}
+                            </a>
+                            <a
+                                href={productUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-slate-500 hover:text-blue-600 p-1 transition-colors"
+                                title="Open in new tab"
                             >
                                 <ExternalLink size={16} />
-                            </button>
+                            </a>
                         </div>
                     </div>
 

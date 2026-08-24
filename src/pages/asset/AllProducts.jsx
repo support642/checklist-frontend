@@ -1,11 +1,32 @@
-import React, { useState } from 'react';
-import { Plus, Search, Filter, RefreshCw, ChevronLeft, ChevronRight, QrCode, FileText, Pencil } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Search, Filter, RefreshCw, ChevronLeft, ChevronRight, QrCode, FileText, Pencil, Activity } from 'lucide-react';
 import { useGetProductsQuery } from '../../redux/asset-redux/slices/productApi';
 import AddProductModal from '../../components/asset-components/AddProductModal';
+import QuickAddAssetModal from '../../components/asset-components/QuickAddAssetModal';
 import QRCodeModal from '../../components/asset-components/QRCodeModal';
 import BulkQRModal from '../../components/asset-components/BulkQRModal';
 import Footer from '../../components/asset-components/Footer';
 import { formatTimestampToDDMMYYYY } from '../../utils/dateUtils';
+
+// Helper to calculate live running hours dynamically from initial creation date
+export const calculateLiveRunningHours = (initialDate, baseHours = 0, status = 'Active', operationalStatus = 'Running') => {
+    const base = Number(baseHours) || 0;
+    if (!initialDate) return base.toFixed(1);
+    
+    // If status is inactive or machine is down, preserve base hours
+    if (status === 'Inactive' || operationalStatus === 'Breakdown' || operationalStatus === 'Idle') {
+        return base.toFixed(1);
+    }
+
+    const start = new Date(initialDate).getTime();
+    const now = Date.now();
+
+    if (isNaN(start) || start > now) return base.toFixed(1);
+
+    const elapsedHours = (now - start) / (1000 * 60 * 60);
+    const total = base + elapsedHours;
+    return total.toLocaleString('en-IN', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+};
 
 // Product Card for Mobile View - RICH & DETAILED
 const ProductCard = ({ product, onShowQR, onEdit }) => (
@@ -32,24 +53,44 @@ const ProductCard = ({ product, onShowQR, onEdit }) => (
             <p className="text-xs text-slate-500 mt-0.5">{product.brand} • {product.model}</p>
         </div>
 
+        {/* Live Running Hours Pill on Mobile */}
+        <div className="flex items-center justify-between bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-lg text-xs">
+            <span className="text-emerald-800 font-medium flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                Live Running Hours
+            </span>
+            <span className="font-mono font-bold text-emerald-700 text-sm">
+                {calculateLiveRunningHours(product.initialEntryDate, product.runningHours, product.status, product.operationalStatus)} hrs
+            </span>
+        </div>
+
         {/* 3-Column Key Stats */}
         <div className="grid grid-cols-3 gap-2 py-3 border-t border-b border-slate-50">
             <div className="text-center">
-                <p className="text-[10px] text-slate-400 uppercase tracking-wide">Location</p>
-                <p className="text-xs font-semibold text-slate-700 truncate">{product.location}</p>
+                <p className="text-[10px] text-slate-400 uppercase tracking-wide">Area</p>
+                <p className="text-xs font-semibold text-slate-700 truncate">{product.machineArea || product.location || '—'}</p>
             </div>
             <div className="text-center border-l border-slate-100">
-                <p className="text-[10px] text-slate-400 uppercase tracking-wide">Dept</p>
-                <p className="text-xs font-semibold text-slate-700 truncate">{product.department}</p>
+                <p className="text-[10px] text-slate-400 uppercase tracking-wide">Dept / Div</p>
+                <p className="text-xs font-semibold text-slate-700 truncate">{product.department || product.division || '—'}</p>
             </div>
             <div className="text-center border-l border-slate-100">
                 <p className="text-[10px] text-slate-400 uppercase tracking-wide">Value</p>
-                <p className="text-xs font-semibold text-green-700">₹{product.assetValue}</p>
+                <p className="text-xs font-semibold text-green-700">{product.assetValue ? `₹${product.assetValue}` : '—'}</p>
             </div>
         </div>
 
         {/* Details List */}
         <div className="space-y-2 text-xs">
+            <div className="flex justify-between">
+                <span className="text-slate-500">Initial Entry:</span>
+                <span className="text-slate-700 font-medium flex items-center gap-1">
+                    {formatTimestampToDDMMYYYY(product.initialEntryDate) || '—'}
+                    {product.isFromMachineParts && (
+                        <span className="text-[9px] bg-purple-100 text-purple-700 px-1.5 py-0.2 rounded font-semibold">Machine Parts</span>
+                    )}
+                </span>
+            </div>
             <div className="flex justify-between">
                 <span className="text-slate-500">Asset Date:</span>
                 <span className="text-slate-700 font-medium">{formatTimestampToDDMMYYYY(product.assetDate)}</span>
@@ -59,6 +100,10 @@ const ProductCard = ({ product, onShowQR, onEdit }) => (
                 <span className={`font-medium ${product.warrantyAvailable === 'Yes' ? 'text-green-600' : 'text-slate-400'}`}>
                     {product.warrantyAvailable === 'Yes' ? `Yes (Till ${formatTimestampToDDMMYYYY(product.warrantyEnd)})` : 'No'}
                 </span>
+            </div>
+            <div className="flex justify-between">
+                <span className="text-slate-500">Assigned To:</span>
+                <span className="text-slate-700 font-medium">{product.assignedTo || '—'}</span>
             </div>
 
             {/* Repair Highlight Section */}
@@ -98,6 +143,14 @@ const ProductCard = ({ product, onShowQR, onEdit }) => (
 const AllProducts = () => {
     const { data: products = [], isLoading, isError, refetch: clearAndReloadDummy } = useGetProductsQuery();
     
+    // Live tick state to refresh running hour calculations in real-time
+    const [, setTick] = useState(0);
+    useEffect(() => {
+        const timer = setInterval(() => setTick(t => t + 1), 30000); // Ticks every 30 seconds
+        return () => clearInterval(timer);
+    }, []);
+
+    const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isQRModalOpen, setIsQRModalOpen] = useState(false);
     const [isBulkQROpen, setIsBulkQROpen] = useState(false);
@@ -132,7 +185,11 @@ const AllProducts = () => {
     };
 
     const handleAddProduct = () => {
-        setEditingProduct(null);
+        setIsQuickAddOpen(true);
+    };
+
+    const handleOpenFullDetailsFromQuickAdd = (newProduct) => {
+        setEditingProduct(newProduct);
         setIsModalOpen(true);
     };
 
@@ -225,6 +282,9 @@ const AllProducts = () => {
                                 <th className="px-4 py-3">Mfg Date</th>
                                 <th className="px-4 py-3">Origin</th>
                                 <th className="px-4 py-3">Status</th>
+                                {/* Section: Operational & Initial Entry */}
+                                <th className="px-4 py-3 text-right text-emerald-700 bg-emerald-50/50">Live Running Hours</th>
+                                <th className="px-4 py-3">Initial Entry</th>
                                 {/* Section 2: Asset Info */}
                                 <th className="px-4 py-3">Asset Date</th>
                                 <th className="px-4 py-3">Invoice No</th>
@@ -234,7 +294,9 @@ const AllProducts = () => {
                                 <th className="px-4 py-3">Payment</th>
                                 {/* Section 3: Location */}
                                 <th className="px-4 py-3">Location</th>
+                                <th className="px-4 py-3">Division</th>
                                 <th className="px-4 py-3">Department</th>
+                                <th className="px-4 py-3">Machine Area</th>
                                 <th className="px-4 py-3">Assigned To</th>
                                 <th className="px-4 py-3">Responsible</th>
                                 {/* Section 4: Warranty */}
@@ -297,6 +359,25 @@ const AllProducts = () => {
                                                 {product.status}
                                             </span>
                                         </td>
+                                        {/* Section: Operational & Initial Entry */}
+                                        <td className="px-4 py-3 text-right bg-emerald-50/20">
+                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                                {calculateLiveRunningHours(product.initialEntryDate, product.runningHours, product.status, product.operationalStatus)} hrs
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-3 text-slate-600">
+                                            <div className="flex flex-col">
+                                                <span className="font-medium text-slate-800">
+                                                    {formatTimestampToDDMMYYYY(product.initialEntryDate) || '—'}
+                                                </span>
+                                                {product.isFromMachineParts ? (
+                                                    <span className="text-[10px] text-purple-600 font-semibold">From Machine Parts</span>
+                                                ) : (
+                                                    <span className="text-[10px] text-slate-400">Direct Entry</span>
+                                                )}
+                                            </div>
+                                        </td>
                                         {/* Section 2 */}
                                         <td className="px-4 py-3 text-slate-600">{formatTimestampToDDMMYYYY(product.assetDate)}</td>
                                         <td className="px-4 py-3 text-slate-600">{product.invoiceNo}</td>
@@ -305,10 +386,12 @@ const AllProducts = () => {
                                         <td className="px-4 py-3 text-slate-600">{product.supplierName}</td>
                                         <td className="px-4 py-3 text-slate-600">{product.paymentMode}</td>
                                         {/* Section 3 */}
-                                        <td className="px-4 py-3 text-slate-600">{product.location}</td>
-                                        <td className="px-4 py-3 text-slate-600">{product.department}</td>
-                                        <td className="px-4 py-3 text-slate-600">{product.assignedTo}</td>
-                                        <td className="px-4 py-3 text-slate-600">{product.responsiblePerson}</td>
+                                        <td className="px-4 py-3 text-slate-600">{product.location || '—'}</td>
+                                        <td className="px-4 py-3 text-slate-600">{product.division || '—'}</td>
+                                        <td className="px-4 py-3 text-slate-600">{product.department || '—'}</td>
+                                        <td className="px-4 py-3 text-slate-600">{product.machineArea || '—'}</td>
+                                        <td className="px-4 py-3 text-slate-600">{product.assignedTo || '—'}</td>
+                                        <td className="px-4 py-3 text-slate-600">{product.responsiblePerson || '—'}</td>
                                         {/* Section 4 */}
                                         <td className="px-4 py-3 text-slate-600">{product.warrantyAvailable}</td>
                                         <td className="px-4 py-3 text-slate-600">{product.amc}</td>
@@ -350,6 +433,11 @@ const AllProducts = () => {
 
 
 
+            <QuickAddAssetModal
+                isOpen={isQuickAddOpen}
+                onClose={() => setIsQuickAddOpen(false)}
+                onOpenFullDetails={handleOpenFullDetailsFromQuickAdd}
+            />
             <AddProductModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}

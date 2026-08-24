@@ -48,6 +48,9 @@ export const productApi = createApi({
         getAssetUsers: builder.query({
             query: () => ({ url: '/asset/users', method: 'GET' }),
         }),
+        getMachinePartsList: builder.query({
+            query: () => ({ url: '/settings/machines', method: 'GET' }),
+        }),
 
         // Mutations
         addProduct: builder.mutation({
@@ -100,6 +103,7 @@ export const {
     useGetProductsQuery,
     useGetProductByIdQuery,
     useGetAssetUsersQuery,
+    useGetMachinePartsListQuery,
     useAddProductMutation,
     useUpdateProductMutation,
     useDeleteProductMutation,

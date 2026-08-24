@@ -3,8 +3,9 @@ import React from 'react';
 import { useParams } from 'react-router-dom';
 import { useGetProductsQuery } from '../../redux/asset-redux/slices/productApi';
 import Footer from '../../components/asset-components/Footer';
-import { Package, MapPin, Shield, Wrench, DollarSign, FileText, Building2, Tag, Globe, CreditCard, Clock, CheckCircle, XCircle, Calendar } from 'lucide-react';
+import { Package, MapPin, Shield, Wrench, DollarSign, FileText, Building2, Tag, Globe, CreditCard, Clock, CheckCircle, XCircle, Calendar, Activity } from 'lucide-react';
 import { formatTimestampToDDMMYYYY } from '../../utils/dateUtils';
+import { calculateLiveRunningHours } from './AllProducts';
 
 const ProductView = () => {
     const { productId } = useParams();
@@ -111,6 +112,33 @@ const ProductView = () => {
                     />
                 </div>
 
+                {/* Operational & Live Running Hours Card */}
+                <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 shadow-sm flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="p-3 bg-emerald-500 text-white rounded-xl shadow-inner">
+                            <Activity size={22} />
+                        </div>
+                        <div>
+                            <p className="text-xs font-semibold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                Live Running Hours
+                            </p>
+                            <p className="text-xl font-mono font-bold text-emerald-950">
+                                {calculateLiveRunningHours(product.initialEntryDate, product.runningHours, product.status, product.operationalStatus)} hrs
+                            </p>
+                        </div>
+                    </div>
+                    <div className="text-right text-xs">
+                        <span className="text-slate-500 block">Initial Entry:</span>
+                        <span className="font-semibold text-slate-800">{formatTimestampToDDMMYYYY(product.initialEntryDate) || '—'}</span>
+                        {product.isFromMachineParts && (
+                            <span className="inline-block mt-0.5 text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-bold">
+                                Machine Parts
+                            </span>
+                        )}
+                    </div>
+                </div>
+
                 {/* Info Cards - Stacked on Mobile */}
                 <InfoCard title="Basic Information" icon={Package} color="bg-purple-600">
                     <InfoRow label="Type" value={product.type} />
@@ -118,6 +146,7 @@ const ProductView = () => {
                     <InfoRow label="SKU" value={product.sku} />
                     <InfoRow label="Serial No" value={product.serialNo} />
                     <InfoRow label="Mfg Date" value={formatTimestampToDDMMYYYY(product.mfgDate)} />
+                    <InfoRow label="Initial Entry" value={formatTimestampToDDMMYYYY(product.initialEntryDate)} />
                 </InfoCard>
 
                 <InfoCard title="Asset Details" icon={CreditCard} color="bg-green-500">
