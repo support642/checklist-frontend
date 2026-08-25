@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, RefreshCw, ChevronLeft, ChevronRight, QrCode, FileText, Pencil, Activity } from 'lucide-react';
+import { 
+    Plus, Search, Filter, RefreshCw, ChevronLeft, ChevronRight, 
+    QrCode, FileText, Pencil, Activity, FileSpreadsheet, Download, X, RotateCcw
+} from 'lucide-react';
+import Papa from 'papaparse';
+import { toast } from 'react-hot-toast';
 import { useGetProductsQuery } from '../../redux/asset-redux/slices/productApi';
 import AddProductModal from '../../components/asset-components/AddProductModal';
 import QuickAddAssetModal from '../../components/asset-components/QuickAddAssetModal';
@@ -157,16 +162,168 @@ const AllProducts = () => {
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [editingProduct, setEditingProduct] = useState(null);
 
+    // Filter states
     const [searchTerm, setSearchTerm] = useState('');
+    const [departmentFilter, setDepartmentFilter] = useState('all');
+    const [divisionFilter, setDivisionFilter] = useState('all');
+    const [productNameFilter, setProductNameFilter] = useState('all');
 
-    const filteredProducts = products.filter(product =>
-        product.productName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.sn?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.category?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    
-    if (isLoading) return <div className="p-8 text-center flex-1 mt-20">Loading products...</div>;
-    if (isError) return <div className="p-8 text-center text-red-500 flex-1">Error fetching products.</div>;
+    // Extract unique filter options from products
+    const departmentOptions = React.useMemo(() => {
+        const set = new Set();
+        products.forEach(p => {
+            if (p.department && typeof p.department === 'string') {
+                const cleaned = p.department.trim();
+                if (cleaned) set.add(cleaned);
+            }
+        });
+        return Array.from(set).sort();
+    }, [products]);
+
+    const divisionOptions = React.useMemo(() => {
+        const set = new Set();
+        products.forEach(p => {
+            if (p.division && typeof p.division === 'string') {
+                const cleaned = p.division.trim();
+                if (cleaned) set.add(cleaned);
+            }
+        });
+        return Array.from(set).sort();
+    }, [products]);
+
+    const productNameOptions = React.useMemo(() => {
+        const set = new Set();
+        products.forEach(p => {
+            if (p.productName && typeof p.productName === 'string') {
+                const cleaned = p.productName.trim();
+                if (cleaned) set.add(cleaned);
+            }
+        });
+        return Array.from(set).sort();
+    }, [products]);
+
+    const filteredProducts = products.filter(product => {
+        // Multi-field search
+        const term = searchTerm.trim().toLowerCase();
+        const matchesSearch = !term || (
+            product.productName?.toLowerCase().includes(term) ||
+            product.sn?.toLowerCase().includes(term) ||
+            product.category?.toLowerCase().includes(term) ||
+            product.brand?.toLowerCase().includes(term) ||
+            product.model?.toLowerCase().includes(term) ||
+            product.sku?.toLowerCase().includes(term) ||
+            product.department?.toLowerCase().includes(term) ||
+            product.division?.toLowerCase().includes(term) ||
+            product.location?.toLowerCase().includes(term) ||
+            product.assignedTo?.toLowerCase().includes(term)
+        );
+
+        const matchesDepartment = departmentFilter === 'all' || product.department === departmentFilter;
+        const matchesDivision = divisionFilter === 'all' || product.division === divisionFilter;
+        const matchesProductName = productNameFilter === 'all' || product.productName === productNameFilter;
+
+        return matchesSearch && matchesDepartment && matchesDivision && matchesProductName;
+    });
+
+    const hasActiveFilters = Boolean(searchTerm || departmentFilter !== 'all' || divisionFilter !== 'all' || productNameFilter !== 'all');
+
+    const handleClearFilters = () => {
+        setSearchTerm('');
+        setDepartmentFilter('all');
+        setDivisionFilter('all');
+        setProductNameFilter('all');
+    };
+
+    // Excel / CSV Export
+    const handleExportExcel = () => {
+        if (!filteredProducts.length) {
+            toast.error('No products available to export');
+            return;
+        }
+
+        const dataToExport = filteredProducts.map((p, index) => {
+            const liveHours = calculateLiveRunningHours(p.initialEntryDate, p.runningHours, p.status, p.operationalStatus);
+            const specsList = Array.isArray(p.specs)
+                ? p.specs.map(s => typeof s === 'string' ? s : (s.name ? (s.value ? `${s.name}: ${s.value}` : s.name) : s.value || '')).filter(Boolean).join(', ')
+                : '';
+            const partsChangedList = Array.isArray(p.partNames) ? p.partNames.filter(Boolean).join(', ') : '';
+
+            return {
+                'S.No': index + 1,
+                'Serial No / Asset Tag': p.sn || '',
+                'Product / Equipment Name': p.productName || '',
+                'Category': p.category || '',
+                'Type': p.type || '',
+                'Brand': p.brand || '',
+                'Model': p.model || '',
+                'Serial Number': p.serialNo || '',
+                'SKU': p.sku || '',
+                'Manufacturing Date': formatTimestampToDDMMYYYY(p.mfgDate) || '',
+                'Origin': p.origin || '',
+                'Status': p.status || '',
+                'Operational Status': p.operationalStatus || '',
+                'Live Running Hours': `${liveHours} hrs`,
+                'Initial Entry Date': formatTimestampToDDMMYYYY(p.initialEntryDate) || '',
+                'Entry Source': p.isFromMachineParts ? 'Machine Parts Master' : 'Direct Entry',
+                'Asset / Purchase Date': formatTimestampToDDMMYYYY(p.assetDate) || '',
+                'Invoice No': p.invoiceNo || '',
+                'Cost (₹)': p.cost || p.assetValue || '',
+                'Quantity': p.quantity || '1',
+                'Supplier / Vendor': p.supplierName || '',
+                'Supplier Contact': p.supplierPhone || '',
+                'Supplier Email': p.supplierEmail || '',
+                'Payment Mode': p.paymentMode || '',
+                'Location / Plant': p.location || '',
+                'Division': p.division || '',
+                'Department': p.department || '',
+                'Machine Area / Bay': p.machineArea || '',
+                'Assigned Custodian': p.assignedTo || '',
+                'Responsible Supervisor': p.responsiblePerson || '',
+                'Storage Location': p.storageLoc || '',
+                'Usage Type': p.usageType || '',
+                'Warranty Available': p.warrantyAvailable || '',
+                'Warranty Provider': p.warrantyProvider || '',
+                'Warranty End Date': formatTimestampToDDMMYYYY(p.warrantyEnd) || '',
+                'AMC Available': p.amc || '',
+                'AMC Provider': p.amcProvider || '',
+                'AMC End Date': formatTimestampToDDMMYYYY(p.amcEnd) || '',
+                'Maintenance Required': p.maintenanceRequired || '',
+                'Maintenance Type': p.maintenanceType || '',
+                'Maintenance Priority': p.priority || '',
+                'Maintenance Frequency': p.frequency || '',
+                'Next Service Date': formatTimestampToDDMMYYYY(p.nextService) || '',
+                'Last Repair Date': formatTimestampToDDMMYYYY(p.lastRepairDate) || 'Never',
+                'Last Repair Cost (₹)': p.repairCost || '0',
+                'Total Repairs Count': p.repairCount || '0',
+                'Total Repair Cost (₹)': p.totalRepairCost || '0',
+                'Parts Changed': p.partChanged || 'No',
+                'Replaced Parts': partsChangedList,
+                'Parts / Specifications': specsList,
+                'Depreciation Method': p.depMethod || '',
+                'Depreciation Rate (%)': p.depRate || '',
+                'Asset Life (Years)': p.assetLife || '',
+                'Residual Value (₹)': p.residualValue || '',
+                'Condition': p.condition || '',
+                'Internal Notes': p.internalNotes || '',
+                'Usage Remarks': p.usageRemarks || '',
+                'Created By': p.createdBy || '',
+                'Created Date': formatTimestampToDDMMYYYY(p.createdDate) || ''
+            };
+        });
+
+        const csv = Papa.unparse(dataToExport);
+        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        const dateStr = new Date().toISOString().slice(0, 10);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `Assets_Master_Report_${dateStr}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success(`Exported ${dataToExport.length} assets to Excel`);
+    };
 
     const handleReloadDummy = () => {
         if (confirm('This will replace all products with fresh dummy data. Continue?')) {
@@ -193,61 +350,158 @@ const AllProducts = () => {
         setIsModalOpen(true);
     };
 
+    if (isLoading) return <div className="p-8 text-center flex-1 mt-20">Loading products...</div>;
+    if (isError) return <div className="p-8 text-center text-red-500 flex-1">Error fetching products.</div>;
+
     return (
         <div className="flex flex-col h-full bg-slate-50">
-            <div className="flex-1 w-full min-h-0 flex flex-col gap-4 p-4 lg:p-6 overflow-hidden">
+            <div className="flex-1 w-full min-h-0 flex flex-col gap-3.5 p-3 sm:p-4 lg:p-6 overflow-hidden">
                 {/* Top Toolbar */}
                 <div className="flex flex-col gap-3 shrink-0">
                     <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-3">
-                    {/* Title hidden on mobile to avoid double header */}
-                    <h1 className="text-2xl font-bold text-slate-900 hidden lg:block">All Products</h1>
+                        {/* Title hidden on mobile to avoid double header */}
+                        <div className="hidden lg:flex items-center gap-3">
+                            <h1 className="text-2xl font-bold text-slate-900">All Products</h1>
+                            <span className="text-xs font-semibold px-2.5 py-1 bg-purple-100 text-purple-700 rounded-full border border-purple-200">
+                                {filteredProducts.length} of {products.length} Assets
+                            </span>
+                        </div>
 
-                    {/* Actions Group */}
-                    <div className="flex items-center gap-2 w-full lg:w-auto">
-                        <button
-                            onClick={handleReloadDummy}
-                            className="bg-white hover:bg-slate-50 text-slate-600 p-2.5 rounded-xl flex items-center justify-center transition-colors border border-slate-200 shadow-sm"
-                            title="Reload Data"
-                        >
-                            <RefreshCw size={20} />
-                        </button>
+                        {/* Actions Group */}
+                        <div className="flex items-center flex-wrap gap-2 w-full lg:w-auto">
+                            <button
+                                onClick={handleReloadDummy}
+                                className="bg-white hover:bg-slate-50 text-slate-600 p-2.5 rounded-xl flex items-center justify-center transition-colors border border-slate-200 shadow-xs cursor-pointer"
+                                title="Reload Data"
+                            >
+                                <RefreshCw size={19} />
+                            </button>
 
-                        <button
-                            onClick={() => setIsBulkQROpen(true)}
-                            className="bg-purple-50 text-purple-700 hover:bg-purple-100 p-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors border border-purple-100 shadow-sm"
-                            title="Generate QR PDF"
-                        >
-                            <FileText size={20} />
-                            <span className="hidden sm:inline font-medium">QR PDF</span>
-                        </button>
+                            <button
+                                onClick={handleExportExcel}
+                                className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 px-3 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all border border-emerald-200 shadow-xs font-semibold text-xs sm:text-sm cursor-pointer"
+                                title="Download All Products to Excel / CSV"
+                            >
+                                <FileSpreadsheet size={18} className="text-emerald-600" />
+                                <span>Excel Download</span>
+                            </button>
 
-                        <button
-                            onClick={handleAddProduct}
-                            className="flex-1 lg:flex-none bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-colors font-medium shadow-purple-200/50"
-                        >
-                            <Plus size={20} />
-                            <span>Add Product</span>
-                        </button>
+                            <button
+                                onClick={() => setIsBulkQROpen(true)}
+                                className="bg-purple-50 text-purple-700 hover:bg-purple-100 px-3 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors border border-purple-200 shadow-xs font-semibold text-xs sm:text-sm cursor-pointer"
+                                title="Generate QR PDF"
+                            >
+                                <FileText size={18} />
+                                <span className="hidden sm:inline">QR PDF</span>
+                            </button>
+
+                            <button
+                                onClick={handleAddProduct}
+                                className="flex-1 lg:flex-none bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-xs transition-colors font-medium shadow-purple-200/50 cursor-pointer text-xs sm:text-sm"
+                            >
+                                <Plus size={18} />
+                                <span>Add Product</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Search & Multi-Dropdown Filter Bar */}
+                    <div className="bg-white p-2.5 sm:p-3 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row gap-2.5 items-stretch md:items-center">
+                        {/* Text Search Input */}
+                        <div className="relative flex-1 min-w-[200px]">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                            <input
+                                type="text"
+                                placeholder="Search by name, SN, brand, model, staff..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full pl-9 pr-8 py-2 bg-slate-50 focus:bg-white rounded-xl border border-slate-200 focus:border-purple-600 text-xs sm:text-sm font-medium text-slate-800 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-purple-500/20 transition-all"
+                            />
+                            {searchTerm && (
+                                <button
+                                    type="button"
+                                    onClick={() => setSearchTerm('')}
+                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded"
+                                >
+                                    <X size={14} />
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Dropdown Filters Group */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 shrink-0">
+                            {/* Department Filter */}
+                            <div className="relative">
+                                <select
+                                    value={departmentFilter}
+                                    onChange={(e) => setDepartmentFilter(e.target.value)}
+                                    className={`w-full px-3 py-2 pr-7 text-xs sm:text-sm font-semibold rounded-xl border appearance-none outline-none focus:ring-2 focus:ring-purple-500/20 cursor-pointer transition-all ${
+                                        departmentFilter !== 'all' 
+                                            ? 'bg-purple-50 border-purple-300 text-purple-900' 
+                                            : 'bg-slate-50 hover:bg-slate-100/80 border-slate-200 text-slate-700'
+                                    }`}
+                                >
+                                    <option value="all">All Departments</option>
+                                    {departmentOptions.map((dept) => (
+                                        <option key={dept} value={dept}>{dept}</option>
+                                    ))}
+                                </select>
+                                <Filter size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                            </div>
+
+                            {/* Division Filter */}
+                            <div className="relative">
+                                <select
+                                    value={divisionFilter}
+                                    onChange={(e) => setDivisionFilter(e.target.value)}
+                                    className={`w-full px-3 py-2 pr-7 text-xs sm:text-sm font-semibold rounded-xl border appearance-none outline-none focus:ring-2 focus:ring-purple-500/20 cursor-pointer transition-all ${
+                                        divisionFilter !== 'all' 
+                                            ? 'bg-purple-50 border-purple-300 text-purple-900' 
+                                            : 'bg-slate-50 hover:bg-slate-100/80 border-slate-200 text-slate-700'
+                                    }`}
+                                >
+                                    <option value="all">All Divisions</option>
+                                    {divisionOptions.map((div) => (
+                                        <option key={div} value={div}>{div}</option>
+                                    ))}
+                                </select>
+                                <Filter size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                            </div>
+
+                            {/* Product Name Filter */}
+                            <div className="relative">
+                                <select
+                                    value={productNameFilter}
+                                    onChange={(e) => setProductNameFilter(e.target.value)}
+                                    className={`w-full px-3 py-2 pr-7 text-xs sm:text-sm font-semibold rounded-xl border appearance-none outline-none focus:ring-2 focus:ring-purple-500/20 cursor-pointer transition-all ${
+                                        productNameFilter !== 'all' 
+                                            ? 'bg-purple-50 border-purple-300 text-purple-900' 
+                                            : 'bg-slate-50 hover:bg-slate-100/80 border-slate-200 text-slate-700'
+                                    }`}
+                                >
+                                    <option value="all">All Products</option>
+                                    {productNameOptions.map((name) => (
+                                        <option key={name} value={name}>{name}</option>
+                                    ))}
+                                </select>
+                                <Filter size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                            </div>
+                        </div>
+
+                        {/* Reset Filters Action */}
+                        {hasActiveFilters && (
+                            <button
+                                type="button"
+                                onClick={handleClearFilters}
+                                className="px-3 py-2 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-xl border border-rose-200 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0"
+                                title="Reset all filters"
+                            >
+                                <RotateCcw size={13} />
+                                <span>Reset</span>
+                            </button>
+                        )}
                     </div>
                 </div>
-
-                {/* Search & Filter */}
-                <div className="flex gap-3">
-                    <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                        <input
-                            type="text"
-                            placeholder="Search products..."
-                            value={searchTerm}
-                            onChange={(e) => { setSearchTerm(e.target.value); }}
-                            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all font-medium text-slate-700 placeholder:text-slate-400"
-                        />
-                    </div>
-                    <button className="px-3.5 py-2.5 border border-slate-200 bg-white rounded-xl text-slate-600 hover:bg-slate-50 flex items-center gap-2 transition-colors shadow-sm">
-                        <Filter size={20} />
-                    </button>
-                </div>
-            </div>
 
 
             {/* Mobile Card View (Scrollable) */}

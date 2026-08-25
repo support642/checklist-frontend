@@ -135,6 +135,22 @@ const AddProductModal = ({ isOpen, onClose, product = null, defaultSection = 0 }
         return arr.length > 0 ? arr : ['SID', 'SMS', 'CPP', 'Rolling Mill', 'RM', 'Admin'];
     }, [machinePartsList, formData?.division]);
 
+    // Extract unique, clean locations/plants dynamically from users table (unit column)
+    const dynamicLocations = React.useMemo(() => {
+        const set = new Set();
+        users.forEach(u => {
+            if (u.unit && typeof u.unit === 'string') {
+                const cleaned = u.unit.trim();
+                if (cleaned) set.add(cleaned);
+            }
+        });
+        if (formData?.location && typeof formData.location === 'string' && formData.location.trim()) {
+            set.add(formData.location.trim());
+        }
+        const arr = Array.from(set).sort();
+        return arr.length > 0 ? arr : ['Plant 1', 'Plant 2', 'Warehouse', 'Head Office', 'Site A'];
+    }, [users, formData?.location]);
+
     // Extract unique machine areas from machine_parts table
     const dynamicAreas = React.useMemo(() => {
         const set = new Set();
@@ -156,13 +172,23 @@ const AddProductModal = ({ isOpen, onClose, product = null, defaultSection = 0 }
             setIsMobileSectionOpen(false);
             setListeningField(null);
             if (product) {
+                const normalizedSpecs = Array.isArray(product.specs)
+                    ? product.specs.map(s => {
+                        if (!s) return { name: '', value: '' };
+                        if (typeof s === 'string') return { name: s, value: '' };
+                        if (s.name === 'Part Component') return { name: s.value || s.name || '', value: '' };
+                        if (s.name && s.value && s.name !== s.value) return { name: `${s.name}: ${s.value}`, value: '' };
+                        return { name: s.name || s.value || '', value: '' };
+                    })
+                    : [];
+
                 setFormData({
                     ...product,
                     category: product.category || 'Machinery',
                     status: product.status || 'Active',
                     operationalStatus: product.operationalStatus || 'Running',
                     runningHours: product.runningHours || 0,
-                    specs: product.specs || [],
+                    specs: normalizedSpecs,
                     documents: product.documents || []
                 });
             } else {
@@ -196,10 +222,10 @@ const AddProductModal = ({ isOpen, onClose, product = null, defaultSection = 0 }
 
         const found = machinePartsList.find(m => String(m.id) === String(machineId));
         if (found) {
-            // Build default specs from parts if available
+            // Build default specs from individual machine parts
             const partSpecs = Array.isArray(found.part_name) 
-                ? found.part_name.filter(Boolean).map(p => ({ name: 'Part Component', value: p }))
-                : (found.part_name ? [{ name: 'Part Component', value: found.part_name }] : []);
+                ? found.part_name.filter(Boolean).map(p => ({ name: typeof p === 'string' ? p : (p.name || p.value || ''), value: '' }))
+                : (found.part_name ? [{ name: typeof found.part_name === 'string' ? found.part_name : (found.part_name.name || found.part_name.value || ''), value: '' }] : []);
 
             setFormData(prev => ({
                 ...prev,
@@ -216,9 +242,9 @@ const AddProductModal = ({ isOpen, onClose, product = null, defaultSection = 0 }
         }
     };
 
-    const handleSpecChange = (index, field, value) => {
+    const handleSpecChange = (index, value) => {
         const newSpecs = [...formData.specs];
-        newSpecs[index][field] = value;
+        newSpecs[index] = { name: value, value: '' };
         setFormData(prev => ({ ...prev, specs: newSpecs }));
     };
 
@@ -296,8 +322,8 @@ const AddProductModal = ({ isOpen, onClose, product = null, defaultSection = 0 }
         }
     };
 
-    // Voice dictation specifically for dynamic technical specifications
-    const handleVoiceSpec = (index, field) => {
+    // Voice dictation specifically for dynamic technical specifications / parts
+    const handleVoiceSpec = (index) => {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRecognition) {
             toast.error('Voice dictation not supported.');
@@ -309,11 +335,11 @@ const AddProductModal = ({ isOpen, onClose, product = null, defaultSection = 0 }
             recognition.lang = 'en-US';
             recognition.interimResults = false;
 
-            recognition.onstart = () => toast('🎙️ Listening for spec...', { duration: 2000 });
+            recognition.onstart = () => toast('🎙️ Listening for part / spec...', { duration: 2000 });
             recognition.onresult = (event) => {
                 const text = event.results[0][0].transcript;
-                handleSpecChange(index, field, text);
-                toast.success('Spec captured!');
+                handleSpecChange(index, text);
+                toast.success('Part / spec captured!');
             };
             recognition.start();
         } catch (e) {
@@ -590,7 +616,7 @@ const AddProductModal = ({ isOpen, onClose, product = null, defaultSection = 0 }
                                     </div>
 
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
-                                        <InputField label="Location / Plant" name="location" type="select" options={['Plant 1', 'Plant 2', 'Warehouse', 'Head Office', 'Site A']} value={formData.location} onChange={handleChange} />
+                                        <InputField label="Location / Plant" name="location" type="select" options={dynamicLocations} value={formData.location} onChange={handleChange} />
                                         <InputField label="Department" name="department" type="select" options={dynamicDepartments} value={formData.department} onChange={handleChange} />
                                         <InputField label="Division" name="division" type="select" options={dynamicDivisions} value={formData.division} onChange={handleChange} />
                                         <InputField label="Machine Area / Bay" name="machineArea" placeholder="e.g. Bay 4, Line 2" value={formData.machineArea} onChange={handleChange} onVoiceInput={handleVoiceDictate} isListeningField={listeningField === 'machineArea'} />
@@ -720,82 +746,68 @@ const AddProductModal = ({ isOpen, onClose, product = null, defaultSection = 0 }
                                 </div>
                             )}
 
-                            {/* SECTION 5: Technical Specs (Category Adaptive) */}
+                            {/* SECTION 5: Technical Specs & Parts */}
                             {activeSection === 5 && (
                                 <div className="space-y-4 sm:space-y-5 animate-in fade-in duration-150">
                                     <div className="border-b border-slate-100 pb-2.5 flex items-center justify-between">
                                         <div>
                                             <h3 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
-                                                <Cpu className="text-purple-600" size={18} /> Technical Specifications
+                                                <Cpu className="text-purple-600" size={18} /> Parts & Technical Specifications
                                             </h3>
-                                            <p className="text-xs text-slate-500">Custom technical attributes for {formData.category || 'Asset'}</p>
+                                            <p className="text-xs text-slate-500">Individual machine parts, components, and technical specs for {formData.category || 'Asset'}</p>
                                         </div>
                                         <button 
                                             type="button" 
                                             onClick={addSpec}
-                                            className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                                            className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-lg text-xs font-bold transition-colors cursor-pointer border border-purple-200 shadow-sm"
                                         >
-                                            <Plus size={14} /> Add Spec
+                                            <Plus size={14} /> Add Part / Spec
                                         </button>
                                     </div>
 
                                     {formData.specs.length === 0 ? (
                                         <div className="p-6 sm:p-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
                                             <Cpu size={28} className="mx-auto text-slate-300 mb-2" />
-                                            <p className="text-xs text-slate-500 font-medium">No custom technical specs added yet.</p>
+                                            <p className="text-xs text-slate-500 font-medium">No individual parts or technical specifications added yet.</p>
                                             <button 
                                                 type="button" 
                                                 onClick={addSpec}
                                                 className="mt-2 text-xs text-purple-600 font-bold hover:underline cursor-pointer"
                                             >
-                                                + Add First Specification (e.g. Voltage, Capacity, RAM)
+                                                + Add First Part (e.g. Power Pack, Main Drive, ABC Fan)
                                             </button>
                                         </div>
                                     ) : (
-                                        <div className="space-y-3">
+                                        <div className="space-y-2.5">
                                             {formData.specs.map((spec, index) => (
-                                                <div key={index} className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch sm:items-center p-3 sm:p-0 bg-slate-50 sm:bg-transparent rounded-xl border sm:border-0 border-slate-100">
+                                                <div key={index} className="flex items-center gap-2 sm:gap-3 p-2 sm:p-2.5 bg-slate-50 hover:bg-purple-50/40 rounded-xl border border-slate-200/80 transition-colors">
+                                                    <span className="w-7 h-7 rounded-lg bg-white border border-slate-200 text-slate-500 text-xs font-bold flex items-center justify-center shrink-0 shadow-2xs">
+                                                        {index + 1}
+                                                    </span>
                                                     <div className="flex-1 relative">
                                                         <input 
                                                             type="text"
-                                                            value={spec.name}
-                                                            onChange={(e) => handleSpecChange(index, 'name', e.target.value)}
-                                                            placeholder={formData.category === 'IT' ? 'e.g. RAM, Storage, OS' : 'e.g. Voltage, Power, Capacity'}
-                                                            className="w-full pl-3.5 pr-8 py-2.5 bg-white sm:bg-slate-50 focus:bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 min-h-[42px]"
+                                                            value={spec?.name ?? (typeof spec === 'string' ? spec : '')}
+                                                            onChange={(e) => handleSpecChange(index, e.target.value)}
+                                                            placeholder="Enter part or specification (e.g. Power Pack, Sealing air fan, Main Drive, 415V)"
+                                                            className="w-full pl-3.5 pr-10 py-2.5 bg-white focus:bg-white border border-slate-200 focus:border-purple-600 rounded-xl text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-purple-500/20 transition-all shadow-2xs min-h-[42px]"
                                                         />
                                                         <button
                                                             type="button"
-                                                            onClick={() => handleVoiceSpec(index, 'name')}
-                                                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-purple-600 hover:text-purple-800 p-1"
-                                                            title="Voice input for spec name"
+                                                            onClick={() => handleVoiceSpec(index)}
+                                                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-purple-600 hover:text-purple-800 p-1.5 rounded-lg hover:bg-purple-50 transition-colors"
+                                                            title="Dictate part name"
                                                         >
-                                                            <Mic size={14} />
-                                                        </button>
-                                                    </div>
-                                                    <div className="flex-1 relative">
-                                                        <input 
-                                                            type="text"
-                                                            value={spec.value}
-                                                            onChange={(e) => handleSpecChange(index, 'value', e.target.value)}
-                                                            placeholder="e.g. 32 GB / 415V / 3 Tonnes"
-                                                            className="w-full pl-3.5 pr-8 py-2.5 bg-white sm:bg-slate-50 focus:bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 min-h-[42px]"
-                                                        />
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleVoiceSpec(index, 'value')}
-                                                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-purple-600 hover:text-purple-800 p-1"
-                                                            title="Voice input for spec value"
-                                                        >
-                                                            <Mic size={14} />
+                                                            <Mic size={15} />
                                                         </button>
                                                     </div>
                                                     <button 
                                                         type="button" 
                                                         onClick={() => removeSpec(index)}
-                                                        className="self-end sm:self-auto p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                                                        title="Delete Spec"
+                                                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer shrink-0"
+                                                        title="Delete Part"
                                                     >
-                                                        <Trash2 size={18} />
+                                                        <Trash2 size={17} />
                                                     </button>
                                                 </div>
                                             ))}

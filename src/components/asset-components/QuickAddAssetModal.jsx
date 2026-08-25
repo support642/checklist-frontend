@@ -76,8 +76,8 @@ export default function QuickAddAssetModal({ isOpen, onClose, onOpenFullDetails 
 
     // Format parts into structured specs
     const partSpecs = Array.isArray(machine.part_name) 
-      ? machine.part_name.filter(Boolean).map(p => ({ name: 'Part Component', value: p }))
-      : (machine.part_name ? [{ name: 'Part Component', value: machine.part_name }] : []);
+      ? machine.part_name.filter(Boolean).map(p => ({ name: typeof p === 'string' ? p : (p.name || p.value || ''), value: '' }))
+      : (machine.part_name ? [{ name: typeof machine.part_name === 'string' ? machine.part_name : (machine.part_name.name || machine.part_name.value || ''), value: '' }] : []);
 
     setFormData(prev => ({
       ...prev,
