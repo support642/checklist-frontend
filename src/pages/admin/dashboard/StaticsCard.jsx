@@ -61,7 +61,7 @@ export default function StatisticsCards({
   // because the backend `delay` column stores submission time instead of the actual delta.
   const computedOnTime = dashboardType === "checklist" && allStaffTasks.length > 0
     ? allStaffTasks.filter(task => {
-        if (!task.submission_date || task.status !== "yes") return false;
+        if (!task.submission_date || task.status !== "completed") return false;
         const planned = task.planned_date ? new Date(task.planned_date) : null;
         const submitted = new Date(task.submission_date);
         return planned ? submitted <= planned : false;
