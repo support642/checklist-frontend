@@ -57,7 +57,22 @@ export default function StatisticsCards({
     ? completedRatingOne + completedRatingTwo + completedRatingThreePlus
     : completeTask;
 
-  const onTimeRate = completedTasksInList > 0 ? (completedOnTime / completedTasksInList) * 100 : 0;
+  // Recalculate on-time from task list using submission_date vs planned_date directly,
+  // because the backend `delay` column stores submission time instead of the actual delta.
+  const computedOnTime = dashboardType === "checklist" && allStaffTasks.length > 0
+    ? allStaffTasks.filter(task => {
+        if (!task.submission_date || task.status !== "yes") return false;
+        const planned = task.planned_date ? new Date(task.planned_date) : null;
+        const submitted = new Date(task.submission_date);
+        return planned ? submitted <= planned : false;
+      }).length
+    : completedOnTime;
+
+  const effectiveOnTime = dashboardType === "checklist" && allStaffTasks.length > 0
+    ? computedOnTime
+    : completedOnTime;
+
+  const onTimeRate = completedTasksInList > 0 ? (effectiveOnTime / completedTasksInList) * 100 : 0;
   const completedLateRate = completedTasksInList > 0 ? (100 - onTimeRate) : 0;
 
   const onTimeDash = onTimeRate * circumference / 100;
