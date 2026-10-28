@@ -13,6 +13,7 @@ import EmployeePerformanceReportModal from "../../../components/modals/EmployeeP
 import TopPerformersModal from "../../../components/modals/TopPerformersModal"
 import { hasSystemAccess } from "../../../utils/permissionUtils"
 import AttendanceReportModal from "../../../components/modals/AttendanceReportModal"
+import DivisionTaskReport from "./DivisionTaskReport"
 export default function StaffTasksTable({
   dashboardType,
   dashboardStaffFilter,
@@ -20,21 +21,23 @@ export default function StaffTasksTable({
   divisionFilter,
   unitFilter,
   parseTaskStartDate,
-  startDate,
-  endDate
+  startDate: parentStartDate,
+  endDate: parentEndDate
 }) {
   const [staffMembers, setStaffMembers] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [totalStaffCount, setTotalStaffCount] = useState(0)
   const [totalUsersCount, setTotalUsersCount] = useState(0)
-  const [selectedMonthYear, setSelectedMonthYear] = useState(() => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    return `${year}-${month}`;
-  })
+  // Start date + Till date filter (replaces the old Month dropdown)
+  const [rangeStart, setRangeStart] = useState(() =>
+    new Date(new Date().getFullYear(), new Date().getMonth(), 1).toLocaleDateString('en-CA')
+  )
   const [tillDate, setTillDate] = useState(new Date().toLocaleDateString('en-CA'))
-  const [monthYearOptions, setMonthYearOptions] = useState([])
+  const startDate = rangeStart
+  const endDate = tillDate
+  // Month is no longer selectable; the API uses startDate/endDate when both are set
+  const selectedMonthYear = ""
+  const monthYearOptions = []
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -68,6 +71,7 @@ export default function StaffTasksTable({
   const [dashboardPage, setDashboardPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [reportSelection, setReportSelection] = useState(null);
   const dashboardPageSize = 20;
 
   const dashboardTopRef = useRef(null);
@@ -91,30 +95,31 @@ export default function StaffTasksTable({
     }
   }, [dashboardPage]);
 
-  // Reset page when filters change
+  // Reset page when filters or report selection change
   useEffect(() => {
     setDashboardPage(1);
-  }, [dashboardType, dashboardStaffFilter, departmentFilter, divisionFilter, unitFilter, selectedMonthYear, tillDate, startDate, endDate, debouncedSearch]);
+  }, [dashboardType, dashboardStaffFilter, departmentFilter, divisionFilter, unitFilter, selectedMonthYear, tillDate, startDate, endDate, debouncedSearch, reportSelection]);
+
+  // Clear report selection whenever month, till, dashboardType or parent filters change
+  useEffect(() => {
+    setReportSelection(null);
+  }, [dashboardType, dashboardStaffFilter, departmentFilter, divisionFilter, unitFilter, selectedMonthYear, tillDate, startDate, endDate]);
 
   // Module permission flags
   const hasMaintenanceAccess = hasSystemAccess('maintenance');
 
-  // Sync local month and till-date filters with parent date range filters
+  // Sync local start/till filters with parent date range filters
   useEffect(() => {
-    if (startDate && endDate) {
+    if (parentStartDate && parentEndDate) {
       // If a parent date range is selected, update sub-filters to match
-      const [year, month] = startDate.split('-').slice(0, 2);
-      setSelectedMonthYear(`${year}-${month}`);
-      setTillDate(endDate);
-    } else if (startDate === "" && endDate === "") {
+      setRangeStart(parentStartDate);
+      setTillDate(parentEndDate);
+    } else if (parentStartDate === "" && parentEndDate === "") {
       // If parent range is explicitly cleared (Reset), revert to defaults
-      const today = new Date();
-      const year = today.getFullYear();
-      const month = String(today.getMonth() + 1).padStart(2, '0');
-      setSelectedMonthYear(`${year}-${month}`);
+      setRangeStart(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toLocaleDateString('en-CA'));
       setTillDate(new Date().toLocaleDateString('en-CA'));
     }
-  }, [startDate, endDate]);
+  }, [parentStartDate, parentEndDate]);
 
   // Sync report range with props
   useEffect(() => {
@@ -133,44 +138,6 @@ export default function StaffTasksTable({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Generate month-year options (last 12 months + current month)
-  const generateMonthYearOptions = useCallback(() => {
-    const options = []
-    const today = new Date()
-    const currentMonth = today.getMonth() // 0-11
-    const currentYear = today.getFullYear()
-
-    // Add current month as default
-    const currentMonthYear = `${today.toLocaleString('default', { month: 'long' })} ${currentYear}`
-
-    // Generate options for last 12 months (including current)
-    for (let i = 11; i >= 0; i--) {
-      const date = new Date(currentYear, currentMonth - i, 1)
-      const monthName = date.toLocaleString('default', { month: 'long' })
-      const year = date.getFullYear()
-      const monthYear = `${monthName} ${year}`
-
-      options.push({
-        value: `${year}-${(date.getMonth() + 1).toString().padStart(2, '0')}`,
-        label: monthYear,
-        isCurrent: i === 0 // Current month
-      })
-    }
-
-    setMonthYearOptions(options)
-
-    // Set default selection to current month
-    if (options.length > 0 && !selectedMonthYear) {
-      const currentOption = options.find(opt => opt.isCurrent)
-      if (currentOption) {
-        setSelectedMonthYear(currentOption.value)
-      }
-    }
-  }, [selectedMonthYear])
-
-  useEffect(() => {
-    generateMonthYearOptions()
-  }, [generateMonthYearOptions])
 
   // Reset when filters change
   useEffect(() => {
@@ -722,6 +689,11 @@ export default function StaffTasksTable({
     try {
       setIsLoading(true)
 
+      const effectiveDivision = reportSelection?.division || divisionFilter;
+      const effectiveDepartment = reportSelection
+        ? (reportSelection.department || "all")
+        : departmentFilter;
+
       // Fetch paginated staff data
       const data = await fetchStaffTasksDataApi(
         dashboardType,
@@ -733,8 +705,8 @@ export default function StaffTasksTable({
         startDate,
         endDate,
         debouncedSearch,
-        departmentFilter,
-        divisionFilter,
+        effectiveDepartment,
+        effectiveDivision,
         unitFilter
       )
 
@@ -748,8 +720,8 @@ export default function StaffTasksTable({
           tillDate,
           startDate,
           endDate,
-          departmentFilter,
-          divisionFilter,
+          effectiveDepartment,
+          effectiveDivision,
           unitFilter
         ),
         getTotalUsersCountApi()
@@ -775,7 +747,7 @@ export default function StaffTasksTable({
     } finally {
       setIsLoading(false)
     }
-  }, [dashboardType, dashboardStaffFilter, departmentFilter, divisionFilter, unitFilter, selectedMonthYear, tillDate, startDate, endDate, dashboardPage, debouncedSearch])
+  }, [dashboardType, dashboardStaffFilter, departmentFilter, divisionFilter, unitFilter, selectedMonthYear, tillDate, startDate, endDate, dashboardPage, debouncedSearch, reportSelection])
 
   // Initial load when component mounts or dependencies change
   useEffect(() => {
@@ -1098,7 +1070,7 @@ export default function StaffTasksTable({
 
       doc.setFontSize(10);
       doc.setTextColor(100);
-      doc.text(`Period: ${selectedMonthYear || 'All Months'} (Till: ${formatDateForDisplay(tillDate) || 'N/A'})`, 14, 22);
+      doc.text(`Period: ${formatDateForDisplay(startDate) || 'N/A'} to ${formatDateForDisplay(tillDate) || 'N/A'}`, 14, 22);
       doc.text(`${new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })} ${new Date().toLocaleTimeString()}`, 14, 27);
 
       // Define table headers
@@ -1178,37 +1150,39 @@ export default function StaffTasksTable({
     }
   };
 
+  const searchPlaceholder = reportSelection
+    ? (reportSelection.department
+        ? `Search staff in ${reportSelection.division} / ${reportSelection.department}...`
+        : `Search staff in ${reportSelection.division}...`)
+    : "Search staff by name...";
+
   return (
     <div ref={dashboardTopRef} className="space-y-4">
       {/* Show total count and active filters */}
       <div className="flex flex-col space-y-3">
         {/* Row 1: Filters (Month, Till) + Action Buttons (Attendance, Top Performers, Work Done) */}
         <div className="flex flex-wrap items-center gap-3">
-          {/* Month-Year Dropdown */}
+          {/* Start Date Filter */}
           <div className="flex items-center space-x-2 w-full sm:w-auto">
-            <label htmlFor="monthYearFilter" className="text-sm font-medium text-gray-700 min-w-[50px]">Month:</label>
-            <select
-              id="monthYearFilter"
-              value={selectedMonthYear}
-              onChange={(e) => setSelectedMonthYear(e.target.value)}
+            <label htmlFor="startDateFilter" className="text-sm font-medium text-gray-700 min-w-[50px]">Start Date:</label>
+            <input
+              type="date"
+              id="startDateFilter"
+              value={rangeStart}
+              max={tillDate || undefined}
+              onChange={(e) => setRangeStart(e.target.value)}
               className="block w-full sm:w-40 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white"
-            >
-              <option value="">All Months</option>
-              {monthYearOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label} {option.isCurrent && "(Current)"}
-                </option>
-              ))}
-            </select>
+            />
           </div>
 
           {/* Till Date Filter */}
           <div className="flex items-center space-x-2 w-full sm:w-auto">
-            <label htmlFor="tillDateFilter" className="text-sm font-medium text-gray-700 min-w-[50px]">Till:</label>
+            <label htmlFor="tillDateFilter" className="text-sm font-medium text-gray-700 min-w-[50px]">Till Date:</label>
             <input
               type="date"
               id="tillDateFilter"
               value={tillDate}
+              min={rangeStart || undefined}
               onChange={(e) => setTillDate(e.target.value)}
               className="block w-full sm:w-40 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white"
             />
@@ -1247,28 +1221,74 @@ export default function StaffTasksTable({
           )}
         </div>
 
-        {/* Row 2: Search Box + Total Count & Active Filter Badges */}
+        {/* Division wise Task Report (Pivot Table) */}
+        {canExportReport && (
+          <DivisionTaskReport
+            dashboardType={dashboardType}
+            dashboardStaffFilter={dashboardStaffFilter}
+            startDate={startDate}
+            endDate={endDate}
+            departmentFilter={departmentFilter}
+            divisionFilter={divisionFilter}
+            unitFilter={unitFilter}
+            selectedReportRow={reportSelection}
+            onSelectRow={(selection) => {
+              if (
+                reportSelection &&
+                reportSelection.division === selection?.division &&
+                reportSelection.department === selection?.department
+              ) {
+                setReportSelection(null);
+              } else {
+                setReportSelection(selection);
+              }
+            }}
+          />
+        )}
+
+        {/* Row 2: Search Box + Removable Chip + Total Count & Active Filter Badges */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-          {/* Name Search Box */}
-          <div className="relative group w-full sm:w-72">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-blue-500 transition-colors">
-              <Search size={16} />
+          {/* Name Search Box with Removable Chip */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+            <div className="relative group w-full sm:w-72">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-blue-500 transition-colors">
+                <Search size={16} />
+              </div>
+              <input
+                type="text"
+                value={searchQuery}
+                onKeyDown={(e) => e.stopPropagation()}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={searchPlaceholder}
+                className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 sm:text-sm placeholder-gray-400"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 cursor-pointer"
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
-            <input
-              type="text"
-              value={searchQuery}
-              onKeyDown={(e) => e.stopPropagation()}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search staff by name..."
-              className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 sm:text-sm placeholder-gray-400"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-              >
-                <X size={14} />
-              </button>
+
+            {/* Removable chip for Division / Department selection */}
+            {reportSelection && (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-800 border border-blue-200 rounded-full text-xs font-medium shadow-xs animate-fadeIn">
+                <span>
+                  Division: {reportSelection.division}
+                  {reportSelection.department ? ` › ${reportSelection.department}` : ""}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setReportSelection(null)}
+                  className="p-0.5 hover:bg-blue-200 text-blue-600 hover:text-blue-900 rounded-full transition-colors ml-0.5 cursor-pointer"
+                  title="Clear division filter"
+                  aria-label="Clear division filter"
+                >
+                  <X size={13} />
+                </button>
+              </div>
             )}
           </div>
 
@@ -1289,9 +1309,9 @@ export default function StaffTasksTable({
                 Dept Filter: {departmentFilter}
               </span>
             )}
-            {selectedMonthYear && (
+            {startDate && (
               <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs">
-                Month: {monthYearOptions.find(opt => opt.value === selectedMonthYear)?.label || selectedMonthYear}
+                From: {formatDateForDisplay(startDate)}
               </span>
             )}
             {tillDate && (
@@ -1306,9 +1326,7 @@ export default function StaffTasksTable({
       {staffMembers.length === 0 && !isLoading ? (
         <div className="text-center p-8 text-gray-500">
           <p>No staff data found for the selected filters.</p>
-          {selectedMonthYear && (
-            <p className="text-sm mt-2">Try selecting "All Months" to see more results.</p>
-          )}
+          <p className="text-sm mt-2">Try selecting a wider Start Date / Till Date range.</p>
           {dashboardStaffFilter !== "all" && (
             <p className="text-sm mt-2">Try selecting "All Staff Members" to see more results.</p>
           )}

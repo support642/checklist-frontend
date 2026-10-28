@@ -9,6 +9,12 @@ export default defineConfig({
     tailwindcss(),
   ],
   base: "/", // Changed from "./" to "/"
+  server: {
+    // Dev only: forward /api to the local backend (vercel.json handles this in production)
+    proxy: {
+      "/api": "http://localhost:5050",
+    },
+  },
   build: {
     outDir: "dist",
   },
