@@ -11,7 +11,7 @@ import {
   Layers,
   Inbox
 } from "lucide-react";
-import { fetchStaffTasksDataApi } from "../../../redux/api/dashboardApi";
+import { fetchDepartmentReportSummaryApi } from "../../../redux/api/dashboardApi";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -44,26 +44,39 @@ export default function DivisionTaskReport({
   const [isLoading, setIsLoading] = useState(false);
   const [collapsedDivisions, setCollapsedDivisions] = useState({});
 
-  // 1. Fetch all data for the current scope (limit=10000, no search query)
+  // 1. Fetch division/department counts for the current scope.
+  // Uses /dashboard/report-summary, which counts a checklist task as completed only when it is
+  // submitted with status 'yes'. (The staff-tasks API also treats status 'yes' — the reminder
+  // flag every active task has — as completed, which inflates Completed and hides Overdue.)
   const fetchReportData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = await fetchStaffTasksDataApi(
+      const data = await fetchDepartmentReportSummaryApi({
         dashboardType,
-        dashboardStaffFilter,
-        1,
-        10000,
-        "", // month not used: start/end date take priority
-        "",
+        staffFilter: dashboardStaffFilter || "all",
+        departmentFilter: departmentFilter || "all",
+        unitFilter: unitFilter || "all",
+        divisionFilter: divisionFilter || "all",
+        role: localStorage.getItem("role") || "",
+        username: localStorage.getItem("user-name") || "",
+        unit: localStorage.getItem("unit") || "",
+        division: localStorage.getItem("division") || "",
+        department: localStorage.getItem("department") || "",
         startDate,
-        endDate,
-        "", // no search text
-        departmentFilter,
-        divisionFilter,
-        unitFilter
-      );
+        endDate
+      });
       if (Array.isArray(data)) {
-        setRawData(data);
+        // Map to the shape the aggregation below expects (one row per division + department)
+        setRawData(
+          data.map((row) => ({
+            division: row.division,
+            department: row.department,
+            totalTasks: row.total,
+            completedTasks: row.completed,
+            pendingTasks: row.pending,
+            overdueTasks: row.overdue
+          }))
+        );
       } else {
         setRawData([]);
       }

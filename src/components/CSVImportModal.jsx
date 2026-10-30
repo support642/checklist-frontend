@@ -144,12 +144,22 @@ const CSVImportModal = ({ isOpen, onClose, onSuccess }) => {
       const result = await response.json();
 
       if (!response.ok || !result.success) {
-        throw new Error(result.message || 'Import failed');
+        const details = Array.isArray(result.skippedDoers) && result.skippedDoers.length > 0
+          ? `. Not found / inactive: ${result.skippedDoers.join(', ')}`
+          : Array.isArray(result.errors) && result.errors.length > 0
+            ? `: ${result.errors.join('; ')}`
+            : '';
+        throw new Error((result.message || 'Import failed') + details);
       }
 
       // Success
       onSuccess && onSuccess(result);
-      alert(`Successfully imported ${result.count} tasks!`);
+      const skipped = Array.isArray(result.skippedDoers) ? result.skippedDoers : [];
+      alert(
+        skipped.length > 0
+          ? `Imported ${result.count} tasks.\n\n${skipped.length} name(s) were NOT found as active users, so their ${result.skippedCount} row(s) were skipped:\n${skipped.join('\n')}\n\nFix these names (or create the users) and import those rows again.`
+          : `Successfully imported ${result.count} tasks!`
+      );
       onClose();
     } catch (err) {
       setError(err.message || 'Failed to import data');

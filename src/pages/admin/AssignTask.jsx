@@ -952,7 +952,7 @@ useEffect(() => {
       console.error("Submission error:", error);
       setToast({ 
         show: true, 
-        message: "Failed to assign tasks. Please try again.", 
+        message: error?.response?.data?.error || "Failed to assign tasks. Please try again.",
         type: "error" 
       });
     } finally {
