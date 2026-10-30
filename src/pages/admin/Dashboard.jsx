@@ -1533,6 +1533,45 @@ useEffect(() => {
     }
   }, [dashboardType, dashboardStaffFilter, departmentFilter, unitFilter, divisionFilter, dateRange.startDate, dateRange.endDate, dispatch, userRole, username])
 
+  // Backend on-time counts compare full timestamps against a midnight task_start_date, so
+  // anything submitted during its due day is counted late. Recompute from task rows using
+  // the due *day* instead: a completed task is on time if submitted on or before that day.
+  const [onTimeRatio, setOnTimeRatio] = useState(null)
+  useEffect(() => {
+    let cancelled = false
+    const PAGE = 5000
+    const now = new Date()
+    const from = dateRange.startDate || new Date(now.getFullYear(), now.getMonth(), 1).toLocaleDateString('en-CA')
+    const to = dateRange.endDate || now.toLocaleDateString('en-CA')
+
+    const load = async () => {
+      let completed = 0
+      let onTime = 0
+      for (let page = 1; page <= 20; page++) {
+        const rows = await fetchDashboardDataApi(
+          dashboardType, dashboardStaffFilter, page, PAGE, 'all',
+          departmentFilter, unitFilter, divisionFilter, from, to
+        )
+        if (!Array.isArray(rows)) break
+        for (const t of rows) {
+          const due = (t.task_start_date || "").slice(0, 10)
+          if (!t.submission_date || !due || due < from || due > to) continue
+          if (dashboardType === "checklist" && t.status !== "yes") continue
+          completed++
+          const done = t.submission_date.slice(0, 10)
+          if (dashboardType === "checklist" ? done <= due : t.is_on_time) onTime++
+        }
+        if (rows.length < PAGE) break
+      }
+      return completed > 0 ? Math.min(1, onTime / completed) : null
+    }
+
+    load()
+      .then((ratio) => { if (!cancelled) setOnTimeRatio(ratio) })
+      .catch(() => { if (!cancelled) setOnTimeRatio(null) })
+    return () => { cancelled = true }
+  }, [dashboardType, dashboardStaffFilter, departmentFilter, unitFilter, divisionFilter, dateRange.startDate, dateRange.endDate])
+
   // Filter tasks based on criteria
   const filteredTasks = departmentData.allTasks.filter((task) => {
     if (filterStatus !== "all" && task.status !== filterStatus) return false
@@ -1695,7 +1734,9 @@ useEffect(() => {
     completedRatingOne: completedRatingOne || 0,
     completedRatingTwo: completedRatingTwo || 0,
     completedRatingThreePlus: completedRatingThreePlus || 0,
-    completedOnTime: completedOnTime || 0,
+    completedOnTime: onTimeRatio !== null
+      ? Math.round(onTimeRatio * (completeTask || 0))
+      : (completedOnTime || 0),
     notDoneTasks: notDoneTask || 0,
   };
 
