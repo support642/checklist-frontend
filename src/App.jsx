@@ -425,7 +425,13 @@ function App() {
           path="/dashboard/ai-assistant"
           element={
             <ProtectedRoute>
-              <AdminLayout><ChatbotAssistant /></AdminLayout>
+              {["super_admin", "div_admin", "admin"].includes(
+                String(localStorage.getItem("role") || "").toLowerCase()
+              ) ? (
+                <AdminLayout><ChatbotAssistant /></AdminLayout>
+              ) : (
+                <Navigate to="/dashboard/admin" replace />
+              )}
             </ProtectedRoute>
           }
         />
