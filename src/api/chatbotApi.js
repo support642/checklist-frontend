@@ -33,6 +33,15 @@ async function chatbotRequest(endpoint, options = {}) {
 
     const data = await response.json().catch(() => ({}));
 
+    // Session ended (e.g. backend restart logs everyone out): behave like the
+    // rest of the app (authFetch) and send the user back to the login page.
+    if (response.status === 401 && data.force_logout) {
+        console.warn("Chatbot: session expired. Forcing logout...");
+        localStorage.clear();
+        window.location.href = "/login";
+        throw new Error("Your session has expired. Please log in again.");
+    }
+
     if (!response.ok) {
         throw new Error(
             data.message ||
