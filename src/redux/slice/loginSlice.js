@@ -25,6 +25,12 @@ const loginSlice = createSlice({
     updateLoginUserData: (state, action) => {
       // Allow updating the current user's info from other slices/components
       state.userData = { ...state.userData, ...action.payload };
+    },
+    clearLoginUserData: (state) => {
+      state.userData = null;
+      state.error = null;
+      state.loading = false;
+      state.isLoggedIn = false;
     }
   },
   extraReducers: (builder) => {
@@ -46,5 +52,5 @@ const loginSlice = createSlice({
   },
 });
 
-export const { updateLoginUserData } = loginSlice.actions;
+export const { updateLoginUserData, clearLoginUserData } = loginSlice.actions;
 export default loginSlice.reducer;

@@ -15,6 +15,7 @@ import "./index.css"
 import Demo from "./pages/user/Demo"
 import Setting from "./pages/Setting"
 import WorkingDate from "./pages/WorkingDate"
+import ChatbotAssistant from "./pages/ChatbotAssistant"
 import MisReport from "./pages/MisReport"
 import HistoryPage from "./pages/admin/HistoryPage"
 import TrainingVideoPage from "./pages/admin/TrainingVideoPage"
@@ -417,6 +418,14 @@ function App() {
           element={
             <ProtectedRoute page="quick_task">
               <QuickTask />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/ai-assistant"
+          element={
+            <ProtectedRoute>
+              <AdminLayout><ChatbotAssistant /></AdminLayout>
             </ProtectedRoute>
           }
         />

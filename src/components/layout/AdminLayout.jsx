@@ -38,6 +38,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { hasPageAccess, hasSystemAccess } from "../../utils/permissionUtils";
+import ChatbotWidget from "../ChatbotWidget";
 
 export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
   const location = useLocation();
@@ -230,6 +231,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
 
   // Helper to check if a group has any accessible children
   const hasAccessibleChildren = (item) => {
+    if (item.devOnly) return import.meta.env.DEV;
     if (item.route) return hasPageAccess(item.page);
     if (item.children) {
       return item.children.some(child => hasAccessibleChildren(child));
@@ -731,6 +733,9 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
           </div>
         )}
       </div>
+
+      {/* Floating AI assistant (dev only, like the old sidebar link) */}
+      {import.meta.env.DEV && <ChatbotWidget />}
     </div>
   );
 }
