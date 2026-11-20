@@ -6,6 +6,10 @@
       "destination": "http://13.126.44.60:5050/api/:path*"
     },
     {
+      "source": "/chatbot-api/:path*",
+      "destination": "http://13.126.44.60:4001/api/chatbot/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

@@ -734,9 +734,9 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
         )}
       </div>
 
-      {/* Floating AI assistant (dev only, like the old sidebar link) */}
+      {/* Floating AI assistant (shown only when VITE_CHATBOT_API_BASE_URL is set) */}
       {/* AI chatbot: administrators only (backend enforces this too) */}
-      {import.meta.env.DEV &&
+      {import.meta.env.VITE_CHATBOT_API_BASE_URL &&
         ["super_admin", "div_admin", "admin"].includes(String(userRole || "").toLowerCase()) && (
           <ChatbotWidget />
         )}

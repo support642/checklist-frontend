@@ -1,7 +1,7 @@
 import { authFetch } from "../utils/authFetch";
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 // import { Plus, User, Building, X, Save, Edit, Trash2, Settings, Search, ChevronDown, Calendar, RefreshCw } from 'lucide-react';
-import { Plus, User, Building, X, Save, Edit, Trash2, Settings, Search, ChevronDown, Calendar, RefreshCw, Eye, EyeOff, Upload, Image as ImageIcon, Copy, MessageSquare } from 'lucide-react';
+import { Plus, User, Building, X, Save, Edit, Trash2, Settings, Search, ChevronDown, Calendar, RefreshCw, Eye, EyeOff, Upload, Image as ImageIcon, Copy, MessageSquare, Bot } from 'lucide-react';
 import AdminLayout from '../components/layout/AdminLayout';
 import { useDispatch, useSelector } from 'react-redux';
 import { departmentDetails, departmentOnlyDetails, extendUserDetails, givenByDetails, leaveUserDetails, machineDetails, resetExtendUserData, resetLeaveUserData, resetUserData, userDetails, createDepartment, createUser, deleteUser, updateDepartment, updateUser, createMachineThunk, updateMachineThunk, deleteMachineThunk } from '../redux/slice/settingSlice';
@@ -10,6 +10,7 @@ import { extendTaskApi } from '../redux/api/settingApi';
 import { uniqueDoerNameData } from '../redux/slice/assignTaskSlice';
 import { hasPageAccess, hasModifyAccess } from '../utils/permissionUtils';
 import Toast from '../components/Toast';
+import OpenAIKeySettings from '../components/settings/OpenAIKeySettings';
 // import supabase from '../SupabaseClient';
 import { SYSTEM_PERMISSIONS, PAGE_PERMISSIONS, PAGE_PERMISSION_GROUPS, PAGE_SYSTEM_MAP, DOC_SYSTEMS, DOC_PAGES, DOC_PAGE_MAP } from '../constants/permissions';
 import { buildUnifiedPermissions, splitUnifiedPermissions, hasPermission } from '../utils/permissionAdapter';
@@ -2002,6 +2003,20 @@ const resetUserForm = () => {
                 <span>{currentUserRole?.toLowerCase() === 'user' ? 'My Profile' : 'Users'}</span>
               </button>
 
+              {currentUserRole?.toLowerCase() === 'super_admin' && import.meta.env.VITE_CHATBOT_API_BASE_URL && (
+                <button
+                  className={`flex flex-col items-center gap-1 px-2 sm:px-4 py-3 text-xs font-semibold border-b-2 transition-all flex-1 sm:flex-none min-w-[80px] sm:min-w-[100px] whitespace-nowrap ${
+                    activeTab === 'aiKey' 
+                      ? 'border-purple-600 text-purple-600 bg-purple-50' 
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                  }`}
+                  onClick={() => setActiveTab('aiKey')}
+                >
+                  <Bot size={20} />
+                  <span>AI Key</span>
+                </button>
+              )}
+
               {canManageSettings && (
                 <button
                   className={`flex flex-col items-center gap-1 px-2 sm:px-4 py-3 text-xs font-semibold border-b-2 transition-all flex-1 sm:flex-none min-w-[80px] sm:min-w-[100px] whitespace-nowrap ${
@@ -3256,6 +3271,9 @@ const resetUserForm = () => {
             )}
           </div>
         )}
+
+        {/* AI Key Tab (super admin only) */}
+        {activeTab === 'aiKey' && currentUserRole?.toLowerCase() === 'super_admin' && <OpenAIKeySettings />}
 
         {/* WhatsApp Tab */}
         {activeTab === 'whatsapp' && (

@@ -1,14 +1,11 @@
-const isDevelopment = import.meta.env.DEV;
-
+// Dev: http://localhost:4001/api/chatbot
+// Prod (Vercel): /chatbot-api  (rewritten to the chatbot-service on EC2, see vercel.json)
 const API_BASE_URL = import.meta.env.VITE_CHATBOT_API_BASE_URL;
 
-async function chatbotRequest(endpoint, options = {}) {
-    if (!isDevelopment) {
-        throw new Error(
-            "The development chatbot API cannot be used in production."
-        );
-    }
-
+// keepSessionOnAuthError: settings calls must never log the user out. A 401 from the
+// chatbot service can simply mean it cannot see this session (misconfiguration), which is
+// not the same as the main login having expired.
+async function chatbotRequest(endpoint, { keepSessionOnAuthError = false, ...options } = {}) {
     if (!API_BASE_URL) {
         throw new Error("Chatbot API URL is not configured.");
     }
@@ -35,6 +32,12 @@ async function chatbotRequest(endpoint, options = {}) {
 
     // Session ended (e.g. backend restart logs everyone out): behave like the
     // rest of the app (authFetch) and send the user back to the login page.
+    if (response.status === 401 && data.force_logout && keepSessionOnAuthError) {
+        throw new Error(
+            "The AI service does not recognise your session. Check that the chatbot service uses the same database as the main backend."
+        );
+    }
+
     if (response.status === 401 && data.force_logout) {
         console.warn("Chatbot: session expired. Forcing logout...");
         localStorage.clear();
@@ -141,4 +144,25 @@ export async function getAdminWorkReportsByDateRange({
     return chatbotRequest(
         `/admin/work-reports/date-range?${params.toString()}`
     );
+}
+
+// ==========================================
+// Super admin: AI settings (OpenAI key)
+// The backend never returns the key, only { configured, masked, updated_by, updated_at }.
+// ==========================================
+
+export async function getOpenAIKeyStatus() {
+    return chatbotRequest("/settings/openai-key", { keepSessionOnAuthError: true });
+}
+
+export async function saveOpenAIKey(apiKey) {
+    return chatbotRequest("/settings/openai-key", {
+        method: "PUT",
+        keepSessionOnAuthError: true,
+        body: JSON.stringify({ api_key: apiKey })
+    });
+}
+
+export async function deleteOpenAIKey() {
+    return chatbotRequest("/settings/openai-key", { method: "DELETE", keepSessionOnAuthError: true });
 }
