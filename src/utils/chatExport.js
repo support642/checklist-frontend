@@ -8,10 +8,15 @@ const TASK_COLUMNS = [
     { key: "task_id", label: "Task ID", width: 10 },
     { key: "task_description", label: "Task Description", width: 50 },
     { key: "task_date", label: "Task Date", width: 12 },
+    { key: "planned_date", label: "Planned Date", width: 17 },
     { key: "current_status", label: "Status", width: 12 },
     { key: "submitted_at", label: "Submitted At", width: 17 },
+    { key: "timeliness", label: "On Time / Late", width: 13 },
+    { key: "delay", label: "Delay", width: 14 },
+    { key: "times_extended", label: "Times Extended", width: 10 },
     { key: "given_by", label: "Given By", width: 18 },
-    { key: "frequency", label: "Frequency", width: 11 }
+    { key: "frequency", label: "Frequency", width: 11 },
+    { key: "remarks", label: "Remarks", width: 30 }
 ];
 
 const EMPLOYEE_COLUMNS = [
@@ -22,7 +27,10 @@ const EMPLOYEE_COLUMNS = [
     { key: "pending", label: "Pending", width: 10 },
     { key: "overdue", label: "Overdue", width: 10 },
     { key: "due_today", label: "Due Today", width: 11 },
-    { key: "completion_rate_percent", label: "Completion %", width: 13 }
+    { key: "on_time", label: "On Time", width: 10 },
+    { key: "late", label: "Late", width: 9 },
+    { key: "completion_rate_percent", label: "Completion %", width: 13 },
+    { key: "on_time_rate_percent", label: "On Time %", width: 11 }
 ];
 
 const STAFF_COLUMNS = [
@@ -69,7 +77,8 @@ const getDataset = (type, data) => {
         rows: (data.tasks || []).map((t) => ({
             ...t,
             task_type: formatStatus(t.task_type),
-            current_status: formatStatus(t.current_status)
+            current_status: formatStatus(t.current_status),
+            timeliness: formatStatus(t.timeliness)
         }))
     };
 };
@@ -139,11 +148,11 @@ export const downloadPdf = async (type, data) => {
         startY: 84,
         head: [columns.map((c) => c.label)],
         body: rows.map((r) => columns.map((c) => r[c.key] ?? "")),
-        styles: { fontSize: 8, cellPadding: 4, overflow: "linebreak" },
+        styles: { fontSize: type === "tasks" ? 6.5 : 8, cellPadding: type === "tasks" ? 3 : 4, overflow: "linebreak" },
         headStyles: { fillColor: [79, 70, 229], textColor: 255 },
         alternateRowStyles: { fillColor: [245, 247, 255] },
-        columnStyles: type === "tasks" ? { 4: { cellWidth: 200 } } : {},
-        margin: { left: 40, right: 40 }
+        columnStyles: type === "tasks" ? { 4: { cellWidth: 150 } } : {},
+        margin: { left: type === "tasks" ? 20 : 40, right: type === "tasks" ? 20 : 40 }
     });
 
     doc.save(buildFileName(title, data.filters, "pdf"));
